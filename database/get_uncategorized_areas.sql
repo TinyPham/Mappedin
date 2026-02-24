@@ -1,0 +1,8 @@
+﻿
+USE [MappedIn3DModels];
+SELECT DISTINCT AL.VN
+FROM AreaList AL
+LEFT JOIN AreaCategory AC ON AL.AreaListID = AC.AreaListID
+WHERE AC.AssignmentID IS NULL AND AL.VN IS NOT NULL
+ORDER BY AL.VN;
+

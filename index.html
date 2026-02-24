@@ -1,0 +1,1240 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Asset Management Map</title>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+    }
+
+    #layout {
+      display: flex;
+      height: 100vh;
+      width: 100vw;
+      overflow: hidden;
+      position: relative;
+    }
+
+    #main-content {
+      flex: 1;
+      position: relative;
+      height: 100%;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #mappedin-map {
+      width: 100%;
+      height: 100%;
+    }
+
+    #floor-selector {
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1000;
+      width: 280px;
+      max-width: 80%;
+      padding: 10px 40px 10px 20px;
+      border-radius: 30px;
+      border: 2px solid #d4af37;
+      background: rgba(255, 255, 255, 0.95);
+      box-shadow: 0 4px 20px rgba(212, 175, 55, 0.3);
+      cursor: pointer;
+      font-size: 15px;
+      font-weight: 600;
+      color: #333;
+      outline: none;
+      appearance: none;
+      -webkit-appearance: none;
+      background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23d4af37' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 15px center;
+      background-size: 18px;
+      transition: all 0.3s ease;
+      font-family: 'Inter', sans-serif;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      overflow: hidden;
+    }
+
+    /* Vuông góc khi dropdown đang mở để khớp với menu options */
+    #floor-selector:focus {
+      border-radius: 4px 4px 0 0;
+    }
+
+    #floor-selector option {
+      padding: 10px;
+      background: white;
+      color: #333;
+      border-radius: 12px;
+    }
+
+    #camera-controls {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      z-index: 1000;
+      display: flex;
+      flex-direction: row;
+      gap: 12px;
+      align-items: flex-end;
+    }
+
+    .modal-header {
+      padding: 15px 25px;
+      background: white;
+      border-bottom: 1px solid #eee;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+
+    .modal-header h3 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 700;
+      color: #333;
+    }
+
+    .modal-header .close-btn {
+      background: none;
+      border: none;
+      font-size: 24px;
+      color: #999;
+      cursor: pointer;
+      line-height: 1;
+      padding: 5px;
+      transition: color 0.2s;
+    }
+
+    .modal-header .close-btn:hover {
+      color: #333;
+    }
+
+    .camera-control-group {
+      display: flex;
+      gap: 8px;
+      background: rgba(255, 255, 255, 0.95);
+      padding: 8px;
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+      align-items: center;
+      border: 1px solid rgba(0, 0, 0, 0.05);
+    }
+
+    .camera-control-group.horizontal {
+      flex-direction: row;
+      height: 44px;
+      box-sizing: border-box;
+    }
+
+    .camera-btn {
+      width: 36px;
+      height: 36px;
+      border: none;
+      border-radius: 8px;
+      background: #fff;
+      color: #333;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+      transition: all 0.2s;
+    }
+
+    .camera-btn:hover {
+      background: #f8f8f8;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .camera-btn:active {
+      transform: scale(0.95);
+    }
+
+    .camera-btn.center {
+      background: #085ebb;
+      color: white;
+      width: 44px;
+      height: 44px;
+      font-size: 20px;
+      box-shadow: 0 4px 10px rgba(8, 94, 187, 0.3);
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 10;
+    }
+
+    .camera-btn.center:hover {
+      background: #1472d6;
+      transform: translate(-50%, -52%);
+    }
+
+    .modal-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.4);
+      z-index: 2000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(2px);
+    }
+
+    .modal-overlay.hidden {
+      display: none !important;
+    }
+
+
+    #info-popup {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      width: 300px;
+      border: 1px solid #ddd;
+      padding: 0;
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      display: none;
+      z-index: 1000;
+      overflow: hidden;
+    }
+
+    #info-popup .popup-header {
+      position: relative;
+      padding: 0;
+      margin: 0;
+      background: transparent;
+    }
+
+    #info-popup .close-btn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: rgba(255, 255, 255, 0.9);
+      border: none;
+      font-size: 20px;
+      cursor: pointer;
+      color: #666;
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      transition: background-color 0.2s;
+      z-index: 10;
+    }
+
+    #info-popup .close-btn:hover {
+      background-color: #fff;
+      color: #333;
+    }
+
+
+    #info-popup .popup-content {
+      padding: 15px;
+    }
+
+    #info-popup #area-title,
+    #sidebar-info-panel #area-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin: 0 0 8px 0;
+      color: #333;
+    }
+
+    #info-popup #area-description,
+    #sidebar-info-panel #area-description {
+      font-size: 14px;
+      color: #666;
+      margin: 0 0 15px 0;
+      line-height: 1.5;
+    }
+
+    #info-popup #area-image,
+    #sidebar-info-panel #area-image {
+      width: 100%;
+      height: auto;
+      max-height: 200px;
+      object-fit: cover;
+      display: none;
+      margin: 0 0 15px 0;
+      padding: 0;
+      border-radius: 8px;
+    }
+
+    #info-popup #directions-btn,
+    #sidebar-info-panel #directions-btn {
+      width: 100%;
+      padding: 10px;
+      /* Style giống nút Phân loại khu vực */
+      background-color: #E8E6df;
+      color: #085ebb;
+      border: 1px solid #085ebb;
+      border-radius: 4px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      margin-top: 20px;
+    }
+
+    #info-popup #directions-btn:hover,
+    #sidebar-info-panel #directions-btn:hover,
+    #sidebar-info-panel #directions-btn.active {
+      background-color: #085ebb;
+      color: white;
+    }
+
+    #info-popup #directions-btn::after,
+    #sidebar-info-panel #directions-btn::after {
+      content: none;
+      /* Bỏ mũi tên */
+    }
+
+    /* Wayfinding UI */
+    #wayfinding-panel {
+      margin-top: 15px;
+      padding: 12px;
+      background: #f5f5f5;
+      border-radius: 6px;
+      display: none;
+    }
+
+    #wayfinding-panel.active {
+      display: block;
+    }
+
+    .wayfinding-route {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .wayfinding-point {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px;
+      background: white;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+
+    .wayfinding-point-label {
+      font-weight: 600;
+      min-width: 60px;
+      color: #666;
+    }
+
+    .wayfinding-point-name {
+      flex: 1;
+      color: #085ebb;
+      font-weight: 500;
+      user-select: none;
+      transition: all 0.2s;
+      cursor: pointer;
+    }
+
+    .wayfinding-point-name:hover {
+      color: #1976D2;
+      font-weight: 600;
+    }
+
+    .wayfinding-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .wayfinding-btn {
+      flex: 1;
+      padding: 8px;
+      border: none;
+      border-radius: 4px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .wayfinding-btn.preview {
+      background: white;
+      /* Nền trắng */
+      color: #085ebb;
+      border: 1px solid #085ebb;
+      font-weight: 700;
+    }
+
+    .wayfinding-btn.swap:hover,
+    .wayfinding-btn.preview:hover,
+    .wayfinding-btn.swap:active,
+    .wayfinding-btn.preview:active {
+      background: #085ebb;
+      color: white;
+    }
+
+    .wayfinding-btn.clear {
+      background: #f44336;
+      color: white;
+      border: 1px solid #f44336;
+    }
+
+    .wayfinding-btn.clear:hover {
+      background: #d32f2f;
+      border-color: #d32f2f;
+    }
+
+    .wayfinding-status {
+      font-size: 12px;
+      color: #666;
+      margin-top: 8px;
+      font-style: italic;
+    }
+
+
+
+
+    /* Search Bar */
+
+
+    /* Search Section */
+    #search-section {
+      width: 100%;
+      position: relative;
+    }
+
+
+    #location-search {
+      width: 100%;
+      padding: 12px 40px 12px 16px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+      outline: none;
+      background: white;
+      box-sizing: border-box;
+      height: 44px;
+      /* Fixed height for alignment */
+    }
+
+    #location-search:focus {
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    #search-results {
+      position: relative;
+      margin-top: 10px;
+      margin-bottom: 10px;
+      background: #fdfdfd;
+      border-radius: 12px;
+      border: 1px solid #eee;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+      max-height: 50vh;
+      overflow-y: auto;
+      display: none;
+      z-index: 5;
+    }
+
+    .search-result-item {
+      padding: 12px 16px;
+      cursor: pointer;
+      border-bottom: 1px solid #f0f0f0;
+      transition: background-color 0.2s;
+    }
+
+    .search-result-item:last-child {
+      border-bottom: none;
+    }
+
+    .search-result-item:hover {
+      background-color: #f5f5f5;
+    }
+
+    .search-result-name {
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 4px;
+    }
+
+    .search-result-category {
+      font-size: 12px;
+      color: #666;
+    }
+
+    #search-clear-btn {
+      position: absolute;
+      right: 12px;
+      top: 22px;
+      /* Center in 44px input */
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      font-size: 20px;
+      color: #999;
+      cursor: pointer;
+      padding: 4px 8px;
+      display: none;
+    }
+
+    #search-clear-btn:hover {
+      color: #666;
+    }
+
+    /* Category Section */
+    #category-section {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    /* The Main Toggle Button (When closed) */
+    #category-toggle-main-btn {
+      height: 44px;
+      width: 44px;
+      border-radius: 8px;
+      border: none;
+      background: white;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+      cursor: pointer;
+      display: none;
+      /* Hidden by default as panel is open */
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      color: #555;
+    }
+
+    #category-toggle-main-btn:hover {
+      background-color: #f5f5f5;
+    }
+
+    /* The Panel */
+    #category-panel {
+      width: 340px;
+      background: #E8E6df;
+      /* Beige */
+      border-radius: 6px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+      padding: 6px;
+      display: flex;
+      /* Flex to show content */
+      flex-direction: column;
+    }
+
+    /* When hidden, we use display:none or just toggle visibility properties */
+    #category-panel.hidden {
+      display: none;
+    }
+
+    #category-list {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4px;
+      max-height: 500px;
+      overflow-y: auto;
+    }
+
+    /* Category Item Styling */
+    .category-item {
+      display: flex;
+      align-items: stretch;
+      cursor: pointer;
+      border-radius: 4px;
+      overflow: hidden;
+      background: white;
+      min-height: 36px;
+      height: auto;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+      transition: transform 0.1s;
+    }
+
+    .category-item:active {
+      transform: scale(0.98);
+    }
+
+    .category-item.active {
+      background-color: #085ebb !important;
+      color: white !important;
+      box-shadow: 0 2px 8px rgba(8, 94, 187, 0.4);
+      height: 36px;
+      /* Fixed height same as other items */
+      min-height: 36px;
+      align-items: center;
+      /* Ensure vertical centering */
+    }
+
+    .category-item.active .category-icon-box {
+      background-color: #085ebb !important;
+      color: white !important;
+      position: relative;
+      height: 36px;
+      /* Match parent height */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* White circular icon inside active state */
+    .category-item.active .category-icon-box::before {
+      content: '';
+      position: absolute;
+      width: 26px;
+      height: 26px;
+      background-color: white;
+      border-radius: 50%;
+      z-index: 0;
+    }
+
+    .category-item.active .category-icon-box>* {
+      position: relative;
+      z-index: 1;
+      color: #085ebb !important;
+    }
+
+    .category-item.active .category-label-box {
+      color: white !important;
+      padding: 0 8px 0 12px;
+      /* Consistent padding */
+      display: flex;
+      align-items: center;
+      /* Vertically center text */
+      height: 36px;
+      /* Match parent height */
+    }
+
+    .category-icon-box {
+      width: 36px;
+      min-width: 36px;
+      background-color: #C1A568;
+      /* Gold */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #000;
+      font-size: 18px;
+    }
+
+    .category-label-box {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      padding: 0 8px;
+      font-size: 13px;
+      font-weight: 500;
+      color: #085ebb;
+      /* Blue instead of dark grey */
+      white-space: normal;
+      overflow-wrap: break-word;
+      word-break: break-word;
+      line-height: 1.25;
+      padding: 4px 8px;
+    }
+
+    /* Collapse Button */
+    #category-collapse-container {
+      display: flex;
+      justify-content: center;
+      margin-top: 4px;
+      border-top: 1px solid rgba(0, 0, 0, 0.05);
+      /* Subtle separator */
+      padding-top: 4px;
+    }
+
+    #category-collapse-btn {
+      width: 40px;
+      height: 20px;
+      background-color: transparent;
+      color: #888;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+    }
+
+    #category-collapse-btn:hover {
+      color: #555;
+      background-color: rgba(0, 0, 0, 0.05);
+      border-radius: 4px;
+    }
+
+    /* Search Marker Animations */
+    .search-marker {
+      position: absolute;
+      transform: translate(-50%, -100%);
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      z-index: 2000;
+      animation: bounce-marker 1.5s infinite ease-in-out;
+    }
+
+    .search-marker-icon {
+      width: 36px;
+      height: 36px;
+      background: #4CAF50;
+      border: 2px solid white;
+      border-radius: 50%;
+      box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 20px;
+    }
+
+    .search-marker-arrow {
+      width: 0;
+      height: 0;
+      border-left: 8px solid transparent;
+      border-right: 8px solid transparent;
+      border-top: 10px solid #4CAF50;
+      margin-top: -1px;
+    }
+
+    @keyframes bounce-marker {
+
+      0%,
+      100% {
+        transform: translate(-50%, -100%);
+      }
+
+      50% {
+        transform: translate(-50%, -120%);
+      }
+    }
+  </style>
+</head>
+
+<div id="layout">
+  <!-- Left Sidebar -->
+  <div id="main-sidebar-left">
+    <div id="sidebar-header">
+      <div id="search-section" style="margin-bottom: 20px; position: relative;">
+        <input type="text" id="location-search" placeholder="Tìm kiếm khu vực, điểm đến..."
+          data-i18n-placeholder="search_placeholder">
+        <button id="search-clear-btn" style="
+          display: none;
+          position: absolute;
+          right: 10px;
+          top: 50%;
+          transform: translateY(-50%);
+          background: none;
+          border: none;
+          font-size: 18px;
+          color: #999;
+          cursor: pointer;
+          padding: 5px;
+        ">&times;</button>
+        <div id="search-results"></div>
+      </div>
+    </div>
+
+    <div id="sidebar-content">
+
+      <!-- NEW: Sidebar Info Panel (Replaces Popup) -->
+      <!-- Moved UP as requested: Below Search, Above Categories -->
+      <div id="sidebar-info-panel"
+        style="display:none; flex-direction: column; flex: 1; overflow-y: auto; margin-bottom: 20px;">
+
+        <!-- Image Section with Overlay Close Button -->
+        <div class="popup-header" style="position: relative; margin-bottom: 10px;">
+          <img id="area-image" src="" alt=""
+            style="width: 100%; height: 200px; object-fit: cover; border-radius: 8px; display: none;">
+
+          <button class="close-btn" onclick="hideInfo()" style="
+            position: absolute; 
+            top: 10px; 
+            right: 10px; 
+            z-index: 10; 
+            width: 24px;
+            height: 24px;
+            background: white;
+            color: black;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            line-height: 1;
+            padding: 0;
+          ">&times;</button>
+        </div>
+
+        <div class="popup-content">
+          <h3 id="area-title" style="margin: 0 0 10px 0; font-size: 1.25em; font-weight: bold;">Nhấp vào một khu vực để
+            xem thông tin...</h3>
+          <p id="area-description" style="margin-bottom: 15px; color: #555; line-height: 1.5;"></p>
+          <button id="directions-btn" data-i18n="directions_btn">Dẫn đường</button>
+
+          <!-- Wayfinding Panel -->
+          <div id="wayfinding-panel">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <div class="wayfinding-route" style="flex: 1;">
+                <div class="wayfinding-point">
+                  <span class="wayfinding-point-label" data-i18n="from">Đi từ:</span>
+                  <span class="wayfinding-point-name" id="wayfinding-origin">Chưa chọn</span>
+                </div>
+                <div class="wayfinding-point">
+                  <span class="wayfinding-point-label" data-i18n="to">Đi đến:</span>
+                  <span class="wayfinding-point-name" id="wayfinding-destination">Chưa chọn</span>
+                </div>
+              </div>
+              <button id="wayfinding-swap-btn" title="Hoán đổi"
+                style="background: none; border: none; font-size: 20px; cursor: pointer; padding: 4px; color: #333;">⇅</button>
+            </div>
+
+            <div class="wayfinding-actions">
+              <!-- Swap button moved up -->
+              <button class="wayfinding-btn clear" id="wayfinding-clear-btn" data-i18n="clear">Xóa</button>
+              <button class="wayfinding-btn preview" id="wayfinding-preview-btn" data-i18n="start_preview">Bắt
+                đầu</button>
+            </div>
+            <div class="wayfinding-status" id="wayfinding-status"></div>
+            <!-- Video Control Bar -->
+            <div id="video-control-bar"
+              style="display:none;margin-top:12px;padding:10px;background:#fff;border-radius:4px;">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
+                <button id="video-play-pause"
+                  style="padding:6px 12px;border:none;border-radius:4px;background:#2196F3;color:white;cursor:pointer;">⏸</button>
+                <button id="video-stop"
+                  style="padding:6px 12px;border:none;border-radius:4px;background:#f44336;color:white;cursor:pointer;">⏹</button>
+                <div style="display:flex;align-items:center;gap:4px;">
+                  <span style="font-size:12px;color:#666;">Tốc độ:</span>
+                  <select id="video-speed-select"
+                    style="padding:4px 8px;border:1px solid #ddd;border-radius:4px;background:#fff;color:#666;cursor:pointer;font-size:11px;">
+                    <option value="0.5">0.5x</option>
+                    <option value="1" selected>1x</option>
+                    <option value="2">2x</option>
+                    <option value="4">4x</option>
+                  </select>
+                </div>
+                <div style="margin-left:auto;font-size:12px;color:#666;white-space:nowrap;">
+                  <span id="video-time">0:00</span> / <span id="video-duration">0:00</span>
+                </div>
+              </div>
+              <div>
+                <input type="range" id="video-progress" min="0" max="100" value="0" step="0.1" disabled
+                  style="width:100%;cursor:pointer;height:4px;background:#ddd;border-radius:2px;">
+              </div>
+            </div>
+            <!-- Bảng hướng dẫn từng bước -->
+            <div id="instructions-list" style="margin-top:12px;max-height:400px;overflow-y:auto;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- NEW: Dynamic Category Panel -->
+      <div id="category-section" style="margin-bottom: 20px;">
+        <div id="category-panel">
+          <div id="category-list">
+            <!-- Injected via JS: Main Cats -> Sub Cats -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Active Category Grid (Keep for legacy/icon view) -->
+      <div id="active-category-grid" class="category-panel-grid" style="display:none;">
+        <!-- Injected via JS -->
+      </div>
+
+      <div class="sidebar-actions">
+        <button id="btn-add-model" class="sidebar-btn primary" data-i18n="add_model">Thêm model 3D</button>
+        <button id="btn-open-classification" class="sidebar-btn secondary" data-i18n="classification_btn">Phân loại khu
+          vực</button>
+        <!-- NEW: Area Information Admin Button -->
+        <button id="btn-open-admin-info" class="sidebar-btn secondary" data-i18n="sidebar_area_info">Thông tin khu
+          vực</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="main-content">
+    <!-- Language Dropdown -->
+    <div id="language-toggle"
+      style="position:absolute; top:20px; right:20px; z-index:1000; background:white; padding:8px 12px; border-radius:8px; box-shadow:0 2px 10px rgba(0,0,0,0.1); display:flex; align-items:center; gap:8px;">
+      <select id="language-selector" onchange="window.setLanguage(this.value)"
+        style="border:none; background:transparent; font-size:14px; font-weight:600; color:#333; cursor:pointer; outline:none; padding:4px 24px 4px 8px; appearance:none; -webkit-appearance:none; background-image:url('data:image/svg+xml;charset=UTF-8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%23333%27 stroke-width=%272%27%3E%3Cpolyline points=%276 9 12 15 18 9%27/%3E%3C/svg%3E'); background-repeat:no-repeat; background-position:right 4px center; background-size:16px;">
+        <!-- Options populated dynamically from API -->
+        <option value="vn">Tiếng Việt</option>
+        <option value="en">English</option>
+      </select>
+    </div>
+
+    <div id="mappedin-map"></div>
+
+    <select id="floor-selector"></select>
+
+    <!-- Camera Control Buttons -->
+    <div id="camera-controls">
+      <!-- Position Controls -->
+      <div class="camera-control-group" style="position: relative; width: 108px; height: 108px;">
+        <button class="camera-btn" id="btn-up" title="Lật bản đồ lên (Pitch Up)"
+          style="position: absolute; top: 0; left: 50%; transform: translateX(-50%);">↑</button>
+        <button class="camera-btn" id="btn-down" title="Lật bản đồ xuống (Pitch Down)"
+          style="position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);">↓</button>
+        <button class="camera-btn" id="btn-left" title="Xoay bản đồ sang trái (Rotate Left)"
+          style="position: absolute; left: 0; top: 50%; transform: translateY(-50%);">←</button>
+        <button class="camera-btn" id="btn-right" title="Xoay bản đồ sang phải (Rotate Right)"
+          style="position: absolute; right: 0; top: 50%; transform: translateY(-50%);">→</button>
+        <button class="camera-btn center" id="btn-reset" title="Reset camera">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+            <polyline points="9 22 9 12 15 12 15 22"></polyline>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Zoom Controls -->
+      <div class="camera-control-group horizontal">
+        <button class="camera-btn" id="btn-zoom-out" title="Zoom Out">−</button>
+        <button class="camera-btn" id="btn-zoom-in" title="Zoom In">+</button>
+      </div>
+    </div>
+
+    <!-- 3D Model Controls (Floating) -->
+    <div id="model-controls-panel" class="model-controls-panel hidden">
+      <div class="controls-header-row">
+        <span class="drag-handle">⋮⋮</span>
+        <span class="panel-title">Edit Model</span>
+        <div class="header-actions">
+          <button id="btn-copy-model" class="icon-btn copy" title="Copy">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#085ebb" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+              <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+            </svg>
+          </button>
+          <button id="btn-cut-model" class="icon-btn cut" title="Cut">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#085ebb" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="6" cy="6" r="3"></circle>
+              <circle cx="6" cy="18" r="3"></circle>
+              <line x1="20" y1="4" x2="8.12" y2="15.88"></line>
+              <line x1="14.47" y1="14.48" x2="20" y2="20"></line>
+              <line x1="8.12" y1="8.12" x2="12" y2="12"></line>
+            </svg>
+          </button>
+          <button id="btn-delete-model" class="icon-btn delete" title="Delete">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#085ebb" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+              <line x1="10" y1="11" x2="10" y2="17"></line>
+              <line x1="14" y1="11" x2="14" y2="17"></line>
+            </svg>
+          </button>
+          <button id="btn-close-controls" class="icon-btn close" title="Close">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#085ebb" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="control-scroll-content">
+        <div class="control-group" style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
+          <input type="checkbox" id="inp-model-public" style="width: 20px; height: 20px; cursor: pointer;">
+          <label for="inp-model-public" style="font-weight: 600; color: #085ebb; cursor: pointer;">Hiển thị trên Website
+            (Public)</label>
+        </div>
+
+        <!-- Metadata -->
+        <div class="control-group">
+          <label>Name</label>
+          <input type="text" id="inp-model-name" placeholder="Model Name">
+        </div>
+        <div class="control-group">
+          <label>Description</label>
+          <input type="text" id="inp-model-desc" placeholder="Description">
+        </div>
+
+        <!-- Position -->
+        <div class="control-group">
+          <label>Latitude</label>
+          <input type="number" id="inp-lat" step="0.000001">
+        </div>
+        <div class="control-group">
+          <label>Longitude</label>
+          <input type="number" id="inp-lon" step="0.000001">
+        </div>
+
+        <!-- Rotation -->
+        <div class="control-group">
+          <label>Rotation (X-axis), degrees</label>
+          <input type="range" id="slider-rot-x" min="0" max="360" value="0" class="slider">
+          <input type="number" id="inp-rot-x" value="0">
+        </div>
+        <div class="control-group">
+          <label>Rotation (Y-axis), degrees</label>
+          <input type="range" id="slider-rot-y" min="0" max="360" value="0" class="slider">
+          <input type="number" id="inp-rot-y" value="0">
+        </div>
+        <div class="control-group">
+          <label>Rotation (Z-axis), degrees</label>
+          <input type="range" id="slider-rot-z" min="0" max="360" value="0" class="slider">
+          <input type="number" id="inp-rot-z" value="0">
+        </div>
+
+        <!-- Scale -->
+        <div class="control-group">
+          <label>Scale (X, Y, Z)</label>
+          <div class="input-row three-col">
+            <input type="number" id="scale-x" value="1" step="0.1">
+            <input type="number" id="scale-y" value="1" step="0.1">
+            <input type="number" id="scale-z" value="1" step="0.1">
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- NEW: Admin Information Modal -->
+    <div id="admin-info-modal" class="modal-overlay hidden" style="padding: 40px 0;">
+      <div class="modal-container"
+        style="width: 680px; max-width: 95%; background: white; border-radius: 16px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.25); margin: auto;">
+        <div class="modal-header" style="padding: 20px 25px; border-bottom: 1px solid #f0f0f0;">
+          <h3 data-i18n="admin_modal_title">Quản lý Thông tin Khu vực</h3>
+          <button id="btn-close-admin" class="close-btn" style="font-size: 20px; transition: color 0.2s;">✕</button>
+        </div>
+        <div class="modal-body" style="padding: 25px; overflow-y: auto; max-height: 75vh; min-height: 400px;">
+
+          <!-- Area Selection -->
+          <div style="margin-bottom: 20px;">
+            <label data-i18n="select_area_label" style="display:block; font-weight:600; margin-bottom:5px;">Chọn khu vực
+              để chỉnh sửa:</label>
+            <div style="display:flex; gap:10px;">
+              <select id="admin-area-select" style="flex:1; padding:8px; border-radius:4px; border:1px solid #ccc;">
+                <option value="">-- Chọn khu vực --</option>
+              </select>
+              <button id="btn-refresh-areas" title="Làm mới" data-i18n-title="refresh_btn"
+                style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; background:#f9f9f9; cursor:pointer; display:flex; align-items:center; justify-content:center; transition: all 0.2s;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round" style="color:#666;">
+                  <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.3" />
+                </svg>
+              </button>
+            </div>
+            <div style="margin-top: 5px; position: relative;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round"
+                style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #999; pointer-events: none;">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+              <input type="text" id="admin-search-filter" placeholder="Lọc theo tên..."
+                data-i18n-placeholder="filter_by_name"
+                style="width: 100%; padding: 8px 8px 8px 32px; font-size: 13px; border: 1px solid #ddd; border-radius: 4px; outline: none;">
+            </div>
+          </div>
+
+          <!-- Edit Form (Hidden until selected) -->
+          <div id="admin-form" style="display:none; flex-direction:column; gap:15px;">
+
+            <!-- Image Section -->
+            <div
+              style="display:flex; gap:20px; align-items:flex-start; border:1px solid #eee; padding:15px; border-radius:8px;">
+              <div style="flex:1;">
+                <label data-i18n="image_url_label" style="display:block; font-weight:600; margin-bottom:5px;">Hình ảnh
+                  (URL hoặc Upload):</label>
+                <input type="text" id="admin-image-url" placeholder="https://..."
+                  style="width:100%; padding:8px; border-radius:4px; border:1px solid #ccc; margin-bottom:10px;">
+                <input type="file" id="admin-image-upload" accept="image/*" style="display:none;">
+                <button id="btn-trigger-upload" data-i18n="upload_image_btn"
+                  style="padding:8px 15px; background:#085ebb; color:white; border:none; border-radius:4px; cursor:pointer;">
+                  Upload ảnh mới</button>
+                <span id="upload-status" style="margin-left:10px; font-size:13px; color:#666;"></span>
+              </div>
+              <div
+                style="width:120px; height:120px; background:#f5f5f5; border-radius:8px; overflow:hidden; display:flex; align-items:center; justify-content:center; border:1px solid #ddd;">
+                <img id="admin-image-preview" src="" alt="Preview"
+                  style="max-width:100%; max-height:100%; display:none;">
+                <span id="no-image-text" data-i18n="no_image" style="color:#999; font-size:12px;">No Image</span>
+              </div>
+            </div>
+
+            <!-- Content Tabs -->
+            <div>
+              <div style="display:flex; border-bottom:1px solid #ddd; margin-bottom:10px;">
+                <button class="tab-btn active" data-lang="vi" data-i18n="lang_vi"
+                  style="padding:8px 15px; background:none; border:none; border-bottom:2px solid #085ebb; font-weight:600; cursor:pointer;">Tiếng
+                  Việt (Gốc)</button>
+                <button class="tab-btn" data-lang="en" data-i18n="lang_en"
+                  style="padding:8px 15px; background:none; border:none; border-bottom:2px solid transparent; cursor:pointer;">English</button>
+                <button class="tab-btn" data-lang="zh" data-i18n="lang_zh"
+                  style="padding:8px 15px; background:none; border:none; border-bottom:2px solid transparent; cursor:pointer;">中文</button>
+                <button class="tab-btn" data-lang="ja" data-i18n="lang_ja"
+                  style="padding:8px 15px; background:none; border:none; border-bottom:2px solid transparent; cursor:pointer;">日本語</button>
+                <button class="tab-btn" data-lang="ko" data-i18n="lang_ko"
+                  style="padding:8px 15px; background:none; border:none; border-bottom:2px solid transparent; cursor:pointer;">한국어</button>
+              </div>
+
+              <!-- Text Areas -->
+              <div id="tab-content-vi" class="tab-content"><textarea id="info-vi" rows="6"
+                  style="width:100%; padding:10px; border-radius:4px; border:1px solid #ccc; font-family: inherit;"
+                  placeholder="Nhập thông tin mô tả tiếng Việt..."
+                  data-i18n-placeholder="desc_placeholder_vi"></textarea></div>
+              <div id="tab-content-en" class="tab-content" style="display:none;"><textarea id="info-en" rows="6"
+                  style="width:100%; padding:10px; border-radius:4px; border:1px solid #ccc; font-family: inherit;"
+                  placeholder="Enter English description..." data-i18n-placeholder="desc_placeholder_en"></textarea>
+              </div>
+              <div id="tab-content-zh" class="tab-content" style="display:none;"><textarea id="info-zh" rows="6"
+                  style="width:100%; padding:10px; border-radius:4px; border:1px solid #ccc; font-family: inherit;"
+                  placeholder="请输入中文描述..." data-i18n-placeholder="desc_placeholder_zh"></textarea></div>
+              <div id="tab-content-ja" class="tab-content" style="display:none;"><textarea id="info-ja" rows="6"
+                  style="width:100%; padding:10px; border-radius:4px; border:1px solid #ccc; font-family: inherit;"
+                  placeholder="日本語の説明を入力してください..." data-i18n-placeholder="desc_placeholder_ja"></textarea></div>
+              <div id="tab-content-ko" class="tab-content" style="display:none;"><textarea id="info-ko" rows="6"
+                  style="width:100%; padding:10px; border-radius:4px; border:1px solid #ccc; font-family: inherit;"
+                  placeholder="한국어 설명을 입력하세요..." data-i18n-placeholder="desc_placeholder_ko"></textarea></div>
+            </div>
+
+            <!-- Actions -->
+            <div
+              style="display:flex; justify-content:flex-end; gap:10px; margin-top:10px; padding-top:10px; border-top:1px solid #eee;">
+              <button id="btn-cancel-admin" data-i18n="cancel_btn"
+                style="padding:10px 20px; border:1px solid #ddd; background:white; border-radius:6px; cursor:pointer;">Hủy</button>
+              <button id="btn-save-admin" data-i18n="save_changes_btn"
+                style="padding:10px 25px; background:#28a745; color:white; border:none; border-radius:6px; font-weight:600; cursor:pointer;">
+                Lưu Thay Đổi</button>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3D Model Picker Modal -->
+
+
+    <!-- 3D Model Picker Modal -->
+    <div id="model-picker-modal" class="modal-overlay hidden">
+      <div class="modal-container"
+        style="width: 600px; max-width: 90%; background: white; border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.2);">
+        <div class="modal-header">
+          <h3 data-i18n="select_model_title">Chọn mô hình 3D</h3>
+          <button id="btn-close-picker" class="close-btn">✕</button>
+        </div>
+        <div id="model-grid"
+          style="padding: 20px; display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 15px; max-height: 60vh; overflow-y: auto;">
+          <!-- Models injected via JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Area Classification Modal -->
+    <div id="classification-modal" class="modal-overlay hidden">
+      <div class="modal-container classification-container" style="box-shadow: 0 10px 40px rgba(0,0,0,0.2);">
+        <div class="modal-header">
+          <h3 data-i18n="classification_title">Phân loại khu vực</h3>
+          <button id="btn-close-classification" class="close-btn">✕</button>
+        </div>
+        <div class="modal-body classification-body">
+          <!-- Column 1: Main Categories -->
+          <div class="classification-col categories-col">
+            <div class="col-header" data-i18n="main_categories">Danh mục chính</div>
+            <div id="main-category-list" class="list-container"></div>
+          </div>
+          <!-- Column 2: Sub-categories -->
+          <div class="classification-col subcategories-col">
+            <div class="col-header" data-i18n="sub_categories">Danh mục con</div>
+            <div id="sub-category-list" class="list-container"></div>
+          </div>
+          <!-- Column 3: Area Assignment -->
+          <div class="classification-col assignment-col">
+            <div class="col-header">Gán khu vực</div>
+            <div id="area-assignment-container" class="list-container">
+              <div class="search-box">
+                <input type="text" id="area-assign-search" placeholder="Lọc khu vực...">
+              </div>
+              <div id="area-checkbox-list"></div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="btn-save-classification" class="modal-btn save">Lưu thay đổi</button>
+          <button id="btn-cancel-classification" class="modal-btn cancel">Hủy</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Success Popup (Moved inside main-content for alignment) -->
+    <div id="success-popup"
+      style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); z-index: 20500; align-items:center; justify-content:center;">
+      <div
+        style="background:white; padding:30px; border-radius:12px; text-align:center; box-shadow:0 10px 30px rgba(0,0,0,0.2); width: 300px;">
+        <div
+          style="width:60px; height:60px; background:#4CAF50; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 20px auto;">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"
+            stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+        </div>
+        <h3 style="margin:0 0 10px 0; color:#333; font-size:18px;">Thành công!</h3>
+        <p style="margin:0 0 25px 0; color:#666; font-size:14px;">Lưu thay đổi phân loại khu vực thành công.</p>
+        <button id="btn-success-ok"
+          style="background:#085ebb; color:white; border:none; padding:10px 30px; border-radius:6px; font-weight:600; cursor:pointer; width:100%;">OK</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Success Popup -->
+<div id="success-popup"
+  style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); z-index: 30000; align-items:center; justify-content:center;">
+  <div
+    style="background:white; padding:30px; border-radius:12px; text-align:center; box-shadow:0 10px 30px rgba(0,0,0,0.2); width: 300px;">
+    <div
+      style="width:60px; height:60px; background:#4CAF50; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 20px auto;">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round"
+        stroke-linejoin="round">
+        <polyline points="20 6 9 17 4 12"></polyline>
+      </svg>
+    </div>
+    <h3 style="margin:0 0 10px 0; color:#333; font-size:18px;">Thành công!</h3>
+    <p style="margin:0 0 25px 0; color:#666; font-size:14px;">Lưu thay đổi phân loại khu vực thành công.</p>
+    <button id="btn-success-ok"
+      style="background:#085ebb; color:white; border:none; padding:10px 30px; border-radius:6px; font-weight:600; cursor:pointer; width:100%;">OK</button>
+  </div>
+</div>
+
+
+<script type="module" src="./index.ts"></script>
+</body>
+
+</html>

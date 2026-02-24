@@ -1,0 +1,21 @@
+# Dependencies (Render sẽ tự cài bằng npm install)
+node_modules/
+backend/node_modules/
+
+# Build output (Render sẽ tự build)
+dist/
+
+# Runtime data
+uploads/
+
+# Environment
+.env
+*.env.local
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# IDE
+.vscode/
+.idea/

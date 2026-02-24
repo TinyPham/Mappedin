@@ -1,0 +1,1292 @@
+[
+    {
+        "id": "s_541b67d37ddf33eb",
+        "name": "Văn phòng (Office)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_b6419b9459526ab0",
+        "name": "Văn phòng (Office)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_90cbf23bf33153c5",
+        "name": "Khu ẩm thực cao cấp (Dining room)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_2642be6775f00e8d",
+        "name": "Nhà vệ sinh (Restroom - Toilet)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_216b7975a00713e6",
+        "name": "Quầy thu đổi ngoại tệ (Foreign Exchange)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_121550869199e6a9",
+        "name": "Cửa hàng mỹ phẩm (Cosmetic)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_b44b9985872568f9",
+        "name": "Cửa hàng trang sức (Jewelry and watch store)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_0d96307dc8a33896",
+        "name": "Cửa hàng rượu và thuốc lá (Liquor & Tobacco Store)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_895bddd0cba59891",
+        "name": "Trung tâm văn hóa truyền thống (Traditional cultural center)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_32a654dbbb0f1b6c",
+        "name": "Nhà vệ sinh (Restroom - Toilet)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_fa6deebd1efa683a",
+        "name": "Nhà vệ sinh (Restroom - Toilet)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_1c4ddd02732445dd",
+        "name": "Nhà thuốc (Pharmacy)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_0e13ebc436e64677",
+        "name": "Cửa hàng mỹ phẩm (Cosmetic)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_88fa42b37a404d3a",
+        "name": "Cửa hàng trang sức (Jewelry and watch store)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_f8a26f40ef40fe45",
+        "name": "Cửa hàng mỹ phẩm (Cosmetic)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_65ddc69c144bc562",
+        "name": "Nhà vệ sinh (Restroom - Toilet)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_8125e2b351bedcd2",
+        "name": "Hệ thống băng chuyền hành lý (Baggage Conveyor System)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_002cb558a646e57e",
+        "name": "Cửa hàng đồ điện tử (Electronics Store)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_94c8be89f50debeb",
+        "name": "Nhà vệ sinh (Restroom - Toilet)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_a932e5fc18a82a2f",
+        "name": "Phòng cầu nguyện (Prayer Room)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_661cc9a53ed20dad",
+        "name": "Phòng chờ hạng thương gia (CIP)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_6cee8f911c60d363",
+        "name": "Phòng chờ hạng thương gia (CIP)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_7259dc5439346264",
+        "name": "Phòng chờ hạng thương gia (CIP)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_5da019cd4f11db6c",
+        "name": "Khu vui chơi trẻ em (Kids zone)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_244a641e882bc8dc",
+        "name": "Cửa hàng bán sản phẩm du lịch (Travel goods)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_e698f4ed04c31039",
+        "name": "Nhà vệ sinh (Restroom - Toilet)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_a739a9c3932c94fa",
+        "name": "Nhà vệ sinh (Restroom - Toilet)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_fc7b02fdacf08611",
+        "name": "Phòng Internet (Internet Lounge)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_f217fffdbc217890",
+        "name": "Quầy cà phê và bánh ngọt (Cafe & Bakery)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_cc7167316907a7d2",
+        "name": "Khu vực ghế Massage - Khu cách ly (Massage Chair)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_37cbe38c5739a5b7",
+        "name": "Quầy bán món ăn địa phương (Local food)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_fa64466c42ca32e1",
+        "name": "Cửa hàng tiện lợi (convenience store)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_2615096c3de4afcf",
+        "name": "Quầy cà phê (Coffee)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_9ed9e3fae0e45b6c",
+        "name": "Nhà vệ sinh (Restroom - Toilet)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_edc6d85e92c6f046",
+        "name": "Nhà vệ sinh (Restroom - Toilet)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_8479a1012caf15ef",
+        "name": "Cửa hàng tiện lợi (convenience store)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_ad7bf02bd443a36c",
+        "name": "Cửa hàng bán lẻ (Retail)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_c49e458806dc7775",
+        "name": "Phòng chờ ga đi quốc nội/ quốc tế (Dom/Int Departure Lounge)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_b7d7974e0f3ad86d",
+        "name": "Nhà vệ sinh (Restroom - Toilet)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_de3a5027f20588f9",
+        "name": "Nhà vệ sinh (Restroom - Toilet)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_660fe9be05bf5be5",
+        "name": "Khu vực ghế Massage - Khu cách ly (Massage Chair)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_7a3c7dcf79c3d0d9",
+        "name": "Cửa hàng bán đồ lưu niệm (Souvenir shop)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_5b4be104310203b9",
+        "name": "Quầy bar thư giãn (Casual Bar)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_d62c3eecda5ffc04",
+        "name": "Nhà vệ sinh (Restroom - Toilet)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_8dff23699ff3a530",
+        "name": "Nhà vệ sinh (Restroom - Toilet)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_2d3ecc63cc8cb2a2",
+        "name": "Khu nghỉ ngơi (Nap zone)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_c4ac6dc577169053",
+        "name": "Khu vực ghế Massage - Khu cách ly (Massage Chair)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_b33a792c389d06e7",
+        "name": "Phòng hút thuốc (Smoking room)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_d5d4a0c94c805fc0",
+        "name": "Cửa hàng mỹ phẩm (Cosmetic)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_6a5aa0b67cf1f559",
+        "name": "Quầy cà phê và bánh ngọt (Cafe & Bakery)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_4da6f620f9948cd9",
+        "name": "Quầy bán món ăn địa phương (Local food)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_338931eeb30a4722",
+        "name": "Cửa hàng rượu và thuốc lá (Liquor & Tobacco Store)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_347582828ed810e5",
+        "name": "Quầy cà phê và bánh ngọt (Cafe & Bakery)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_e19454c323e24de3",
+        "name": "Khu ẩm thực cao cấp (Dining room)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_d759546c2055e5bc",
+        "name": "Cửa hàng thời trang (Fashion shop)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_6fe2c395f06c6cc7",
+        "name": "Quầy thực phẩm đóng gói (Package Food)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_25b60d4d538c6bd4",
+        "name": "Cửa hàng mỹ phẩm (Cosmetic)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_d96876f038a28272",
+        "name": "Cửa hàng thời trang (Fashion shop)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_ad433f95b05c8ece",
+        "name": "Cửa hàng thời trang (Fashion shop)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_00508a6929b8584c",
+        "name": "Cửa hàng thời trang (Fashion shop)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_5e70b889b9580d0a",
+        "name": "Cửa hàng rượu và thuốc lá (Liquor & Tobacco Store)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_8d21a6bbf370272b",
+        "name": "Cửa hàng thời trang (Fashion shop)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_0e366df3d718b553",
+        "name": "Quầy thực phẩm đóng gói (Package Food)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_557f2f311aa020e9",
+        "name": "Cửa hàng thời trang (Fashion shop)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_78e17ae52c860883",
+        "name": "Quầy cà phê và bánh ngọt (Cafe & Bakery)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_f007a1a08d0535ca",
+        "name": "Khu ẩm thực cao cấp (Dining room)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_8f2ad2b9ab43aeaa",
+        "name": "Cửa hàng mỹ phẩm (Cosmetic)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_447f2e72f6b88cc7",
+        "name": "Quầy cà phê và bánh ngọt (Cafe & Bakery)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_6d1ada40b89169f4",
+        "name": "Cửa hàng bán lẻ (Retail)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_7c1139b65c34fb95",
+        "name": "Ẩm thực quốc tế (Global Food)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_3ca59844f21e44d2",
+        "name": "Khu vực ghế Massage - Khu cách ly (Massage Chair)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_40969f9990f1ad68",
+        "name": "Phòng Internet (Internet Lounge)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_5dff95c90a0fdb7d",
+        "name": "Khu vui chơi trẻ em (Kids zone)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_5d7fd29cd3d14fc6",
+        "name": "Cửa hàng bán đồ lưu niệm (Souvenir shop)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_93b64aa92dbff527",
+        "name": "Nhà vệ sinh (Restroom - Toilet)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_3b8df2aa433fb8c5",
+        "name": "Nhà vệ sinh (Restroom - Toilet)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_c1a6532f408cbf94",
+        "name": "Phòng hút thuốc (Smoking room)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_0f4d503ba243b786",
+        "name": "Ẩm thực quốc tế (Global Food)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_f8ec30ed6aadf3a5",
+        "name": "Khu vực ghế Massage - Khu cách ly (Massage Chair)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_97f1e54fa8d57676",
+        "name": "Nhà vệ sinh (Restroom - Toilet)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_0bbd1234e4e42baf",
+        "name": "Nhà vệ sinh (Restroom - Toilet)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_ee75806d088bec1e",
+        "name": "Khu nghỉ ngơi (Nap zone)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_ec8fff416b508cc6",
+        "name": "Quầy bar thư giãn (Casual Bar)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_d2c157e37cb73267",
+        "name": "Cửa hàng bán lẻ (Retail)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_157104bdcda25544",
+        "name": "Quầy cà phê và bánh ngọt (Cafe & Bakery)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_22ccf76980e9c096",
+        "name": "Quầy bán món tráng miệng (dessert shop)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_5a42276b7134903a",
+        "name": "Cửa hàng bán đồ lưu niệm (Souvenir shop)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_406d856dbbffad8e",
+        "name": "Nhà vệ sinh (Restroom - Toilet)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_5fcb4b583b4773df",
+        "name": "Nhà vệ sinh (Restroom - Toilet)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_715045bebbf00f6d",
+        "name": "Khu nghỉ ngơi (Nap zone)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_2d33af8da25b3322",
+        "name": "Quầy cà phê và bánh ngọt (Cafe & Bakery)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_901a3a2fbed898b5",
+        "name": "Quầy bán món ăn địa phương (Local food)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_0a3dfd9baffbade1",
+        "name": "Khu ẩm thực cao cấp (Dining room)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_1b39d0ca70c1c30b",
+        "name": "Cảnh quan (Landscape)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_25c02f72d6070109",
+        "name": "Cảnh quan (Landscape)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_d0c392ebbcf494ea",
+        "name": "Quầy cà phê và bánh ngọt (Cafe & Bakery)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_322cb6b21c9a35f9",
+        "name": "Cửa hàng đồ điện tử (Electronics Store)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_f9706c268aac272e",
+        "name": "Khu ẩm thực cao cấp (Dining room)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_32d2ebc5498e41d6",
+        "name": "Nhà vệ sinh (Restroom - Toilet)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_192e20d2f6ea6bdf",
+        "name": "Cửa hàng mỹ phẩm (Cosmetic)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_e91cefd216d0367e",
+        "name": "Phòng chăm sóc em bé (Nursing room)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_6ca20f4a81d59748",
+        "name": "Phòng chăm sóc em bé (Nursing room)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_e1e6f8913efa8554",
+        "name": "Phòng y tế (Medical Room)",
+        "type": "room",
+        "floor": "2F"
+    },
+    {
+        "id": "s_71dc501287ea57df",
+        "name": "Khu vực bọc hành lý (Luggage Wrapping Area)",
+        "type": "room",
+        "floor": "3F"
+    },
+    {
+        "id": "s_879105f9f6c5a78d",
+        "name": "Khu vực bọc hành lý (Luggage Wrapping Area)",
+        "type": "room",
+        "floor": "3F"
+    },
+    {
+        "id": "s_233e7224b54ae05b",
+        "name": "Khu vực bọc hành lý (Luggage Wrapping Area)",
+        "type": "room",
+        "floor": "3F"
+    },
+    {
+        "id": "s_50852cf314319c8e",
+        "name": "Khu vực bọc hành lý (Luggage Wrapping Area)",
+        "type": "room",
+        "floor": "3F"
+    },
+    {
+        "id": "s_52ab4c19f98bbe3b",
+        "name": "Quầy thông tin du lịch (Travel Information Support))",
+        "type": "room",
+        "floor": "3F"
+    },
+    {
+        "id": "s_b9340223de265d56",
+        "name": "Quầy thông tin du lịch (Travel Information Support))",
+        "type": "room",
+        "floor": "3F"
+    },
+    {
+        "id": "s_9605235694629a21",
+        "name": "Cửa hàng tiện lợi (convenience store)",
+        "type": "room",
+        "floor": "3F"
+    },
+    {
+        "id": "s_ee4ed4af0db2a16a",
+        "name": "Nhà vệ sinh (Restroom - Toilet)",
+        "type": "room",
+        "floor": "3F"
+    },
+    {
+        "id": "s_50badf0e3e6b9d37",
+        "name": "Phòng lưu trữ hành lý (Luggage Storage Room)",
+        "type": "room",
+        "floor": "3F"
+    },
+    {
+        "id": "s_66786e44960a0e2c",
+        "name": "Quầy cà phê và bánh ngọt (Cafe & Bakery)",
+        "type": "room",
+        "floor": "3F"
+    },
+    {
+        "id": "s_f3279dd5305c92c1",
+        "name": "Quầy hành lý quá khổ (OOG)",
+        "type": "room",
+        "floor": "3F"
+    },
+    {
+        "id": "s_1f44ff9349985ef4",
+        "name": "Quầy thu đổi ngoại tệ (Foreign Exchange)",
+        "type": "room",
+        "floor": "3F"
+    },
+    {
+        "id": "s_01e81dc1c34571df",
+        "name": "Quầy bán món ăn địa phương (Local food)",
+        "type": "room",
+        "floor": "3F"
+    },
+    {
+        "id": "s_62a45153a58c8135",
+        "name": "Quầy đồ ăn nhanh (Fast food)",
+        "type": "room",
+        "floor": "3F"
+    },
+    {
+        "id": "s_10c25922c3fe91fb",
+        "name": "Nhà vệ sinh (Restroom - Toilet)",
+        "type": "room",
+        "floor": "3F"
+    },
+    {
+        "id": "s_01c95efed2c6ee6f",
+        "name": "Phòng chăm sóc em bé (Nursing room)",
+        "type": "room",
+        "floor": "3F"
+    },
+    {
+        "id": "s_69c3d6cbe47c9007",
+        "name": "Văn phòng đăng ký sinh trắc học nhập cảnh (Biometrics Immigration Registration Office)",
+        "type": "room",
+        "floor": "3F"
+    },
+    {
+        "id": "s_24f1e4bcfc8d5bf5",
+        "name": "Phòng chăm sóc em bé (Nursing room)",
+        "type": "room",
+        "floor": "3F"
+    },
+    {
+        "id": "s_c08b91061e3abfa5",
+        "name": "Nhà vệ sinh (Restroom - Toilet)",
+        "type": "room",
+        "floor": "3F"
+    },
+    {
+        "id": "s_099d60cc3b50aa38",
+        "name": "Cửa hàng tiện lợi (convenience store)",
+        "type": "room",
+        "floor": "3F"
+    },
+    {
+        "id": "s_45a3be08e4f60e44",
+        "name": "Quầy đồ ăn nhanh (Fast food)",
+        "type": "room",
+        "floor": "3F"
+    },
+    {
+        "id": "s_42a2ed975534d438",
+        "name": "Quầy bán món ăn địa phương (Local food)",
+        "type": "room",
+        "floor": "3F"
+    },
+    {
+        "id": "s_6c0174734497c57d",
+        "name": "Quầy thu đổi ngoại tệ (Foreign Exchange)",
+        "type": "room",
+        "floor": "3F"
+    },
+    {
+        "id": "s_7a6970b0018311d1",
+        "name": "Dịch vụ bưu điện (Post Office)",
+        "type": "room",
+        "floor": "3F"
+    },
+    {
+        "id": "s_f82579a05c419c56",
+        "name": "Cửa hàng tiện lợi (convenience store)",
+        "type": "room",
+        "floor": "3F"
+    },
+    {
+        "id": "s_13bcd0dd17458c7c",
+        "name": "Nhà vệ sinh (Restroom - Toilet)",
+        "type": "room",
+        "floor": "3F"
+    },
+    {
+        "id": "s_e8046bcc797c2314",
+        "name": "Phòng lưu trữ hành lý (Luggage Storage Room)",
+        "type": "room",
+        "floor": "3F"
+    },
+    {
+        "id": "s_761937179562c621",
+        "name": "Quầy bán đồ ăn (Food Court)",
+        "type": "room",
+        "floor": "3F"
+    },
+    {
+        "id": "s_b43985cfbe951628",
+        "name": "Phòng chờ hạng thương gia (CIP)",
+        "type": "room",
+        "floor": "3F"
+    },
+    {
+        "id": "s_7514bacb73bae49d",
+        "name": "Phòng chờ ga đi quốc tế (International Departure Lounge)",
+        "type": "room",
+        "floor": "3F"
+    },
+    {
+        "id": "s_21f18fdd8b2e7b8b",
+        "name": "Nhà vệ sinh (Restroom - Toilet)",
+        "type": "room",
+        "floor": "3F"
+    },
+    {
+        "id": "s_be092a3fe77b66f8",
+        "name": "Phòng chờ hạng thương gia (CIP)",
+        "type": "room",
+        "floor": "3F"
+    },
+    {
+        "id": "s_a4567f70b25b1535",
+        "name": "Phòng chờ hạng thương gia (CIP)",
+        "type": "room",
+        "floor": "3F"
+    },
+    {
+        "id": "s_af022a9c2e3e6eac",
+        "name": "Nhà vệ sinh (Restroom - Toilet)",
+        "type": "room",
+        "floor": "3F"
+    },
+    {
+        "id": "ar_79d95c2608967e12",
+        "name": "Phòng chờ ga đi quốc tế (International Departure Lounge)",
+        "type": "area",
+        "floor": "2F"
+    },
+    {
+        "id": "ar_d93fdc7fce6bb5ec",
+        "name": "Phòng chờ ga đi quốc tế (International Departure Lounge)",
+        "type": "area",
+        "floor": "2F"
+    },
+    {
+        "id": "ar_7e74987fa960432e",
+        "name": "Phòng chờ ga đi quốc tế (International Departure Lounge)",
+        "type": "area",
+        "floor": "2F"
+    },
+    {
+        "id": "ar_c3a65a9b5f9b6ea0",
+        "name": "Phòng chờ ga đi quốc tế (International Departure Lounge)",
+        "type": "area",
+        "floor": "2F"
+    },
+    {
+        "id": "ar_425f9a88b2e6fe33",
+        "name": "Phòng chờ ga đi quốc tế (International Departure Lounge)",
+        "type": "area",
+        "floor": "2F"
+    },
+    {
+        "id": "ar_32e3b175c4064b0f",
+        "name": "Phòng chờ ga đi quốc tế (International Departure Lounge)",
+        "type": "area",
+        "floor": "2F"
+    },
+    {
+        "id": "ar_eb810bf269eecae6",
+        "name": "Phòng chờ ga đi quốc tế (International Departure Lounge)",
+        "type": "area",
+        "floor": "2F"
+    },
+    {
+        "id": "ar_d5b6ab6a8626d7a1",
+        "name": "Phòng chờ ga đi quốc tế (International Departure Lounge)",
+        "type": "area",
+        "floor": "2F"
+    },
+    {
+        "id": "ar_65555eeeb2420dfa",
+        "name": "Phòng chờ ga đi quốc tế (International Departure Lounge)",
+        "type": "area",
+        "floor": "2F"
+    },
+    {
+        "id": "ar_a6856f04b3553ad9",
+        "name": "Phòng chờ ga đi quốc tế (International Departure Lounge)",
+        "type": "area",
+        "floor": "2F"
+    },
+    {
+        "id": "ar_531ef33fa877a3b1",
+        "name": "Phòng chờ ga đi quốc tế (International Departure Lounge)",
+        "type": "area",
+        "floor": "2F"
+    },
+    {
+        "id": "ar_04dc7ec8e563cc1b",
+        "name": "Phòng chờ ga đi quốc tế (International Departure Lounge)",
+        "type": "area",
+        "floor": "2F"
+    },
+    {
+        "id": "ar_9de28e508fad9574",
+        "name": "Phòng chờ ga đi quốc tế (International Departure Lounge)",
+        "type": "area",
+        "floor": "2F"
+    },
+    {
+        "id": "ar_23f3bd852ed9cca5",
+        "name": "Phòng chờ ga đi quốc tế (International Departure Lounge)",
+        "type": "area",
+        "floor": "2F"
+    },
+    {
+        "id": "ar_51e55cf3450fe6df",
+        "name": "Phòng chờ ga đi quốc tế (International Departure Lounge)",
+        "type": "area",
+        "floor": "2F"
+    },
+    {
+        "id": "ar_b4bae57feeaea5a9",
+        "name": "Phòng chờ ga đi quốc tế (International Departure Lounge)",
+        "type": "area",
+        "floor": "2F"
+    },
+    {
+        "id": "ar_6f6ab653ef52d73c",
+        "name": "Phòng chờ ga đi quốc tế (International Departure Lounge)",
+        "type": "area",
+        "floor": "2F"
+    },
+    {
+        "id": "ar_8efb7d2ebfde32ad",
+        "name": "Phòng chờ ga đi quốc tế (International Departure Lounge)",
+        "type": "area",
+        "floor": "2F"
+    },
+    {
+        "id": "ar_b79b0a2da29def82",
+        "name": "Phòng chờ ga đi quốc tế (International Departure Lounge)",
+        "type": "area",
+        "floor": "2F"
+    },
+    {
+        "id": "ar_c380733e5c9f634f",
+        "name": "Phòng chờ ga đi quốc nội (Domestic Departure Lounge)",
+        "type": "area",
+        "floor": "2F"
+    },
+    {
+        "id": "ar_b603c0705bcbcf54",
+        "name": "Phòng chờ ga đi quốc nội (Domestic Departure Lounge)",
+        "type": "area",
+        "floor": "2F"
+    },
+    {
+        "id": "ar_94d47534dac8f29e",
+        "name": "Khu ga đi nội địa (Domestic Departure Area)",
+        "type": "area",
+        "floor": "2F"
+    },
+    {
+        "id": "ar_f7b316f41cac3eb7",
+        "name": "Khu ga đi nội địa (Domestic Departure Area)",
+        "type": "area",
+        "floor": "2F"
+    },
+    {
+        "id": "ar_609dfeae555b75ef",
+        "name": "Khu ga đi nội địa (Domestic Departure Area)",
+        "type": "area",
+        "floor": "2F"
+    },
+    {
+        "id": "ar_b6805ba02dd5abab",
+        "name": "Khu ga đi nội địa (Domestic Departure Area)",
+        "type": "area",
+        "floor": "2F"
+    },
+    {
+        "id": "ar_bdc2a78ba0ff5763",
+        "name": "Phòng chờ ga đi quốc tế (International Departure Lounge)",
+        "type": "area",
+        "floor": "2F"
+    },
+    {
+        "id": "ar_abb132024dba2a8e",
+        "name": "Phòng chờ ga đi quốc tế (International Departure Lounge)",
+        "type": "area",
+        "floor": "2F"
+    },
+    {
+        "id": "ar_4cc58aed139d3212",
+        "name": "Phòng chờ ga đi quốc tế (International Departure Lounge)",
+        "type": "area",
+        "floor": "2F"
+    },
+    {
+        "id": "ar_3eb780e273bbdb2c",
+        "name": "Phòng chờ ga đi quốc tế (International Departure Lounge)",
+        "type": "area",
+        "floor": "2F"
+    },
+    {
+        "id": "ar_a683d9f4cb58c89b",
+        "name": "Phòng chờ ga đi quốc tế (International Departure Lounge)",
+        "type": "area",
+        "floor": "2F"
+    },
+    {
+        "id": "ar_2bdc39e0f1b44e86",
+        "name": "Phòng chờ ga đi quốc tế (International Departure Lounge)",
+        "type": "area",
+        "floor": "2F"
+    },
+    {
+        "id": "ar_bd4c23e8fa46d6c0",
+        "name": "Phòng chờ ga đi quốc tế (International Departure Lounge)",
+        "type": "area",
+        "floor": "2F"
+    },
+    {
+        "id": "ar_c13740eea220de96",
+        "name": "Phòng chờ ga đi quốc tế (International Departure Lounge)",
+        "type": "area",
+        "floor": "2F"
+    },
+    {
+        "id": "ar_33c86bd0e5ca64f0",
+        "name": "Phòng chờ ga đi quốc tế (International Departure Lounge)",
+        "type": "area",
+        "floor": "2F"
+    },
+    {
+        "id": "ar_04fefd8ffef573b2",
+        "name": "Phòng chờ ga đi quốc tế (International Departure Lounge)",
+        "type": "area",
+        "floor": "2F"
+    },
+    {
+        "id": "ar_2a51ee46891780fd",
+        "name": "Khu vực xuất cảnh (Emigration)",
+        "type": "area",
+        "floor": "3F"
+    },
+    {
+        "id": "ar_91aa05a492a0714d",
+        "name": "Kiểm tra an ninh/ Kiểm soát hải quan (Security Check/ Custom Control)",
+        "type": "area",
+        "floor": "3F"
+    },
+    {
+        "id": "s_6ffe2f452fd7a7c4",
+        "name": "Điểm kiểm tra an ninh soi chiếu nội địa (Security Checkpoint Dom)",
+        "type": "point-of-interest",
+        "floor": "3F"
+    },
+    {
+        "id": "s_3fd83e4a0232f46d",
+        "name": "Điểm kiểm tra an ninh soi chiếu quốc tế (International Security Check)",
+        "type": "point-of-interest",
+        "floor": "3F"
+    },
+    {
+        "id": "e_39744365a4936660",
+        "name": "Cửa ra tàu bay - 32 (Gate 32)",
+        "type": "door",
+        "floor": "2F"
+    },
+    {
+        "id": "e_a6a7b6af8c9ecf1f",
+        "name": "Cửa ra tàu bay - 27B (Gate 27B)",
+        "type": "door",
+        "floor": "2F"
+    },
+    {
+        "id": "e_894f67b3a32032b9",
+        "name": "Cửa ra tàu bay - 15 (Gate 15)",
+        "type": "door",
+        "floor": "2F"
+    },
+    {
+        "id": "e_74ca31d4531c6d6a",
+        "name": "Cửa ra tàu bay - 4B (Gate 4B)",
+        "type": "door",
+        "floor": "2F"
+    },
+    {
+        "id": "e_baf60159eee92b95",
+        "name": "Nhà vệ sinh (Restroom - Toilet)",
+        "type": "door",
+        "floor": "2F"
+    },
+    {
+        "id": "e_7d4f21dee2b4fe21",
+        "name": "Quầy thu đổi ngoại tệ (Foreign Exchange)",
+        "type": "door",
+        "floor": "2F"
+    },
+    {
+        "id": "e_b670d38353d48c88",
+        "name": "Khu ẩm thực cao cấp (Dining room)",
+        "type": "door",
+        "floor": "2F"
+    },
+    {
+        "id": "e_49d89b9938ad1bfa",
+        "name": "Cửa hàng bán lẻ (Retail)",
+        "type": "door",
+        "floor": "2F"
+    },
+    {
+        "id": "e_e681da287ebe96a3",
+        "name": "Cửa ra tàu bay - 6 (Gate 6)",
+        "type": "door",
+        "floor": "2F"
+    },
+    {
+        "id": "e_f6528c75e2c48e0e",
+        "name": "Cửa ra tàu bay - 7 (Gate 7)",
+        "type": "door",
+        "floor": "2F"
+    },
+    {
+        "id": "e_e77d795c7f628af8",
+        "name": "Cửa ra tàu bay - 8B (Gate 8B)",
+        "type": "door",
+        "floor": "2F"
+    },
+    {
+        "id": "e_e961428ffac2460d",
+        "name": "Cửa ra tàu bay - 9 (Gate 9)",
+        "type": "door",
+        "floor": "2F"
+    },
+    {
+        "id": "e_41b667de73ff5f68",
+        "name": "Cửa ra tàu bay - 10 (Gate 10)",
+        "type": "door",
+        "floor": "2F"
+    },
+    {
+        "id": "e_fd2266a8940436b3",
+        "name": "Cửa ra tàu bay - 12 (Gate 12)",
+        "type": "door",
+        "floor": "2F"
+    },
+    {
+        "id": "e_75bffd60111a7856",
+        "name": "Cửa ra tàu bay - 13B (Gate 13B)",
+        "type": "door",
+        "floor": "2F"
+    },
+    {
+        "id": "e_5cfad2051c807706",
+        "name": "Cửa ra tàu bay - 14 (Gate 14)",
+        "type": "door",
+        "floor": "2F"
+    },
+    {
+        "id": "e_62e13fd6e65b0b4e",
+        "name": "Cửa ra tàu bay - 17 (Gate 17)",
+        "type": "door",
+        "floor": "2F"
+    },
+    {
+        "id": "e_569030868efdaba1",
+        "name": "Cửa ra tàu bay - 18 (Gate 18)",
+        "type": "door",
+        "floor": "2F"
+    },
+    {
+        "id": "e_a56ff4b0b5721dca",
+        "name": "Cửa ra tàu bay - 19B (Gate 19B)",
+        "type": "door",
+        "floor": "2F"
+    },
+    {
+        "id": "e_c8994b95e6c7d155",
+        "name": "Cửa ra tàu bay - 20 (Gate 20)",
+        "type": "door",
+        "floor": "2F"
+    },
+    {
+        "id": "e_a2dcd3b27cce4abe",
+        "name": "Cửa ra tàu bay - 22 (Gate 22)",
+        "type": "door",
+        "floor": "2F"
+    },
+    {
+        "id": "e_ad2a2377ee6d8fcc",
+        "name": "Cửa ra tàu bay - 23 (Gate 23)",
+        "type": "door",
+        "floor": "2F"
+    },
+    {
+        "id": "e_3a70aa8cffba5caa",
+        "name": "Cửa ra tàu bay - 24B (Gate 24B)",
+        "type": "door",
+        "floor": "2F"
+    },
+    {
+        "id": "e_cffa76b459e46155",
+        "name": "Cửa ra tàu bay - 25 (Gate 25)",
+        "type": "door",
+        "floor": "2F"
+    },
+    {
+        "id": "e_a361fddaf0bdc04f",
+        "name": "Cửa ra tàu bay - 26 (Gate 26)",
+        "type": "door",
+        "floor": "2F"
+    },
+    {
+        "id": "e_320595d43c403272",
+        "name": "Cửa ra tàu bay - 29 (Gate 29)",
+        "type": "door",
+        "floor": "2F"
+    },
+    {
+        "id": "e_a354f045df51b29b",
+        "name": "Cửa ra tàu bay - 30 (Gate 30)",
+        "type": "door",
+        "floor": "2F"
+    },
+    {
+        "id": "e_a3739fe057dc0511",
+        "name": "Cửa ra tàu bay - 31B (Gate 31B)",
+        "type": "door",
+        "floor": "2F"
+    },
+    {
+        "id": "e_fb0e081301f71004",
+        "name": "Cửa ra tàu bay - 1 (Gate 1)",
+        "type": "door",
+        "floor": "2F"
+    },
+    {
+        "id": "e_31460eb86c4d84d9",
+        "name": "Cửa ra tàu bay - 2B (Gate 2B)",
+        "type": "door",
+        "floor": "2F"
+    },
+    {
+        "id": "e_2117909396ec0190",
+        "name": "Cửa ra tàu bay - 3 (Gate 3)",
+        "type": "door",
+        "floor": "2F"
+    },
+    {
+        "id": "e_525e06d73d11d262",
+        "name": "Cửa ra tàu bay - 4A (Gate 4A)",
+        "type": "door",
+        "floor": "2F"
+    },
+    {
+        "id": "e_2925f2597ff24f05",
+        "name": "Cửa ra tàu bay - 2A (Gate 2A)",
+        "type": "door",
+        "floor": "2F"
+    },
+    {
+        "id": "e_796eab58fdaf1228",
+        "name": "Cửa ra tàu bay - 8A (Gate 8A)",
+        "type": "door",
+        "floor": "2F"
+    },
+    {
+        "id": "e_ddb5e2820b329406",
+        "name": "Cửa ra tàu bay - 13A (Gate 13A)",
+        "type": "door",
+        "floor": "2F"
+    },
+    {
+        "id": "e_aac022dd7dcec3de",
+        "name": "Cửa ra tàu bay - 19A (Gate 19A)",
+        "type": "door",
+        "floor": "2F"
+    },
+    {
+        "id": "e_cacdcc070863603f",
+        "name": "Cửa ra tàu bay - 24A (Gate 24A)",
+        "type": "door",
+        "floor": "2F"
+    },
+    {
+        "id": "e_5d06dca6b300b505",
+        "name": "Cửa ra tàu bay - 27A (Gate 27A)",
+        "type": "door",
+        "floor": "2F"
+    },
+    {
+        "id": "e_aa3d5bd0cea5dc25",
+        "name": "Cửa ra tàu bay - 31A (Gate 31A)",
+        "type": "door",
+        "floor": "2F"
+    }
+]

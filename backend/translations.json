@@ -1,0 +1,109 @@
+{
+    "static": {
+        "search_placeholder": {
+            "vn": "Tìm kiếm khu vực, điểm đến...",
+            "en": "Search areas, destinations..."
+        },
+        "category_eat": {
+            "vn": "Ăn uống",
+            "en": "Dining"
+        },
+        "category_shop": {
+            "vn": "Cửa hàng",
+            "en": "Shopping"
+        },
+        "category_service": {
+            "vn": "Dịch vụ sân bay",
+            "en": "Airport Services"
+        },
+        "category_lounge": {
+            "vn": "Phòng chờ",
+            "en": "Lounges"
+        },
+        "category_dep_procedure": {
+            "vn": "Thủ tục chuyến bay đi",
+            "en": "Departure Procedures"
+        },
+        "category_arr_procedure": {
+            "vn": "Thủ tục chuyến bay đến",
+            "en": "Arrival Procedures"
+        },
+        "add_model": {
+            "vn": "Thêm model 3D",
+            "en": "Add 3D Model"
+        },
+        "classification_btn": {
+            "vn": "Phân loại khu vực",
+            "en": "Classify Area"
+        },
+        "floor_selector_label": {
+            "vn": "Tầng",
+            "en": "Level"
+        },
+        "directions_btn": {
+            "vn": "Dẫn đường",
+            "en": "Directions"
+        },
+        "from": {
+            "vn": "Đi từ:",
+            "en": "From:"
+        },
+        "to": {
+            "vn": "Đi đến:",
+            "en": "To:"
+        },
+        "clear": {
+            "vn": "Xóa",
+            "en": "Clear"
+        },
+        "start_preview": {
+            "vn": "Bắt đầu",
+            "en": "Start"
+        },
+        "select_model_title": {
+            "vn": "Chọn mô hình 3D",
+            "en": "Select 3D Model"
+        },
+        "classification_title": {
+            "vn": "Phân loại khu vực",
+            "en": "Area Classification"
+        },
+        "main_categories": {
+            "vn": "Danh mục chính",
+            "en": "Main Categories"
+        },
+        "sub_categories": {
+            "vn": "Danh mục con",
+            "en": "Sub Categories"
+        },
+        "back": {
+            "vn": "Quay lại",
+            "en": "Back"
+        },
+        "elevator": {
+            "vn": "Thang máy",
+            "en": "Elevator"
+        },
+        "stairway": {
+            "vn": "Cầu thang bộ",
+            "en": "Stairs"
+        },
+        "unnamed_area": {
+            "vn": "Khu vực không tên",
+            "en": "Unnamed Area"
+        },
+        "no_desc": {
+            "vn": "Không có mô tả.",
+            "en": "No description."
+        },
+        "no_data": {
+            "vn": "Không có dữ liệu cho tầng này",
+            "en": "No data for this floor"
+        },
+        "no_data_cat": {
+            "vn": "Không có danh mục nào",
+            "en": "No categories"
+        }
+    },
+    "dynamic": {}
+}

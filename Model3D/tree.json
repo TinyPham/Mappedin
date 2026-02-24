@@ -1,0 +1,660 @@
+{
+  "models": [
+    {
+      "id": "model_2",
+      "modelId": "custom-r6f5sb",
+      "url": "https://cdn.mappedin.com/airplane.glb",
+      "coordinate": {
+        "latitude": 10.77206813546325,
+        "longitude": 107.03970290117061,
+        "verticalOffset": 0.10000000149011612,
+        "floorId": "m_dae8f26a40f6017f"
+      },
+      "verticalOffset": 0.10000000149011612,
+      "axis": "z-up",
+      "rotation": [
+        90,
+        -180,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "color": "#057685",
+      "visibility": "always"
+    },
+    {
+      "id": "model_3",
+      "modelId": "custom-r6f5sb",
+      "url": "https://cdn.mappedin.com/airplane.glb",
+      "coordinate": {
+        "latitude": 10.771997829520915,
+        "longitude": 107.03961905370969,
+        "verticalOffset": 0.10000000149011612,
+        "floorId": "m_dae8f26a40f6017f"
+      },
+      "verticalOffset": 0.10000000149011612,
+      "axis": "z-up",
+      "rotation": [
+        90,
+        -180,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "color": "#057685",
+      "visibility": "always"
+    },
+    {
+      "id": "model_5",
+      "modelId": "custom-r6f5sb",
+      "url": "https://cdn.mappedin.com/airplane.glb",
+      "coordinate": {
+        "latitude": 10.77199682718734,
+        "longitude": 107.03960188215972,
+        "verticalOffset": 0.10000000149011612,
+        "floorId": "m_dae8f26a40f6017f"
+      },
+      "verticalOffset": 0.10000000149011612,
+      "axis": "z-up",
+      "rotation": [
+        90,
+        -180,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "color": "#057685",
+      "visibility": "always"
+    },
+    {
+      "id": "model_6",
+      "modelId": "custom-r6f5sb",
+      "url": "https://cdn.mappedin.com/airplane.glb",
+      "coordinate": {
+        "latitude": 10.771995869130578,
+        "longitude": 107.03960003834167,
+        "verticalOffset": 0.10000000149011612,
+        "floorId": "m_dae8f26a40f6017f"
+      },
+      "verticalOffset": 0.10000000149011612,
+      "axis": "z-up",
+      "rotation": [
+        90,
+        -180,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "color": "#057685",
+      "visibility": "always"
+    },
+    {
+      "id": "model_7",
+      "modelId": "custom-r6f5sb",
+      "url": "https://cdn.mappedin.com/airplane.glb",
+      "coordinate": {
+        "latitude": 10.771995869130578,
+        "longitude": 107.03960003834167,
+        "verticalOffset": 0.10000000149011612,
+        "floorId": "m_dae8f26a40f6017f"
+      },
+      "verticalOffset": 0.10000000149011612,
+      "axis": "z-up",
+      "rotation": [
+        90,
+        -180,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "color": "#057685",
+      "visibility": "always"
+    },
+    {
+      "id": "model_23",
+      "modelId": "three_palm",
+      "coordinate": {
+        "latitude": 10.773777915615831,
+        "longitude": 107.03968258030442,
+        "verticalOffset": 0.10000000149011612,
+        "floorId": "m_d4b5674c0b15e099"
+      },
+      "verticalOffset": 0.10000000149011612,
+      "rotation": [
+        0,
+        0,
+        180
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "color": "#057685",
+      "visibility": "always"
+    },
+    {
+      "id": "model_24",
+      "modelId": "three_palm",
+      "coordinate": {
+        "latitude": 10.773977211654943,
+        "longitude": 107.03995043836399,
+        "verticalOffset": 0.10000000149011612,
+        "floorId": "m_d4b5674c0b15e099"
+      },
+      "verticalOffset": 0.10000000149011612,
+      "rotation": [
+        0,
+        0,
+        180
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "color": "#057685",
+      "visibility": "always"
+    },
+    {
+      "id": "model_25",
+      "modelId": "three_palm",
+      "coordinate": {
+        "latitude": 10.774163621432395,
+        "longitude": 107.03979934497929,
+        "verticalOffset": 0.10000000149011612,
+        "floorId": "m_d4b5674c0b15e099"
+      },
+      "verticalOffset": 0.10000000149011612,
+      "rotation": [
+        0,
+        0,
+        180
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "color": "#057685",
+      "visibility": "always"
+    },
+    {
+      "id": "model_26",
+      "modelId": "three_palm",
+      "coordinate": {
+        "latitude": 10.773983587566567,
+        "longitude": 107.03971797113702,
+        "verticalOffset": 0.10000000149011612,
+        "floorId": "m_d4b5674c0b15e099"
+      },
+      "verticalOffset": 0.10000000149011612,
+      "rotation": [
+        0,
+        0,
+        180
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "color": "#057685",
+      "visibility": "always"
+    },
+    {
+      "id": "model_27",
+      "modelId": "three_palm",
+      "coordinate": {
+        "latitude": 10.774098674614374,
+        "longitude": 107.0398711650129,
+        "verticalOffset": 0.10000000149013033,
+        "floorId": "m_d4b5674c0b15e099"
+      },
+      "verticalOffset": 0.10000000149013033,
+      "rotation": [
+        0,
+        0,
+        180
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "color": "#057685",
+      "visibility": "always"
+    },
+    {
+      "id": "model_28",
+      "modelId": "three_palm",
+      "coordinate": {
+        "latitude": 10.773878564539428,
+        "longitude": 107.03984484761759,
+        "verticalOffset": 0.10000000149013033,
+        "floorId": "m_d4b5674c0b15e099"
+      },
+      "verticalOffset": 0.10000000149013033,
+      "rotation": [
+        0,
+        0,
+        180
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "color": "#057685",
+      "visibility": "always"
+    },
+    {
+      "id": "model_29",
+      "modelId": "three_palm",
+      "coordinate": {
+        "latitude": 10.773995079339482,
+        "longitude": 107.03980750317335,
+        "verticalOffset": 0.10000000149011612,
+        "floorId": "m_d4b5674c0b15e099"
+      },
+      "verticalOffset": 0.10000000149011612,
+      "rotation": [
+        0,
+        0,
+        180
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "color": "#057685",
+      "visibility": "always"
+    },
+    {
+      "id": "model_30",
+      "modelId": "three_palm",
+      "coordinate": {
+        "latitude": 10.773907010028886,
+        "longitude": 107.03975086399653,
+        "verticalOffset": 0.10000000149011612,
+        "floorId": "m_d4b5674c0b15e099"
+      },
+      "verticalOffset": 0.10000000149011612,
+      "rotation": [
+        0,
+        0,
+        180
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "color": "#057685",
+      "visibility": "always"
+    },
+    {
+      "id": "model_31",
+      "modelId": "three_palm",
+      "coordinate": {
+        "latitude": 10.773986467158371,
+        "longitude": 107.0398651694486,
+        "verticalOffset": 0.10000000149011612,
+        "floorId": "m_d4b5674c0b15e099"
+      },
+      "verticalOffset": 0.10000000149011612,
+      "rotation": [
+        0,
+        0,
+        180
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "color": "#057685",
+      "visibility": "always"
+    },
+    {
+      "id": "model_32",
+      "modelId": "three_palm",
+      "coordinate": {
+        "latitude": 10.774104056189403,
+        "longitude": 107.03979581702492,
+        "verticalOffset": 0.10000000149011612,
+        "floorId": "m_d4b5674c0b15e099"
+      },
+      "verticalOffset": 0.10000000149011612,
+      "rotation": [
+        0,
+        0,
+        180
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "color": "#057685",
+      "visibility": "always"
+    },
+    {
+      "id": "model_33",
+      "modelId": "three_palm",
+      "coordinate": {
+        "latitude": 10.77384377541743,
+        "longitude": 107.03975851168215,
+        "verticalOffset": 0.10000000149011612,
+        "floorId": "m_d4b5674c0b15e099"
+      },
+      "verticalOffset": 0.10000000149011612,
+      "rotation": [
+        0,
+        0,
+        180
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "color": "#057685",
+      "visibility": "always"
+    },
+    {
+      "id": "model_34",
+      "modelId": "three_palm",
+      "coordinate": {
+        "latitude": 10.774321950195844,
+        "longitude": 107.04002490855768,
+        "verticalOffset": 0.10000000149011612,
+        "floorId": "m_d4b5674c0b15e099"
+      },
+      "verticalOffset": 0.10000000149011612,
+      "rotation": [
+        0,
+        0,
+        180
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "color": "#057685",
+      "visibility": "always"
+    },
+    {
+      "id": "model_35",
+      "modelId": "three_palm",
+      "coordinate": {
+        "latitude": 10.774234928258258,
+        "longitude": 107.04007750008786,
+        "verticalOffset": 0.10000000149011612,
+        "floorId": "m_d4b5674c0b15e099"
+      },
+      "verticalOffset": 0.10000000149011612,
+      "rotation": [
+        0,
+        0,
+        180
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "color": "#057685",
+      "visibility": "always"
+    },
+    {
+      "id": "model_36",
+      "modelId": "three_palm",
+      "coordinate": {
+        "latitude": 10.774133754257521,
+        "longitude": 107.04016347552586,
+        "verticalOffset": 0.10000000149011612,
+        "floorId": "m_d4b5674c0b15e099"
+      },
+      "verticalOffset": 0.10000000149011612,
+      "rotation": [
+        0,
+        0,
+        180
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "color": "#057685",
+      "visibility": "always"
+    },
+    {
+      "id": "model_37",
+      "modelId": "three_palm",
+      "coordinate": {
+        "latitude": 10.774355246309634,
+        "longitude": 107.0402386843437,
+        "verticalOffset": 0.10000000149010191,
+        "floorId": "m_d4b5674c0b15e099"
+      },
+      "verticalOffset": 0.10000000149010191,
+      "rotation": [
+        0,
+        0,
+        180
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "color": "#057685",
+      "visibility": "always"
+    },
+    {
+      "id": "model_38",
+      "modelId": "three_palm",
+      "coordinate": {
+        "latitude": 10.774323672047526,
+        "longitude": 107.04043895862675,
+        "verticalOffset": 0.10000000149011612,
+        "floorId": "m_d4b5674c0b15e099"
+      },
+      "verticalOffset": 0.10000000149011612,
+      "rotation": [
+        0,
+        0,
+        180
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "color": "#057685",
+      "visibility": "always"
+    },
+    {
+      "id": "model_39",
+      "modelId": "three_palm",
+      "coordinate": {
+        "latitude": 10.774343521809204,
+        "longitude": 107.04035554848205,
+        "verticalOffset": 0.10000000149010191,
+        "floorId": "m_d4b5674c0b15e099"
+      },
+      "verticalOffset": 0.10000000149010191,
+      "rotation": [
+        0,
+        0,
+        180
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "color": "#057685",
+      "visibility": "always"
+    },
+    {
+      "id": "model_40",
+      "modelId": "three_palm",
+      "coordinate": {
+        "latitude": 10.7743521444793,
+        "longitude": 107.04013600856727,
+        "verticalOffset": 0.10000000149011612,
+        "floorId": "m_d4b5674c0b15e099"
+      },
+      "verticalOffset": 0.10000000149011612,
+      "rotation": [
+        0,
+        0,
+        180
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "color": "#057685",
+      "visibility": "always"
+    },
+    {
+      "id": "model_41",
+      "modelId": "three_palm",
+      "coordinate": {
+        "latitude": 10.774220285233618,
+        "longitude": 107.04031286875068,
+        "verticalOffset": 0.10000000149011612,
+        "floorId": "m_d4b5674c0b15e099"
+      },
+      "verticalOffset": 0.10000000149011612,
+      "rotation": [
+        0,
+        0,
+        180
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "color": "#057685",
+      "visibility": "always"
+    },
+    {
+      "id": "model_42",
+      "modelId": "three_palm",
+      "coordinate": {
+        "latitude": 10.774286280164317,
+        "longitude": 107.0401510512131,
+        "verticalOffset": 0.10000000149011612,
+        "floorId": "m_d4b5674c0b15e099"
+      },
+      "verticalOffset": 0.10000000149011612,
+      "rotation": [
+        0,
+        0,
+        180
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "color": "#057685",
+      "visibility": "always"
+    },
+    {
+      "id": "model_43",
+      "modelId": "three_palm",
+      "coordinate": {
+        "latitude": 10.774265792604519,
+        "longitude": 107.04022855966637,
+        "verticalOffset": 0.10000000149010191,
+        "floorId": "m_d4b5674c0b15e099"
+      },
+      "verticalOffset": 0.10000000149010191,
+      "rotation": [
+        0,
+        0,
+        180
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "color": "#057685",
+      "visibility": "always"
+    },
+    {
+      "id": "model_44",
+      "modelId": "three_palm",
+      "coordinate": {
+        "latitude": 10.774206817529766,
+        "longitude": 107.04023792035059,
+        "verticalOffset": 0.10000000149011612,
+        "floorId": "m_d4b5674c0b15e099"
+      },
+      "verticalOffset": 0.10000000149011612,
+      "rotation": [
+        0,
+        0,
+        180
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "color": "#057685",
+      "visibility": "always"
+    },
+    {
+      "id": "model_45",
+      "modelId": "three_palm",
+      "coordinate": {
+        "latitude": 10.7743009669687,
+        "longitude": 107.04037504535341,
+        "verticalOffset": 0.10000000149011612,
+        "floorId": "m_d4b5674c0b15e099"
+      },
+      "verticalOffset": 0.10000000149011612,
+      "rotation": [
+        0,
+        0,
+        180
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "color": "#057685",
+      "visibility": "always"
+    }
+  ],
+  "version": "1.0",
+  "timestamp": 1771832947615
+}
