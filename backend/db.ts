@@ -10,7 +10,13 @@ dotenv.config({ path: path.join(__dirname, '../.env') });
 let config: sql.config | null = null;
 
 // Try to load from appsettings.json first
-const appSettingsPath = path.join(__dirname, 'appsettings.json');
+// When running compiled (backend/dist/server.js), __dirname = backend/dist/
+// When running ts-node (backend/server.ts), __dirname = backend/
+let appSettingsPath = path.join(__dirname, 'appsettings.json');
+if (!fs.existsSync(appSettingsPath)) {
+    // Fallback: look one level up (for compiled JS in dist/)
+    appSettingsPath = path.join(__dirname, '..', 'appsettings.json');
+}
 if (fs.existsSync(appSettingsPath)) {
     try {
         const appSettings = JSON.parse(fs.readFileSync(appSettingsPath, 'utf-8'));
