@@ -65,9 +65,10 @@ class TranslationManager {
 
   static async init() {
     try {
-      // Default lang query doesn't matter much as API returns all langs for key data
-      // but might affect fallback preference in backend later.
-      const res = await fetch('http://localhost:3002/api/init-data');
+      // Dynamic API URL: local → localhost:3002, production → same origin
+      const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+      const apiBase = isLocal ? "http://localhost:3002/api" : `${window.location.origin}/api`;
+      const res = await fetch(`${apiBase}/init-data`);
       const json = await res.json();
       this.data = json;
       console.log('🌐 Init Data loaded:', json);
