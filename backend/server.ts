@@ -20,7 +20,7 @@ if (fs.existsSync(appSettingsPath)) {
     } catch (e) { }
 }
 
-const PORT = process.env.PORT || appSettings.AppSettings?.Port || 3002;
+const PORT = appSettings.AppSettings?.Port || process.env.PORT || 3002;
 
 // Middleware
 app.use(cors({
