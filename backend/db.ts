@@ -9,52 +9,71 @@ dotenv.config({ path: path.join(__dirname, '../.env') });
 
 let config: sql.config | null = null;
 
-// Try to load from appsettings.json first
-// When running compiled (backend/dist/server.js), __dirname = backend/dist/
-// When running ts-node (backend/server.ts), __dirname = backend/
-let appSettingsPath = path.join(__dirname, 'appsettings.json');
-if (!fs.existsSync(appSettingsPath)) {
-    // Fallback: look one level up (for compiled JS in dist/)
-    appSettingsPath = path.join(__dirname, '..', 'appsettings.json');
-}
-if (fs.existsSync(appSettingsPath)) {
-    try {
-        const appSettings = JSON.parse(fs.readFileSync(appSettingsPath, 'utf-8'));
-        const connectionString = appSettings.ConnectionStrings?.DefaultConnection;
+// ===== CONFIG PRIORITY ORDER =====
+// 1. Environment Variables (Render production) → HIGHEST PRIORITY
+// 2. appsettings.json (local development) → FALLBACK
+// ===================================
 
-        if (connectionString) {
-            console.log('📄 Found ConnectionString in appsettings.json');
-
-            // Basic parsing of Connection String
-            // "Server=DESKTOP-1711NIU;Database=MappedIn3DModels;User Id=sa;Password=123@;Encrypt=true;TrustServerCertificate=true;"
-            const getPart = (key: string) => {
-                const match = connectionString.match(new RegExp(`${key}=([^;]+)`, 'i'));
-                return match ? match[1] : null;
-            };
-
-            config = {
-                server: getPart('Server') || 'localhost',
-                database: getPart('Database') || 'MappedIn3DModels',
-                user: getPart('User Id') || 'sa',
-                password: getPart('Password') || '',
-                options: {
-                    encrypt: getPart('Encrypt') === 'true',
-                    trustServerCertificate: getPart('TrustServerCertificate') === 'true'
-                }
-            };
+// PRIORITY 1: Check Environment Variables first (Render sets these)
+if (process.env.DB_SERVER) {
+    console.log('🌐 Using Environment Variables for DB config (Production)');
+    config = {
+        server: process.env.DB_SERVER,
+        database: process.env.DB_NAME || 'MappedIn3DModels',
+        user: process.env.DB_USER || 'sa',
+        password: process.env.DB_PASSWORD || '',
+        options: {
+            encrypt: true,
+            trustServerCertificate: true
         }
-    } catch (e) {
-        console.warn('⚠️ Failed to parse appsettings.json, falling back to .env:', e);
+    };
+}
+
+// PRIORITY 2: Fallback to appsettings.json (Local development)
+if (!config) {
+    // When running compiled (backend/dist/server.js), __dirname = backend/dist/
+    // When running ts-node (backend/server.ts), __dirname = backend/
+    let appSettingsPath = path.join(__dirname, 'appsettings.json');
+    if (!fs.existsSync(appSettingsPath)) {
+        appSettingsPath = path.join(__dirname, '..', 'appsettings.json');
+    }
+    if (fs.existsSync(appSettingsPath)) {
+        try {
+            const appSettings = JSON.parse(fs.readFileSync(appSettingsPath, 'utf-8'));
+            const connectionString = appSettings.ConnectionStrings?.DefaultConnection;
+
+            if (connectionString) {
+                console.log('📄 Using appsettings.json for DB config (Local Dev)');
+
+                const getPart = (key: string) => {
+                    const match = connectionString.match(new RegExp(`${key}=([^;]+)`, 'i'));
+                    return match ? match[1] : null;
+                };
+
+                config = {
+                    server: getPart('Server') || 'localhost',
+                    database: getPart('Database') || 'MappedIn3DModels',
+                    user: getPart('User Id') || 'sa',
+                    password: getPart('Password') || '',
+                    options: {
+                        encrypt: getPart('Encrypt') === 'true',
+                        trustServerCertificate: getPart('TrustServerCertificate') === 'true'
+                    }
+                };
+            }
+        } catch (e) {
+            console.warn('⚠️ Failed to parse appsettings.json:', e);
+        }
     }
 }
 
-// Fallback to .env if appsettings failed or missing
+// LAST RESORT: Default config
 if (!config) {
     config = {
-        user: process.env.DB_USER || 'sa',
-        password: process.env.DB_PASSWORD || 'your_password',
-        server: process.env.DB_SERVER || 'localhost',
-        database: process.env.DB_NAME || 'MappedIn3DModels',
+        user: 'sa',
+        password: '',
+        server: 'localhost',
+        database: 'MappedIn3DModels',
         options: {
             encrypt: false,
             trustServerCertificate: true
