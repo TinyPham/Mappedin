@@ -43,10 +43,14 @@ const categorySelect = document.getElementById('categoryFilter') as HTMLSelectEl
 const searchInput = document.getElementById('searchInput') as HTMLInputElement;
 const editModal = new (window as any).bootstrap.Modal(document.getElementById('editModal'));
 
+// Tự động chuyển đổi URL API giữa Local và Production
+const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+const API_BASE_URL = isLocal ? "http://localhost:3002/api" : `${window.location.origin}/api`;
+
 // Initialize
 async function init() {
     try {
-        const res = await fetch('http://localhost:3002/api/init-data');
+        const res = await fetch(`${API_BASE_URL}/init-data`);
         const data = await res.json();
 
         languages = data.languages;
@@ -217,7 +221,7 @@ document.getElementById('btnSave')?.addEventListener('click', async () => {
     console.log("Saving...", payload);
 
     try {
-        const res = await fetch('http://localhost:3002/api/admin/locations', {
+        const res = await fetch(`${API_BASE_URL}/admin/locations`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)

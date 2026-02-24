@@ -649,7 +649,9 @@ async function init() {
   let inpModelPublic: HTMLInputElement | null = null;
 
 
-  const API_BASE_URL = "http://localhost:3002/api";
+  // Tự động chuyển đổi URL API giữa Local và Production (Render)
+  const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+  const API_BASE_URL = isLocal ? "http://localhost:3002/api" : `${window.location.origin}/api`;
   const SERVER_URL = API_BASE_URL.replace("/api", "");
 
 
