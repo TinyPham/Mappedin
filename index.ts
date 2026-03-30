@@ -5010,7 +5010,7 @@ async function init() {
         (model as any).originalCoordinate = coord;
 
         const inpPublic = document.getElementById("inp-model-public") as HTMLInputElement;
-        let finalDesc = (placingMode === 'new') ? "Added via Picker" : sourceModelData?.desc || "";
+        let finalDesc = (placingMode === 'new') ? "Nhập thông tin mô tả model 3D tại đây" : sourceModelData?.desc || "";
         if (inpPublic?.checked) {
           if (!finalDesc.includes("[PUBLIC]")) finalDesc = (finalDesc + " [PUBLIC]").trim();
         } else {
