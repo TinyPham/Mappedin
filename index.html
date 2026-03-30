@@ -928,7 +928,7 @@
     <div id="model-controls-panel" class="model-controls-panel hidden">
       <div class="controls-header-row">
         <span class="drag-handle">⋮⋮</span>
-        <span class="panel-title">Edit Model</span>
+        <span class="panel-title">Thông tin Model</span>
         <div class="header-actions">
           <button id="btn-copy-model" class="icon-btn copy" title="Copy">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#085ebb" stroke-width="2"
@@ -967,57 +967,47 @@
       </div>
 
       <div class="control-scroll-content">
-        <div class="control-group" style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
-          <input type="checkbox" id="inp-model-public" style="width: 20px; height: 20px; cursor: pointer;">
-          <label for="inp-model-public" style="font-weight: 600; color: #085ebb; cursor: pointer;">Hiển thị trên Website
-            (Public)</label>
-        </div>
-
         <!-- Metadata -->
         <div class="control-group">
-          <label>Name</label>
-          <input type="text" id="inp-model-name" placeholder="Model Name">
+          <label>Tên Model</label>
+          <input type="text" id="inp-model-name" placeholder="Tên Model">
         </div>
         <div class="control-group">
-          <label>Description</label>
-          <input type="text" id="inp-model-desc" placeholder="Description">
+          <label>Mô tả</label>
+          <input type="text" id="inp-model-desc" placeholder="Nhập thông tin mô tả của thiết bị vào đây">
         </div>
 
         <!-- Position -->
         <div class="control-group">
-          <label>Latitude</label>
+          <label>Latitude (Vĩ độ)</label>
           <input type="number" id="inp-lat" step="0.000001">
         </div>
         <div class="control-group">
-          <label>Longitude</label>
+          <label>Longitude (Kinh độ)</label>
           <input type="number" id="inp-lon" step="0.000001">
         </div>
 
         <!-- Rotation -->
         <div class="control-group">
-          <label>Rotation (X-axis), degrees</label>
-          <input type="range" id="slider-rot-x" min="0" max="360" value="0" class="slider">
-          <input type="number" id="inp-rot-x" value="0">
-        </div>
-        <div class="control-group">
-          <label>Rotation (Y-axis), degrees</label>
-          <input type="range" id="slider-rot-y" min="0" max="360" value="0" class="slider">
-          <input type="number" id="inp-rot-y" value="0">
-        </div>
-        <div class="control-group">
-          <label>Rotation (Z-axis), degrees</label>
+          <label>Xoay mô hình</label>
           <input type="range" id="slider-rot-z" min="0" max="360" value="0" class="slider">
           <input type="number" id="inp-rot-z" value="0">
         </div>
 
         <!-- Scale -->
         <div class="control-group">
-          <label>Scale (X, Y, Z)</label>
+          <label>Kích thước (X, Y, Z)</label>
           <div class="input-row three-col">
             <input type="number" id="scale-x" value="1" step="0.1">
             <input type="number" id="scale-y" value="1" step="0.1">
             <input type="number" id="scale-z" value="1" step="0.1">
           </div>
+        </div>
+
+        <!-- Public visibility -->
+        <div class="control-group" style="display: flex; flex-direction: row; align-items: center; justify-content: space-between; margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee;">
+          <label for="inp-model-public" style="font-weight: 600; color: #085ebb; cursor: pointer; margin: 0;">Hiển thị trên Website</label>
+          <input type="checkbox" id="inp-model-public" style="width: 20px; height: 20px; cursor: pointer;">
         </div>
       </div>
     </div>
@@ -1081,8 +1071,8 @@
               </div>
               <div
                 style="width:120px; height:120px; background:#f5f5f5; border-radius:8px; overflow:hidden; display:flex; align-items:center; justify-content:center; border:1px solid #ddd;">
-                <img id="admin-image-preview" src="" alt="Preview"
-                  style="max-width:100%; max-height:100%; display:none;">
+                <img id="admin-image-preview" src="" alt="Preview" referrerpolicy="no-referrer"
+                  style="width:100%; height:100%; object-fit:cover; display:none;">
                 <span id="no-image-text" data-i18n="no_image" style="color:#999; font-size:12px;">No Image</span>
               </div>
             </div>
@@ -1090,37 +1080,98 @@
             <!-- Content Tabs -->
             <div>
               <div style="display:flex; border-bottom:1px solid #ddd; margin-bottom:10px;">
-                <button class="tab-btn active" data-lang="vi" data-i18n="lang_vi"
+                <button class="tab-btn active" data-lang="vi"
                   style="padding:8px 15px; background:none; border:none; border-bottom:2px solid #085ebb; font-weight:600; cursor:pointer;">Tiếng
-                  Việt (Gốc)</button>
-                <button class="tab-btn" data-lang="en" data-i18n="lang_en"
-                  style="padding:8px 15px; background:none; border:none; border-bottom:2px solid transparent; cursor:pointer;">English</button>
-                <button class="tab-btn" data-lang="zh" data-i18n="lang_zh"
-                  style="padding:8px 15px; background:none; border:none; border-bottom:2px solid transparent; cursor:pointer;">中文</button>
-                <button class="tab-btn" data-lang="ja" data-i18n="lang_ja"
-                  style="padding:8px 15px; background:none; border:none; border-bottom:2px solid transparent; cursor:pointer;">日本語</button>
-                <button class="tab-btn" data-lang="ko" data-i18n="lang_ko"
-                  style="padding:8px 15px; background:none; border:none; border-bottom:2px solid transparent; cursor:pointer;">한국어</button>
+                  Việt</button>
+                <button class="tab-btn" data-lang="en"
+                  style="padding:8px 15px; background:none; border:none; border-bottom:2px solid transparent; cursor:pointer;">Tiếng
+                  Anh</button>
+                <button class="tab-btn" data-lang="zh"
+                  style="padding:8px 15px; background:none; border:none; border-bottom:2px solid transparent; cursor:pointer;">Tiếng
+                  Trung</button>
+                <button class="tab-btn" data-lang="ja"
+                  style="padding:8px 15px; background:none; border:none; border-bottom:2px solid transparent; cursor:pointer;">Tiếng
+                  Nhật</button>
+                <button class="tab-btn" data-lang="ko"
+                  style="padding:8px 15px; background:none; border:none; border-bottom:2px solid transparent; cursor:pointer;">Tiếng
+                  Hàn</button>
               </div>
 
-              <!-- Text Areas -->
-              <div id="tab-content-vi" class="tab-content"><textarea id="info-vi" rows="6"
-                  style="width:100%; padding:10px; border-radius:4px; border:1px solid #ccc; font-family: inherit;"
-                  placeholder="Nhập thông tin mô tả tiếng Việt..."
-                  data-i18n-placeholder="desc_placeholder_vi"></textarea></div>
-              <div id="tab-content-en" class="tab-content" style="display:none;"><textarea id="info-en" rows="6"
-                  style="width:100%; padding:10px; border-radius:4px; border:1px solid #ccc; font-family: inherit;"
-                  placeholder="Enter English description..." data-i18n-placeholder="desc_placeholder_en"></textarea>
+              <!-- VI Tab -->
+              <div id="tab-content-vi" class="tab-content">
+                <div
+                  style="background:#f0f4f9; padding:8px 12px; border-left:4px solid #085ebb; margin-bottom:8px; font-weight:600; color:#085ebb;">
+                  Tên khu vực (Tiếng Việt)</div>
+                <input type="text" id="name-vi"
+                  style="width:100%; padding:10px; border-radius:4px; border:1px solid #ccc; font-size:14px; margin-bottom:12px;"
+                  placeholder="Tên khu vực tiếng Việt...">
+                <div
+                  style="background:#f0f4f9; padding:8px 12px; border-left:4px solid #085ebb; margin-bottom:8px; font-weight:600; color:#085ebb;">
+                  Mô tả khu vực (Tiếng Việt)</div>
+                <textarea id="info-vi" rows="6"
+                  style="width:100%; padding:10px; border-radius:4px; border:1px solid #ccc; font-family:inherit; resize:vertical;"
+                  placeholder="Nhập thông tin mô tả tiếng Việt..."></textarea>
               </div>
-              <div id="tab-content-zh" class="tab-content" style="display:none;"><textarea id="info-zh" rows="6"
-                  style="width:100%; padding:10px; border-radius:4px; border:1px solid #ccc; font-family: inherit;"
-                  placeholder="请输入中文描述..." data-i18n-placeholder="desc_placeholder_zh"></textarea></div>
-              <div id="tab-content-ja" class="tab-content" style="display:none;"><textarea id="info-ja" rows="6"
-                  style="width:100%; padding:10px; border-radius:4px; border:1px solid #ccc; font-family: inherit;"
-                  placeholder="日本語の説明を入力してください..." data-i18n-placeholder="desc_placeholder_ja"></textarea></div>
-              <div id="tab-content-ko" class="tab-content" style="display:none;"><textarea id="info-ko" rows="6"
-                  style="width:100%; padding:10px; border-radius:4px; border:1px solid #ccc; font-family: inherit;"
-                  placeholder="한국어 설명을 입력하세요..." data-i18n-placeholder="desc_placeholder_ko"></textarea></div>
+              <!-- EN Tab -->
+              <div id="tab-content-en" class="tab-content" style="display:none;">
+                <div
+                  style="background:#f0f4f9; padding:8px 12px; border-left:4px solid #085ebb; margin-bottom:8px; font-weight:600; color:#085ebb;">
+                  Area Name (English)</div>
+                <input type="text" id="name-en"
+                  style="width:100%; padding:10px; border-radius:4px; border:1px solid #ccc; font-size:14px; margin-bottom:12px;"
+                  placeholder="Area name in English...">
+                <div
+                  style="background:#f0f4f9; padding:8px 12px; border-left:4px solid #085ebb; margin-bottom:8px; font-weight:600; color:#085ebb;">
+                  Description (English)</div>
+                <textarea id="info-en" rows="6"
+                  style="width:100%; padding:10px; border-radius:4px; border:1px solid #ccc; font-family:inherit; resize:vertical;"
+                  placeholder="Enter English description..."></textarea>
+              </div>
+              <!-- ZH Tab -->
+              <div id="tab-content-zh" class="tab-content" style="display:none;">
+                <div
+                  style="background:#f0f4f9; padding:8px 12px; border-left:4px solid #085ebb; margin-bottom:8px; font-weight:600; color:#085ebb;">
+                  区域名称（中文）</div>
+                <input type="text" id="name-zh"
+                  style="width:100%; padding:10px; border-radius:4px; border:1px solid #ccc; font-size:14px; margin-bottom:12px;"
+                  placeholder="中文区域名称...">
+                <div
+                  style="background:#f0f4f9; padding:8px 12px; border-left:4px solid #085ebb; margin-bottom:8px; font-weight:600; color:#085ebb;">
+                  区域描述（中文）</div>
+                <textarea id="info-zh" rows="6"
+                  style="width:100%; padding:10px; border-radius:4px; border:1px solid #ccc; font-family:inherit; resize:vertical;"
+                  placeholder="请输入中文描述..."></textarea>
+              </div>
+              <!-- JA Tab -->
+              <div id="tab-content-ja" class="tab-content" style="display:none;">
+                <div
+                  style="background:#f0f4f9; padding:8px 12px; border-left:4px solid #085ebb; margin-bottom:8px; font-weight:600; color:#085ebb;">
+                  エリア名（日本語）</div>
+                <input type="text" id="name-ja"
+                  style="width:100%; padding:10px; border-radius:4px; border:1px solid #ccc; font-size:14px; margin-bottom:12px;"
+                  placeholder="日本語のエリア名...">
+                <div
+                  style="background:#f0f4f9; padding:8px 12px; border-left:4px solid #085ebb; margin-bottom:8px; font-weight:600; color:#085ebb;">
+                  エリア説明（日本語）</div>
+                <textarea id="info-ja" rows="6"
+                  style="width:100%; padding:10px; border-radius:4px; border:1px solid #ccc; font-family:inherit; resize:vertical;"
+                  placeholder="日本語の説明を入力してください..."></textarea>
+              </div>
+              <!-- KO Tab -->
+              <div id="tab-content-ko" class="tab-content" style="display:none;">
+                <div
+                  style="background:#f0f4f9; padding:8px 12px; border-left:4px solid #085ebb; margin-bottom:8px; font-weight:600; color:#085ebb;">
+                  지역 이름 (한국어)</div>
+                <input type="text" id="name-ko"
+                  style="width:100%; padding:10px; border-radius:4px; border:1px solid #ccc; font-size:14px; margin-bottom:12px;"
+                  placeholder="한국어 지역 이름...">
+                <div
+                  style="background:#f0f4f9; padding:8px 12px; border-left:4px solid #085ebb; margin-bottom:8px; font-weight:600; color:#085ebb;">
+                  지역 설명 (한국어)</div>
+                <textarea id="info-ko" rows="6"
+                  style="width:100%; padding:10px; border-radius:4px; border:1px solid #ccc; font-family:inherit; resize:vertical;"
+                  placeholder="한국어 설명을 입력하세요..."></textarea>
+              </div>
             </div>
 
             <!-- Actions -->
@@ -1129,7 +1180,7 @@
               <button id="btn-cancel-admin" data-i18n="cancel_btn"
                 style="padding:10px 20px; border:1px solid #ddd; background:white; border-radius:6px; cursor:pointer;">Hủy</button>
               <button id="btn-save-admin" data-i18n="save_changes_btn"
-                style="padding:10px 25px; background:#28a745; color:white; border:none; border-radius:6px; font-weight:600; cursor:pointer;">
+                style="padding:10px 25px; background:#085ebb; color:white; border:none; border-radius:6px; font-weight:600; cursor:pointer;">
                 Lưu Thay Đổi</button>
             </div>
 

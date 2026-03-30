@@ -131,35 +131,16 @@ app.post('/api/update-area-info', async (req, res) => {
 
         const db = await getDbConnection();
 
-        // Use MERGE or IF EXISTS to Upsert
-        // We join with AreaList to find the correct AreaListID from MappedinID
         await db.request()
-            .input('MID', sql.NVarChar(100), id)
-            .input('VI', sql.NVarChar(sql.MAX), vn)
+            .input('MappedinId', sql.NVarChar(100), id)
+            .input('VN', sql.NVarChar(sql.MAX), vn)
             .input('EN', sql.NVarChar(sql.MAX), en)
             .input('ZH', sql.NVarChar(sql.MAX), zh)
             .input('JA', sql.NVarChar(sql.MAX), ja)
             .input('KO', sql.NVarChar(sql.MAX), ko)
-            .input('IMG', sql.NVarChar(500), imageUrl)
-            .input('MID_IMG', sql.NVarChar(500), mappedinImageUrl || null)
-            .query(`
-                MERGE INTO AreaInformation AS Target
-                USING (SELECT AreaListID FROM AreaList WHERE MappedinID = @MID) AS Source
-                ON Target.AreaListID = Source.AreaListID
-                WHEN MATCHED THEN
-                    UPDATE SET 
-                        InformationVI = @VI,
-                        InformationEN = @EN,
-                        InformationZH = @ZH,
-                        InformationJA = @JA,
-                        InformationKO = @KO,
-                        UIImageUrl = @IMG,
-                        RunUrl = @IMG, -- Manual update wins
-                        MappedinImageUrl = @MID_IMG -- Catch up editor baseline
-                WHEN NOT MATCHED THEN
-                    INSERT (AreaListID, InformationVI, InformationEN, InformationZH, InformationJA, InformationKO, UIImageUrl, RunUrl, MappedinImageUrl)
-                    VALUES (Source.AreaListID, @VI, @EN, @ZH, @JA, @KO, @IMG, @IMG, @MID_IMG);
-            `);
+            .input('ImageUrl', sql.NVarChar(500), imageUrl)
+            .input('MappedinImageUrl', sql.NVarChar(500), mappedinImageUrl || null)
+            .execute('SP_UpsertAreaInformation');
 
         res.json({ success: true });
     } catch (err: any) {
@@ -280,12 +261,12 @@ app.post('/api/models', async (req, res) => {
             .input('Longitude', sql.Decimal(18, 10), longitude)
             .input('FloorId', sql.NVarChar(100), floorId || null)
             .input('FloorName', sql.NVarChar(100), null)
-            .input('RotationX', sql.Decimal(18, 4), rotation?.[0] || 0)
-            .input('RotationY', sql.Decimal(18, 4), rotation?.[1] || 0)
-            .input('RotationZ', sql.Decimal(18, 4), rotation?.[2] || 0)
-            .input('ScaleX', sql.Decimal(18, 4), scale?.[0] || 1)
-            .input('ScaleY', sql.Decimal(18, 4), scale?.[1] || 1)
-            .input('ScaleZ', sql.Decimal(18, 4), scale?.[2] || 1)
+            .input('RotationX', sql.Decimal(18, 4), rotation?.[0] ?? 0)
+            .input('RotationY', sql.Decimal(18, 4), rotation?.[1] ?? 0)
+            .input('RotationZ', sql.Decimal(18, 4), rotation?.[2] ?? 0)
+            .input('ScaleX', sql.Decimal(18, 6), scale?.[0] ?? 1)
+            .input('ScaleY', sql.Decimal(18, 6), scale?.[1] ?? 1)
+            .input('ScaleZ', sql.Decimal(18, 6), scale?.[2] ?? 1)
             .input('DisplayWebsite', sql.Bit, displayWebsite ? 1 : 0)
             .input('CreatedBy', sql.NVarChar(100), null)
             .execute('SP_UpsertModel');
@@ -335,12 +316,12 @@ app.post('/api/models/batch', async (req, res) => {
                 .input('Longitude', sql.Decimal(11, 8), model.longitude)
                 .input('FloorId', sql.NVarChar(100), model.floorId || null)
                 .input('FloorName', sql.NVarChar(100), null)
-                .input('RotationX', sql.Decimal(10, 4), model.rotation?.[0] || 0)
-                .input('RotationY', sql.Decimal(10, 4), model.rotation?.[1] || 0)
-                .input('RotationZ', sql.Decimal(10, 4), model.rotation?.[2] || 0)
-                .input('ScaleX', sql.Decimal(10, 4), model.scale?.[0] || 1)
-                .input('ScaleY', sql.Decimal(10, 4), model.scale?.[1] || 1)
-                .input('ScaleZ', sql.Decimal(10, 4), model.scale?.[2] || 1)
+                .input('RotationX', sql.Decimal(10, 4), model.rotation?.[0] ?? 0)
+                .input('RotationY', sql.Decimal(10, 4), model.rotation?.[1] ?? 0)
+                .input('RotationZ', sql.Decimal(10, 4), model.rotation?.[2] ?? 0)
+                .input('ScaleX', sql.Decimal(10, 6), model.scale?.[0] ?? 1)
+                .input('ScaleY', sql.Decimal(10, 6), model.scale?.[1] ?? 1)
+                .input('ScaleZ', sql.Decimal(10, 6), model.scale?.[2] ?? 1)
                 .input('DisplayWebsite', sql.Bit, model.displayWebsite ? 1 : 0)
                 .input('CreatedBy', sql.NVarChar(100), 'batch-import')
                 .execute('SP_UpsertModel');
@@ -362,7 +343,7 @@ app.get('/api/available-models', async (req, res) => {
     try {
         const db = await getDbConnection();
         const result = await db.request()
-            .query(`SELECT * FROM AvailableModels WHERE IsActive = 1 ORDER BY ModelName`);
+            .execute('SP_GetAvailableModels');
 
         // DEBUG: Log first row to see actual column names
         if (result.recordset.length > 0) {
@@ -406,13 +387,10 @@ app.get('/health', (req, res) => {
 
 // Default configurations for known models (to preserve scaling)
 const KNOWN_DEFAULTS: Record<string, any> = {
-    "airplane.glb": { scale: [2, 2, 2], rotation: [90, 90, 1] },
-    "car.json": { scale: [2, 2, 2], rotation: [90, 90, 1] },
-    "computer_mouse.glb": { scale: [2, 2, 2], rotation: [90, 90, 1] },
-    "screen.glb": { scale: [2, 2, 2], rotation: [90, 90, 1] },
-    "document_printer.glb": { scale: [2, 2, 2], rotation: [90, 90, 1] },
-    "optical_character_recognition.glb": { scale: [2, 2, 2], rotation: [90, 90, 1] },
-    "ticket_luggage_printer.glb": { scale: [2, 2, 2], rotation: [90, 90, 1] },
+    // Defaults are now managed in the database via update_model_defaults.sql
+    // This fallback is only used for brand new models added to the folder
+    // that haven't been configured in the DB yet.
+    // Default: neutral orientation (Y-up, no rotation, 1:1 scale)
 };
 
 // =============================================
@@ -559,153 +537,9 @@ const SUB_CATEGORY_MAP: Record<string, string> = {
 
 async function syncCategories() {
     try {
-        // 0. DATA MIGRATION: Handle Specific Renames & Merges to prevent duplicates
-        // This ensures 'Giải trí' becomes 'Thư giãn' and 'Phương tiện di chuyển' becomes 'Điểm đón taxi'
         const db = await getDbConnection();
-        await db.request().query(`
-            DECLARE @OldId INT, @NewId INT;
-
-            -- 1. Handle 'Entertainment': 'Giải trí' -> 'Thư giãn'
-            SELECT @OldId = CategoryID FROM Categories WHERE CategoryName = N'Giải trí';
-            SELECT @NewId = CategoryID FROM Categories WHERE CategoryName = N'Thư giãn';
-
-            IF @OldId IS NOT NULL
-            BEGIN
-                IF @NewId IS NOT NULL AND @NewId != @OldId
-                BEGIN
-                    -- Both exist: Move SubCats to New, Delete Old
-                    UPDATE SubCategories SET CategoryID = @NewId WHERE CategoryID = @OldId;
-                    DELETE FROM Categories WHERE CategoryID = @OldId;
-                END
-                ELSE
-                BEGIN
-                    -- Only Old exists: Rename
-                    UPDATE Categories SET CategoryName = N'Thư giãn' WHERE CategoryID = @OldId;
-                END
-            END
-
-            -- 2. Handle 'Transportation' (Main Cat) Removal & Merge into 'Service'
-            -- Rename 'Dịch vụ hành khách' -> 'Dịch vụ sân bay' first
-            UPDATE Categories SET CategoryName = N'Dịch vụ sân bay' WHERE CategoryName = N'Dịch vụ hành khách';
-
-            -- Delete redundant 'Thủ tục chuyến bay' if exists (User requested removal)
-            DELETE FROM Categories WHERE CategoryName = N'Thủ tục chuyến bay';
-
-            -- Delete 'Transportation' if exists (User requested removal)
-            DELETE FROM Categories WHERE CategoryName = N'Transportation';
-
-            -- Rename 'An ninh soi chiếu' -> 'An ninh soi chiếu quốc tế' (and update icon)
-            UPDATE SubCategories 
-            SET SubCategoryName = N'An ninh soi chiếu quốc tế', 
-                IconPath = 'DepartureFlightProcedures/int-screening-security.png'
-            WHERE IconPath LIKE '%/screening-security.png' OR SubCategoryName = N'An ninh soi chiếu';
-
-            -- Merge 'Điểm đón taxi' (Main Category) into 'Dịch vụ sân bay'
-            SET @OldId = NULL; SET @NewId = NULL;
-            SELECT @OldId = CategoryID FROM Categories WHERE CategoryName = N'Điểm đón taxi'; -- The Main Category to remove
-            SELECT @NewId = CategoryID FROM Categories WHERE CategoryName = N'Dịch vụ sân bay'; -- The Target
-
-            IF @OldId IS NOT NULL
-            BEGIN
-                IF @NewId IS NOT NULL
-                BEGIN
-                     -- Move references
-                    UPDATE SubCategories SET CategoryID = @NewId WHERE CategoryID = @OldId;
-                    -- Delete the redundant main category
-                    DELETE FROM Categories WHERE CategoryID = @OldId;
-                END
-                ELSE
-                BEGIN
-                    -- If 'Dịch vụ sân bay' doesn't exist yet (unlikely), just rename this one? 
-                    -- No, usually Service exists. If not, we leave it for now or rename it to Service?
-                    -- Better to just leave it and let Sync fix it, but explicit delete is requested.
-                    DELETE FROM Categories WHERE CategoryID = @OldId; -- Force delete if target missing (safe if subcats also deleted or null)
-                    -- Actually, better to just merge.
-                END
-            END
-
-            -- 3. CUSTOM MIGRATION: Move Check-in & Baggage Claim to New Procedures
-            -- We do this BEFORE deduplication to ensure IDs are in the right place.
-            DECLARE @DepProcID INT, @ArrProcID INT;
-
-            -- Get/Create 'Thủ tục chuyến bay đi'
-            SELECT @DepProcID = CategoryID FROM Categories WHERE CategoryName = N'Thủ tục chuyến bay đi';
-            IF @DepProcID IS NULL
-            BEGIN
-                INSERT INTO Categories (CategoryName, IconPath, DisplayOrder) VALUES (N'Thủ tục chuyến bay đi', NULL, 0);
-                SELECT @DepProcID = SCOPE_IDENTITY();
-            END
-            
-            -- Get/Create 'Thủ tục chuyến bay đến'
-            SELECT @ArrProcID = CategoryID FROM Categories WHERE CategoryName = N'Thủ tục chuyến bay đến';
-            IF @ArrProcID IS NULL
-            BEGIN
-                INSERT INTO Categories (CategoryName, IconPath, DisplayOrder) VALUES (N'Thủ tục chuyến bay đến', NULL, 0);
-                SELECT @ArrProcID = SCOPE_IDENTITY();
-            END
-
-            -- Move Check-in (Update CategoryID and IconPath)
-            UPDATE SubCategories
-            SET CategoryID = @DepProcID, IconPath = 'DepartureFlightProcedures/checkin-area.png'
-            WHERE (IconPath LIKE '%/checkin-area.png' OR SubCategoryName = N'Khu vực làm thủ tục') AND CategoryID != @DepProcID;
-
-            -- Move Baggage Claim (Update CategoryID and IconPath)
-            UPDATE SubCategories
-            SET CategoryID = @ArrProcID, IconPath = 'ArrivalFlightProcedures/baggage-claim-area.png'
-            WHERE (IconPath LIKE '%/baggage-claim-area.png' OR SubCategoryName = N'Khu vực nhận hành lý') AND CategoryID != @ArrProcID;
-
-            -- 4. ROBUST DEDUPLICATION SubCategories
-            -- Consolidate duplicate subcategories (same Name + Category) into one, moving assignments.
-            
-            DECLARE @DedupCatID INT;
-            DECLARE @DedupSubName NVARCHAR(500); -- Increased size
-            DECLARE @KeepSubID INT;
-            
-            DECLARE cur CURSOR FOR
-            SELECT CategoryID, SubCategoryName
-            FROM SubCategories
-            WHERE SubCategoryName IS NOT NULL
-            GROUP BY CategoryID, SubCategoryName
-            HAVING COUNT(*) > 1;
-            
-            OPEN cur;
-            FETCH NEXT FROM cur INTO @DedupCatID, @DedupSubName;
-            
-            WHILE @@FETCH_STATUS = 0
-            BEGIN
-                -- Find the ID to keep (e.g. Max ID)
-                SELECT @KeepSubID = MAX(SubCategoryID) 
-                FROM SubCategories 
-                WHERE CategoryID = @DedupCatID AND SubCategoryName = @DedupSubName;
-                
-                -- 1. Move assignments from duplicates to the kept one if no conflict
-                UPDATE AreaCategory
-                SET SubCategoryID = @KeepSubID
-                WHERE SubCategoryID IN (
-                    SELECT SubCategoryID FROM SubCategories 
-                    WHERE CategoryID = @DedupCatID AND SubCategoryName = @DedupSubName AND SubCategoryID != @KeepSubID
-                )
-                AND AreaListID NOT IN (
-                    SELECT AreaListID FROM AreaCategory WHERE SubCategoryID = @KeepSubID
-                );
-                
-                -- 2. Delete remaining assignments (conflicts that are already in target) from duplicates
-                DELETE FROM AreaCategory
-                WHERE SubCategoryID IN (
-                    SELECT SubCategoryID FROM SubCategories 
-                    WHERE CategoryID = @DedupCatID AND SubCategoryName = @DedupSubName AND SubCategoryID != @KeepSubID
-                );
-                
-                -- 3. Finally Delete the Duplicate SubCategories
-                DELETE FROM SubCategories
-                WHERE CategoryID = @DedupCatID AND SubCategoryName = @DedupSubName AND SubCategoryID != @KeepSubID;
-                
-                FETCH NEXT FROM cur INTO @DedupCatID, @DedupSubName;
-            END
-            
-            CLOSE cur;
-            DEALLOCATE cur;
-        `);
+        // 1. Run Structural Consolidation (Merges, Deduplication, Re-naming)
+        await db.request().execute('SP_SyncCategoryStructure');
 
         const categoryBaseDir = path.join(__dirname, '..', 'icon-category');
         if (!fs.existsSync(categoryBaseDir)) {
@@ -832,54 +666,24 @@ async function syncCategories() {
 app.get('/api/categories', async (req, res) => {
     try {
         const db = await getDbConnection();
+        const result = await db.request().execute('SP_GetCategoryTree');
+        
+        const cats = result.recordsets[0];
+        const subs = result.recordsets[1];
 
-        // Query from merged Categories table (CategoryName = VN)
-        const catsQuery = `
-            SELECT 
-                CategoryID,
-                CategoryName, -- VN
-                EN,
-                ZH,
-                JA,
-                KO,
-                IconPath,
-                DisplayOrder
-            FROM Categories
-            ORDER BY DisplayOrder, CategoryName
-        `;
-
-        // Query from merged SubCategories table (SubCategoryName = VN)
-        const subsQuery = `
-            SELECT 
-                SubCategoryID,
-                CategoryID,
-                SubCategoryName, -- VN
-                EN,
-                ZH,
-                JA,
-                KO,
-                IconPath,
-                DisplayOrder
-            FROM SubCategories
-            ORDER BY DisplayOrder, SubCategoryName
-        `;
-
-        const cats = await db.request().query(catsQuery);
-        const subs = await db.request().query(subsQuery);
-
-        const result = cats.recordset.map(c => ({
+        const tree = cats.map(c => ({
             id: c.CategoryID,
-            name: c.CategoryName, // Vietnamese name
-            vn: c.CategoryName,   // Map CategoryName to vn
+            name: c.VN,
+            vn: c.VN,
             en: c.EN,
             zh: c.ZH,
             ja: c.JA,
             ko: c.KO,
             icon: c.IconPath,
-            subcategories: subs.recordset.filter(s => s.CategoryID === c.CategoryID).map(s => ({
+            subcategories: subs.filter((s: any) => s.CategoryID === c.CategoryID).map((s: any) => ({
                 id: s.SubCategoryID,
-                name: s.SubCategoryName, // Vietnamese name
-                vn: s.SubCategoryName,   // Map SubCategoryName to vn
+                name: s.VN,
+                vn: s.VN,
                 en: s.EN,
                 zh: s.ZH,
                 ja: s.JA,
@@ -888,7 +692,7 @@ app.get('/api/categories', async (req, res) => {
             }))
         }));
 
-        res.json(result);
+        res.json(tree);
     } catch (err: any) {
         res.status(500).json({ error: err.message });
     }
@@ -1033,16 +837,19 @@ async function scanAndSyncModels() {
 
             const baseName = path.basename(file, ext); // e.g. "airplane"
             // Guess thumbnail: e.g. "airplane.jpg"
-            const expectedThumb = baseName + ".jpg";
-            const thumbPath = path.join(thumbDir, expectedThumb);
+            // Check for thumbnail in multiple formats (.png, .jpg)
             let hasThumb = null;
-
-            if (fs.existsSync(thumbPath)) {
-                hasThumb = expectedThumb;
+            for (const thumbExt of ['.png', '.jpg', '.jpeg']) {
+                const expectedThumb = baseName + thumbExt;
+                const thumbPath = path.join(thumbDir, expectedThumb);
+                if (fs.existsSync(thumbPath)) {
+                    hasThumb = expectedThumb;
+                    break;
+                }
             }
 
             // Defaults
-            const defaults = KNOWN_DEFAULTS[file] || { scale: [2, 2, 2], rotation: [90, 90, 1] };
+            const defaults = KNOWN_DEFAULTS[file] || { scale: [1, 1, 1], rotation: [0, 0, 0] };
 
             // Human readable name (Capitalize first letter, replace _ with space)
             const humanName = baseName.split('_')
@@ -1114,18 +921,14 @@ async function start() {
     app.get('/api/init-data', async (req, res) => {
         try {
             const db = await getDbConnection();
+            const result = await db.request().execute('SP_GetInitialData');
 
-            // 1. Fetch Languages (5 languages: VN, EN, ZH, JA, KO)
-            const langs = await db.request().query("SELECT * FROM MasterData_Languages WHERE IsActive = 1 ORDER BY SortOrder");
+            // 1. Languages (Result 0)
+            const languages = result.recordsets[0];
 
-            // 2. Fetch UI Translations (Column-based: VN, EN, ZH, JA, KO in one row)
-            const uiResult = await db.request().query(`
-                SELECT UIKeyId, KeyCode, KeyType, VN, EN, ZH, JA, KO 
-                FROM Translation_UI
-            `);
-
+            // 2. UI Translations (Result 1)
             const uiTranslations: any = {};
-            uiResult.recordset.forEach((row: any) => {
+            result.recordsets[1].forEach((row: any) => {
                 const key = (row.KeyCode || '').toLowerCase();
                 uiTranslations[key] = {
                     vn: row.VN,
@@ -1137,14 +940,8 @@ async function start() {
                 };
             });
 
-            // 3. Fetch Categories (Merged Table)
-            const catResult = await db.request().query(`
-                SELECT CategoryID, IconPath, CategoryName as VN, EN, ZH, JA, KO 
-                FROM Categories
-                ORDER BY DisplayOrder, CategoryName
-            `);
-
-            const categories = catResult.recordset.map((row: any) => ({
+            // 3. Categories (Result 2)
+            const categories = result.recordsets[2].map((row: any) => ({
                 id: row.CategoryID,
                 icon: row.IconPath,
                 names: {
@@ -1157,14 +954,8 @@ async function start() {
                 }
             }));
 
-            // 4. Fetch SubCategories (Merged Table)
-            const subCatResult = await db.request().query(`
-                SELECT SubCategoryID, CategoryID, IconPath, SubCategoryName as VN, EN, ZH, JA, KO 
-                FROM SubCategories
-                ORDER BY DisplayOrder, SubCategoryName
-            `);
-
-            const subcategories = subCatResult.recordset.map((row: any) => ({
+            // 4. SubCategories (Result 3)
+            const subcategories = result.recordsets[3].map((row: any) => ({
                 id: row.SubCategoryID,
                 categoryId: row.CategoryID,
                 icon: row.IconPath,
@@ -1178,14 +969,8 @@ async function start() {
                 }
             }));
 
-            // 5. Fetch Floors (Translation_Floors)
-            const floorResult = await db.request().query(`
-                SELECT FloorId, MappedinId, FloorCode, SortOrder, VN, EN, ZH, JA, KO 
-                FROM Translation_Floors
-                ORDER BY SortOrder
-            `);
-
-            const floors = floorResult.recordset.map((row: any) => ({
+            // 5. Floors (Result 4)
+            const floors = result.recordsets[4].map((row: any) => ({
                 id: row.FloorId,
                 mappedinId: row.MappedinId,
                 code: row.FloorCode,
@@ -1200,26 +985,9 @@ async function start() {
                 }
             }));
 
-            // 6. Fetch Locations (AreaList + Translations)
-            // JOIN with AreaCategory to get CategoryId if needed
-            // UPDATED: Join with AreaInformation for rich content
-            const locResult = await db.request().query(`
-                SELECT 
-                    AL.AreaListID, 
-                    AL.MappedinID, 
-                    AL.VN, AL.EN, AL.ZH, AL.JA, AL.KO,
-                    AI.RunUrl, AI.UIImageUrl, AI.MappedinImageUrl,
-                    AI.InformationVI, AI.InformationEN, AI.InformationZH, AI.InformationJA, AI.InformationKO,
-                    SC.CategoryID,
-                    SC.IconPath
-                FROM AreaList AL
-                LEFT JOIN AreaCategory AC ON AL.AreaListID = AC.AreaListID
-                LEFT JOIN SubCategories SC ON AC.SubCategoryID = SC.SubCategoryID
-                LEFT JOIN AreaInformation AI ON AL.AreaListID = AI.AreaListID
-            `);
-
+            // 6. Locations (Result 5)
             const locations: any = {};
-            locResult.recordset.forEach((row: any) => {
+            result.recordsets[5].forEach((row: any) => {
                 const mid = row.MappedinID;
                 if (!mid) return;
 
@@ -1238,7 +1006,6 @@ async function start() {
                     image: row.UIImageUrl || row.MappedinImageUrl || row.RunUrl,
                     uiImage: row.UIImageUrl,
                     editorImage: row.MappedinImageUrl,
-                    // Map localized descriptions
                     descriptions: {
                         vn: row.InformationVI,
                         vi: row.InformationVI,
@@ -1251,12 +1018,12 @@ async function start() {
             });
 
             res.json({
-                languages: langs.recordset,
+                languages,
                 ui: uiTranslations,
-                categories: categories,
-                subcategories: subcategories,
-                floors: floors,
-                locations: locations
+                categories,
+                subcategories,
+                floors,
+                locations
             });
 
         } catch (err: any) {
@@ -1270,83 +1037,32 @@ async function start() {
         try {
             const { mappedinId, categoryId, slug, logo, image, phone, website, socials, hours, translations } = req.body;
             const db = await getDbConnection();
-            const transaction = new sql.Transaction(db);
+            
+            const vn = translations['vn']?.name || null;
+            const en = translations['en']?.name || null;
+            const zh = translations['zh']?.name || null;
+            const ja = translations['ja']?.name || null;
+            const ko = translations['ko']?.name || null;
 
-            await transaction.begin();
+            const result = await db.request()
+                .input('MappedinId', sql.NVarChar(100), mappedinId)
+                .input('CategoryId', sql.Int, categoryId)
+                .input('SlugKey', sql.VarChar(255), slug)
+                .input('LogoUrl', sql.VarChar(500), logo)
+                .input('CoverImageUrl', sql.VarChar(500), image)
+                .input('PhoneNumber', sql.VarChar(50), phone)
+                .input('WebsiteLink', sql.VarChar(500), website)
+                .input('SocialMediaLinks', sql.NVarChar(sql.MAX), JSON.stringify(socials))
+                .input('OperatingHours', sql.NVarChar(sql.MAX), JSON.stringify(hours))
+                .input('VN', sql.NVarChar(255), vn)
+                .input('EN', sql.NVarChar(255), en)
+                .input('ZH', sql.NVarChar(255), zh)
+                .input('JA', sql.NVarChar(255), ja)
+                .input('KO', sql.NVarChar(255), ko)
+                .execute('SP_Admin_UpsertLocation');
 
-            try {
-                // 1. Upsert Master Data
-                const locCheck = await transaction.request()
-                    .input('MID', sql.NVarChar(100), mappedinId)
-                    .query("SELECT LocationId FROM MasterData_Locations WHERE MappedinId = @MID");
-
-                let locId;
-
-                if (locCheck.recordset.length > 0) {
-                    locId = locCheck.recordset[0].LocationId;
-                    await transaction.request()
-                        .input('LID', sql.BigInt, locId)
-                        .input('CID', sql.Int, categoryId)
-                        .input('Slug', sql.VarChar(255), slug)
-                        .input('Logo', sql.VarChar(500), logo)
-                        .input('Img', sql.VarChar(500), image)
-                        .input('Phone', sql.VarChar(50), phone)
-                        .input('Web', sql.VarChar(500), website)
-                        .input('Social', sql.NVarChar(sql.MAX), JSON.stringify(socials))
-                        .input('Hours', sql.NVarChar(sql.MAX), JSON.stringify(hours))
-                        .query(`
-                        UPDATE MasterData_Locations 
-                        SET CategoryId=@CID, SlugKey=@Slug, LogoUrl=@Logo, CoverImageUrl=@Img, 
-                            PhoneNumber=@Phone, WebsiteLink=@Web, SocialMediaLinks=@Social, OperatingHours=@Hours, ModifiedDate=GETDATE()
-                        WHERE LocationId=@LID
-                    `);
-                } else {
-                    const insertRes = await transaction.request()
-                        .input('MID', sql.NVarChar(100), mappedinId)
-                        .input('CID', sql.Int, categoryId)
-                        .input('Slug', sql.VarChar(255), slug)
-                        .input('Logo', sql.VarChar(500), logo)
-                        .input('Img', sql.VarChar(500), image)
-                        .input('Phone', sql.VarChar(50), phone)
-                        .input('Web', sql.VarChar(500), website)
-                        .input('Social', sql.NVarChar(sql.MAX), JSON.stringify(socials))
-                        .input('Hours', sql.NVarChar(sql.MAX), JSON.stringify(hours))
-                        .query(`
-                        INSERT INTO MasterData_Locations (MappedinId, CategoryId, SlugKey, LogoUrl, CoverImageUrl, PhoneNumber, WebsiteLink, SocialMediaLinks, OperatingHours)
-                        VALUES (@MID, @CID, @Slug, @Logo, @Img, @Phone, @Web, @Social, @Hours);
-                        SELECT SCOPE_IDENTITY() AS LocationId;
-                    `);
-                    locId = insertRes.recordset[0].LocationId;
-                }
-
-                // 2. Upsert Translations (merged into AreaList)
-                // We update the language columns in AreaList based on MappedinID
-                const vn = translations['vn']?.name || null;
-                const en = translations['en']?.name || null;
-                const zh = translations['zh']?.name || null;
-                const ja = translations['ja']?.name || null;
-                const ko = translations['ko']?.name || null;
-
-                await transaction.request()
-                    .input('MID', sql.NVarChar(100), mappedinId)
-                    .input('VN', sql.NVarChar(255), vn)
-                    .input('EN', sql.NVarChar(255), en)
-                    .input('ZH', sql.NVarChar(255), zh)
-                    .input('JA', sql.NVarChar(255), ja)
-                    .input('KO', sql.NVarChar(255), ko)
-                    .query(`
-                        UPDATE AreaList 
-                        SET VN=@VN, EN=@EN, ZH=@ZH, JA=@JA, KO=@KO
-                        WHERE MappedinID = @MID
-                    `);
-
-                await transaction.commit();
-                res.json({ success: true, locationId: locId });
-            } catch (err) {
-                await transaction.rollback();
-                throw err;
-            }
-
+            const locId = result.recordset[0].LocationId;
+            res.json({ success: true, locationId: locId });
         } catch (err: any) {
             console.error('Error saving location:', err);
             res.status(500).json({ error: err.message });
@@ -1374,81 +1090,17 @@ async function start() {
 
                 if (!mappedinId) continue;
 
-                // 1. Ensure AreaList exists (Upsert Name/Translations)
-                let areaListId: number;
-                const existingArea = await db.request()
-                    .input('mid', sql.NVarChar, mappedinId)
-                    .query('SELECT AreaListID FROM AreaList WHERE MappedinID = @mid');
-
-                if (existingArea.recordset.length === 0) {
-                    const insertRes = await db.request()
-                        .input('mid', sql.NVarChar(100), mappedinId)
-                        .input('name', sql.NVarChar(200), name)
-                        .query(`
-                            INSERT INTO AreaList (MappedinID, Name, VN, EN)
-                            OUTPUT INSERTED.AreaListID
-                            VALUES (@mid, @name, @name, @name)
-                        `);
-                    areaListId = insertRes.recordset[0].AreaListID;
-                    inserted++;
-                } else {
-                    areaListId = existingArea.recordset[0].AreaListID;
-                    // Always sync names from Mappedin as source of truth for base identity
+                try {
                     await db.request()
-                        .input('alid', sql.Int, areaListId)
-                        .input('name', sql.NVarChar(200), name)
-                        .query('UPDATE AreaList SET Name = @name, VN = @name WHERE AreaListID = @alid');
-                }
-
-                // 2. Sync AreaInformation (RunUrl Logic: Latest Source Wins)
-                const infoRes = await db.request()
-                    .input('alid', sql.Int, areaListId)
-                    .query('SELECT UIImageUrl, MappedinImageUrl, RunUrl FROM AreaInformation WHERE AreaListID = @alid');
-
-                if (infoRes.recordset.length === 0) {
-                    // New info record: Set everything to incoming Mappedin URL
-                    await db.request()
-                        .input('alid', sql.Int, areaListId)
-                        .input('info', sql.NVarChar(sql.MAX), description)
-                        .input('img', sql.NVarChar(500), incomingImg)
-                        .query(`
-                            INSERT INTO AreaInformation (AreaListID, InformationVI, RunUrl, MappedinImageUrl)
-                            VALUES (@alid, @info, @img, @img)
-                        `);
-                } else {
-                    const dbInfo = infoRes.recordset[0];
-                    const lastMappedinImg = dbInfo.MappedinImageUrl || '';
-                    const hasUIImage = !!dbInfo.UIImageUrl; // User đã upload ảnh riêng
-
-                    // LOGIC: If incoming Mappedin != last known Mappedin -> Mappedin changed.
-                    // Chỉ update MappedinImageUrl để track baseline.
-                    // KHÔNG ghi đè RunUrl nếu user đã upload ảnh riêng (UIImageUrl có giá trị)
-                    if (incomingImg && incomingImg !== lastMappedinImg) {
-                        if (hasUIImage) {
-                            // User đã có ảnh riêng -> Chỉ cập nhật MappedinImageUrl, KHÔNG động đến RunUrl
-                            await db.request()
-                                .input('alid', sql.Int, areaListId)
-                                .input('img', sql.NVarChar(500), incomingImg)
-                                .query(`
-                                    UPDATE AreaInformation 
-                                    SET MappedinImageUrl = @img
-                                    WHERE AreaListID = @alid
-                                `);
-                            console.log(`📸 Mappedin Editor change for ${mappedinId}. Updated MappedinImageUrl only (UIImageUrl exists).`);
-                        } else {
-                            // Chưa có ảnh UI -> Cập nhật cả RunUrl và MappedinImageUrl
-                            await db.request()
-                                .input('alid', sql.Int, areaListId)
-                                .input('img', sql.NVarChar(500), incomingImg)
-                                .query(`
-                                    UPDATE AreaInformation 
-                                    SET RunUrl = @img, MappedinImageUrl = @img
-                                    WHERE AreaListID = @alid
-                                `);
-                            console.log(`📸 Mappedin Editor change for ${mappedinId}. Updated RunUrl and MappedinImageUrl.`);
-                        }
-                        updated++;
-                    }
+                        .input('MappedinId', sql.NVarChar(100), mappedinId)
+                        .input('Name', sql.NVarChar(200), name)
+                        .input('Description', sql.NVarChar(sql.MAX), description)
+                        .input('ImageUrl', sql.NVarChar(500), incomingImg)
+                        .execute('SP_SyncMappedinLocation');
+                    
+                    updated++; // SP handles insert or update logic
+                } catch (e) {
+                    console.error(`Error syncing location ${mappedinId}:`, e);
                 }
             }
 

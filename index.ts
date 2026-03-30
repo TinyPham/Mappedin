@@ -427,14 +427,30 @@ class TranslationManager {
   }
 
   // Get Floor Name by MappedinId or FloorCode
-  static getFloorName(floorIdOrCode: string): string {
+  static getFloorName(floorIdOrCode: string, originalName: string = ''): string {
+    // 1. Try to find by MappedinId or Code
     const floor = this.data.floors?.find((f: any) =>
-      f.mappedinId === floorIdOrCode || f.code === floorIdOrCode
+      f.mappedinId === floorIdOrCode || (f.code && f.code === floorIdOrCode)
     );
     if (floor?.names?.[this.currentLang]) {
       return floor.names[this.currentLang];
     }
-    return floorIdOrCode;
+
+    // 2. FALLBACK: Check if it's Overview by name
+    const searchTarget = (originalName || floorIdOrCode || '').toLowerCase();
+    const isOverview = searchTarget.includes('overview') || 
+                       searchTarget.includes('tổng quan') || 
+                       searchTarget.includes('tong quan') ||
+                       searchTarget.includes('toàn cảnh');
+    
+    if (isOverview) {
+      const overviewFloor = this.data.floors?.find((f: any) => f.code === 'OVERVIEW');
+      if (overviewFloor?.names?.[this.currentLang]) {
+        return overviewFloor.names[this.currentLang];
+      }
+    }
+
+    return originalName || floorIdOrCode;
   }
 
   // Get Name for Map Object logic (Locations, Categories, SubCategories)
@@ -851,6 +867,7 @@ async function init() {
       const option = document.createElement("option");
       option.text = floor.name;
       option.value = floor.id;
+      option.dataset.originalName = floor.name; // Preserve original name for translation lookups
       floorSelector.appendChild(option);
     });
 
@@ -1199,7 +1216,7 @@ async function init() {
         category.className = "search-result-category";
 
         const floorObj = result.primaryObject.floor;
-        const floorName = floorObj ? TranslationManager.getFloorName(floorObj.mappedinId || floorObj.id || floorObj.code) : "";
+        const floorName = floorObj ? TranslationManager.getFloorName(floorObj.mappedinId || floorObj.id || floorObj.code, floorObj.name) : "";
         const count = result.objects.length;
 
         // Formatting: Only Floor + Count (localized)
@@ -2548,7 +2565,28 @@ async function init() {
     // Update each option's text
     Array.from(floorSelector.options).forEach((option: HTMLOptionElement) => {
       const floorId = option.value;
-      const floorData = floorMap.get(floorId);
+      // ALWAYS use the original name if we preserved it, otherwise fallback to current text
+      const nameForLookup = (option.dataset.originalName || option.text).toLowerCase();
+      
+      // Try to find translation by MappedinId
+      let floorData = floorMap.get(floorId);
+      
+      // FALLBACK: If MappedinId doesn't match (common for Overview), try to find by FloorCode or name
+      if (!floorData) {
+        const isOverview = nameForLookup.includes('overview') || 
+                           nameForLookup.includes('tổng quan') ||
+                           nameForLookup.includes('tong quan') ||
+                           nameForLookup.includes('toàn cảnh');
+        
+        if (isOverview) {
+          // Find specifically the row with FloorCode 'OVERVIEW'
+          floorData = floors.find((f: any) => f.code === 'OVERVIEW');
+        } else {
+          // Try matching by Code if available (some integrations use code as ID)
+          floorData = floors.find((f: any) => f.code === floorId);
+        }
+      }
+      
       if (floorData?.names?.[TranslationManager.currentLang]) {
         option.textContent = floorData.names[TranslationManager.currentLang];
       }
@@ -3909,7 +3947,11 @@ async function init() {
                 if (isOpposite && (current.distance + next.distance) < 12) {
                   shouldMerge = true;
                   // Sau khi gộp 2 cái rẽ ngược nhau, ta coi như đi thẳng
+                  // PHẢI xóa bearing + instruction để translateActionType không nhầm thành 'Rẽ trái/phải'
                   current.action.type = 'continue';
+                  current.action.bearing = '';
+                  current.action.instruction = '';
+                  if (current.instruction) current.instruction = '';
                   console.log(`  -> Gộp Rule 2: Merging opposite turns into Continue`);
                 }
               }
@@ -3937,11 +3979,51 @@ async function init() {
                 console.log(`  -> Gộp Rule 5: Micro-step merging (<3m)`);
               }
 
-              // 🏷️ Rule 6: Bước RẼ có quãng đường ngắn (< 8m) -> Gộp vào bước đi trước đó
-              // (Thường là sai số vẽ bản đồ hoặc rẽ xong đến đích ngay)
-              if (!shouldMerge && nextType === 'turn' && next.distance < 8) {
-                shouldMerge = true;
-                console.log(`  -> Gộp Rule 6: Merging short turn (<8m) into previous step`);
+              // 🏷️ Rule 6: Gộp bước rẽ thông minh
+              if (!shouldMerge && nextType === 'turn') {
+                if (next.distance < 3) {
+                  shouldMerge = true;
+                  console.log(`  -> Gộp Rule 6a: Micro-turn (<3m)`);
+                } else if (next.distance < 10) {
+                  // Thử tính góc rẽ thực tế từ tọa độ
+                  const nextNext = simplifiedInstructions[i + 1];
+                  const cCoord = current.coordinate;
+                  const nCoord = next.coordinate;
+                  const nnCoord = nextNext?.coordinate;
+
+                  console.log(`  [Rule 6 DEBUG] next.dist=${next.distance.toFixed(1)}, cCoord=${!!cCoord}, nCoord=${!!nCoord}, nnCoord=${!!nnCoord}, nextNext_type=${nextNext?.action?.type || 'N/A'}`);
+
+                  let canComputeAngle = false;
+                  let angleDiff = 999;
+
+                  if (cCoord && nCoord && nnCoord) {
+                    const dLat1 = (nCoord.latitude || 0) - (cCoord.latitude || 0);
+                    const dLng1 = (nCoord.longitude || 0) - (cCoord.longitude || 0);
+                    const dLat2 = (nnCoord.latitude || 0) - (nCoord.latitude || 0);
+                    const dLng2 = (nnCoord.longitude || 0) - (nCoord.longitude || 0);
+
+                    // Chỉ tính nếu cả 2 vector đủ dài (tránh chia cho 0)
+                    if ((Math.abs(dLat1) + Math.abs(dLng1)) > 0.0000001 && (Math.abs(dLat2) + Math.abs(dLng2)) > 0.0000001) {
+                      const h1 = Math.atan2(dLng1, dLat1) * 180 / Math.PI;
+                      const h2 = Math.atan2(dLng2, dLat2) * 180 / Math.PI;
+                      angleDiff = Math.abs(h2 - h1);
+                      if (angleDiff > 180) angleDiff = 360 - angleDiff;
+                      canComputeAngle = true;
+                      console.log(`  [Rule 6 Angle] h1=${h1.toFixed(1)}°, h2=${h2.toFixed(1)}°, diff=${angleDiff.toFixed(1)}°`);
+                    }
+                  }
+
+                  if (canComputeAngle && angleDiff < 30) {
+                    shouldMerge = true;
+                    current.action.type = 'continue';
+                    console.log(`  -> Gộp Rule 6b: Gentle angle (${angleDiff.toFixed(1)}° < 30°)`);
+                  } else if (!canComputeAngle && next.distance < 8) {
+                    // FALLBACK: Không tính được góc → gộp nếu < 8m (ngưỡng an toàn)
+                    shouldMerge = true;
+                    current.action.type = 'continue';
+                    console.log(`  -> Gộp Rule 6c: Fallback merge (no coord, dist=${next.distance.toFixed(1)}m < 8m)`);
+                  }
+                }
               }
 
               if (shouldMerge) {
@@ -3959,7 +4041,38 @@ async function init() {
             merged.push(current);
             console.log("✅ Intelligent Simplification complete. New steps count:", merged.length);
 
-            // STEP 2: DISTANCE SHIFTING (Dịch bước mang tính chi tiết)
+            // POST-MERGE: Gộp Departure + Continue liền kề thành 1 bước "Đi thẳng"
+            // (Xảy ra khi 2 bước rẽ ngược bị Rule 2 gộp thành Continue ngay sau Departure)
+            const postMerged: any[] = [];
+            for (let j = 0; j < merged.length; j++) {
+              const step = merged[j];
+              const stepType = (step.action?.type || '').toLowerCase();
+              const prevStep = postMerged[postMerged.length - 1];
+              const prevType = prevStep ? (prevStep.action?.type || '').toLowerCase() : '';
+
+              if ((prevType === 'departure' || prevType === 'start') && stepType === 'continue') {
+                // Gộp Continue vào Departure
+                prevStep.distance += step.distance;
+                console.log(`  -> Post-merge: Merging Continue into Departure (total dist: ${prevStep.distance.toFixed(1)})`);
+              } else {
+                postMerged.push(step);
+              }
+            }
+            if (postMerged.length < merged.length) {
+              console.log(`  ✅ Post-merge reduced steps: ${merged.length} -> ${postMerged.length}`);
+            }
+            merged.length = 0;
+            postMerged.forEach(s => merged.push(s));
+
+            // Lưu originalDistance TRƯỚC KHI dịch (dùng cho cumulativeDistance đồng bộ chấm xanh)
+            merged.forEach(step => {
+              step.originalDistance = step.distance || 0;
+            });
+
+            // DISTANCE SHIFTING cho hiển thị UI:
+            // Mappedin dùng distance = "khoảng cách ĐẾN điểm hành động"
+            // Người dùng muốn thấy = "khoảng cách SAU hành động" (giống Google Maps)
+            // Ví dụ: "Đi thẳng 22m" thay vì "Đi thẳng 0m"
             for (let i = 0; i < merged.length - 1; i++) {
               merged[i].distance = merged[i + 1].distance;
             }
@@ -4316,12 +4429,14 @@ async function init() {
             instructionsHtml += '</div>';
           }
 
-          // Store for demo
+          // Store for demo - dùng originalDistance (chưa bị dịch) để tính cumulativeDistance
+          // Đảm bảo ranh giới bước khớp với quỹ đạo thực tế của chấm xanh
           let cumulativeDist = 0;
           simplifiedInstructions.forEach(inst => {
             inst.cumulativeDistance = cumulativeDist;
-            cumulativeDist += inst.distance || 0;
+            cumulativeDist += inst.originalDistance || inst.distance || 0;
           });
+
           simplifiedInstructionsGlobal = simplifiedInstructions;
           routeTotalSecondsGlobal = routeTotalSeconds;
           (window as any).instructionTotalDistance = cumulativeDist; // Real scale for demo
@@ -5987,34 +6102,28 @@ async function init() {
     if (timeEl) timeEl.textContent = formatTime(simulatedElapsedMs);
     if (durationEl) durationEl.textContent = formatTime(simulatedTotalMs);
 
-    // Highlight bước tương ứng dựa trên quãng đường đã đi
-    if (simplifiedInstructionsGlobal && simplifiedInstructionsGlobal.length > 0) {
-      const uiScaleDist = (window as any).instructionTotalDistance || animationTotalDistance;
-      const traveled = (elapsed / totalDuration) * uiScaleDist;
+    // ==========================================
+    // Highlight bước tương ứng — dùng cumulativeDistance từ originalDistance (khớp quỹ đạo thực)
+    // ==========================================
+    if (simplifiedInstructionsGlobal && simplifiedInstructionsGlobal.length > 0 && animationState) {
+      const totalSteps = simplifiedInstructionsGlobal.length;
+      const uiScaleDist = (window as any).instructionTotalDistance || animationState.totalDistance;
+      const traveled = totalDuration > 0 ? (elapsed / totalDuration) * uiScaleDist : 0;
 
-      // 1. Xác định Blue Dot đang ở segment nào (dotStepIdx)
-      let dotStepIdx = 0;
-      for (let i = 1; i < simplifiedInstructionsGlobal.length; i++) {
+      // Xác định Blue Dot đang ở segment nào dựa trên originalDistance boundaries
+      let highlightIdx = 0;
+      for (let i = 1; i < totalSteps; i++) {
         const stepStartDist = simplifiedInstructionsGlobal[i].cumulativeDistance || 0;
         if (traveled >= stepStartDist) {
-          dotStepIdx = i;
+          highlightIdx = i;
         } else {
           break;
         }
       }
 
-      // 2. Dịch highlight lại 1 bước: highlightIndex = dotStepIdx - 1
-      // Khi đang đi đến hành động tiếp theo, highlight hành động trước đó
-      let highlightIdx = Math.max(0, dotStepIdx - 1);
-
-      // ƯU TIÊN: Nếu đang ở những mét đầu tiên, giữ Bước 1
-      if (traveled < 1.0) {
-        highlightIdx = 0;
-      }
-
-      // ƯU TIÊN: Nếu đã sát đích hoặc kết thúc, nhảy sang Bước Cuối (Arrival)
-      if (traveled >= uiScaleDist - 1.0) {
-        highlightIdx = simplifiedInstructionsGlobal.length - 1;
+      // Xử lý bước cuối (Kết thúc)
+      if (traveled >= uiScaleDist - 1.0 || (totalDuration > 0 && elapsed / totalDuration >= 0.98)) {
+        highlightIdx = totalSteps - 1;
       }
 
       if (highlightIdx !== currentSelectedStepIndex) {
@@ -6974,8 +7083,9 @@ async function init() {
     const coord = meta.originalCoordinate;
     if (!coord) return;
 
-    // Helper to round to 1 decimal place
-    const round1 = (nums: number[]) => nums.map(n => parseFloat(n.toFixed(1)));
+    // Helper: round rotation to 1 decimal (degrees), scale to 6 decimals (preserve tiny values like 0.002)
+    const roundRotation = (nums: number[]) => nums.map(n => parseFloat(n.toFixed(1)));
+    const roundScale = (nums: number[]) => nums.map(n => parseFloat(n.toFixed(6)));
 
     const payload = {
       uuid: meta.uuid,
@@ -6985,8 +7095,8 @@ async function init() {
       latitude: coord.latitude,
       longitude: coord.longitude,
       floorId: meta.floorId || (coord as any).floorId,
-      rotation: round1(meta.rotation),
-      scale: round1(meta.scale),
+      rotation: roundRotation(meta.rotation),
+      scale: roundScale(meta.scale),
       displayWebsite: meta.displayWebsite || 0,
       thumb: meta.thumb // Sync thumbnail to DB
     };
@@ -7174,9 +7284,15 @@ async function init() {
 
   // Helper: Update Model Transform (Reliable Live logic)
   let isUpdatingTransform = false;
+  let pendingTransformUpdate: { isLive: boolean; forceAPI: boolean } | null = null;
   const updateModelTransform = async (isLive = false, forceAPI = false) => {
-    if (!activeModelInstance || isUpdatingTransform) return;
+    if (!activeModelInstance) return;
 
+    // If already updating, queue the latest request to run after current finishes
+    if (isUpdatingTransform) {
+      pendingTransformUpdate = { isLive, forceAPI };
+      return;
+    }
 
     const oldId = (activeModelInstance as any).id;
     const meta = MODEL_ID_REGISTRY.get(oldId);
@@ -7227,31 +7343,32 @@ async function init() {
       floorId: currentFloor.id
     };
 
+    // Check if position actually changed (lat/lon)
+    const oldLat = meta.originalCoordinate?.latitude ?? 0;
+    const oldLon = meta.originalCoordinate?.longitude ?? 0;
+    const positionChanged = Math.abs(newLat - oldLat) > 0.0000001 || Math.abs(newLon - oldLon) > 0.0000001;
 
     isUpdatingTransform = true;
     try {
-      // RELIABLE REPLACEMENT (Standard for Mappedin v6 live move)
-      const oldInstance = activeModelInstance;
-      const newInstance = await mapView.Models.add(newCoord, url, {
-        interactive: true,
-        scale: newScale,
-        rotation: newRot
-      });
+      if (!positionChanged) {
+        // FAST PATH: Use updateState for rotation/scale only (no remove+add = no flicker!)
+        try {
+          mapView.updateState(activeModelInstance, {
+            rotation: newRot,
+            scale: newScale
+          });
+        } catch (e) {
+          console.warn("updateState failed, falling back to remove+add", e);
+          // Fallback to remove+add if updateState doesn't work for this model type
+          await replaceModelInstance(activeModelInstance, newCoord, url, newRot, newScale, currentUUID, oldId, newMeta);
+        }
 
-      // Attach same properties
-      (newInstance as any).uuid = currentUUID;
-      (newInstance as any).url = url;
-      (newInstance as any).originalCoordinate = newCoord;
-
-      // Swap in Registry
-      mapView.Models.remove(oldInstance);
-      MODEL_ID_REGISTRY.delete(oldId);
-      MODEL_ID_REGISTRY.set(newInstance.id, newMeta);
-      MODEL_INSTANCE_REGISTRY.set(currentUUID, newInstance);
-
-      // Safety: Only update activeModelInstance if it hasn't been cleared/changed
-      if (activeModelInstance === oldInstance) {
-        activeModelInstance = newInstance;
+        // Update registry metadata
+        MODEL_ID_REGISTRY.set(oldId, newMeta);
+        MODEL_INSTANCE_REGISTRY.set(currentUUID, activeModelInstance);
+      } else {
+        // SLOW PATH: Position changed, must remove+add to reposition
+        await replaceModelInstance(activeModelInstance, newCoord, url, newRot, newScale, currentUUID, oldId, newMeta);
       }
 
       // Persistence
@@ -7265,7 +7382,45 @@ async function init() {
       console.warn("Transform update failed", e);
     } finally {
       isUpdatingTransform = false;
+
+      // If there was a pending update while we were busy, apply it now
+      if (pendingTransformUpdate) {
+        const pending = pendingTransformUpdate;
+        pendingTransformUpdate = null;
+        updateModelTransform(pending.isLive, pending.forceAPI);
+      }
     }
+  };
+
+  // Helper: Replace model instance (remove old + add new) - used only when position changes
+  const replaceModelInstance = async (
+    oldInstance: any, newCoord: any, url: string,
+    newRot: [number, number, number], newScale: [number, number, number],
+    currentUUID: string, oldId: string, newMeta: any
+  ) => {
+    const newInstance = await mapView.Models.add(newCoord, url, {
+      interactive: true,
+      scale: newScale,
+      rotation: newRot
+    });
+
+    // Attach same properties
+    (newInstance as any).uuid = currentUUID;
+    (newInstance as any).url = url;
+    (newInstance as any).originalCoordinate = newCoord;
+
+    // Swap in Registry
+    MODEL_ID_REGISTRY.delete(oldId);
+    MODEL_ID_REGISTRY.set(newInstance.id, newMeta);
+    MODEL_INSTANCE_REGISTRY.set(currentUUID, newInstance);
+
+    // Safety: Only update activeModelInstance if it hasn't been cleared/changed
+    if (activeModelInstance === oldInstance) {
+      activeModelInstance = newInstance;
+    }
+
+    // Remove old instance AFTER new one is visible
+    mapView.Models.remove(oldInstance);
   };
 
 
@@ -7275,11 +7430,19 @@ async function init() {
   if (inputLat) inputLat.addEventListener("input", () => updateModelTransform(true));
   if (inputLon) inputLon.addEventListener("input", () => updateModelTransform(true));
 
-  // Improved Slider Logic
+  // Improved Slider Logic with RAF throttling for smooth rotation
+  let sliderRAFPending = false;
   const bindSlider = (slider: HTMLInputElement, input: HTMLInputElement) => {
     slider.addEventListener("input", () => {
       input.value = slider.value;
-      updateModelTransform(true);
+      // Throttle updates to once per animation frame for smooth dragging
+      if (!sliderRAFPending) {
+        sliderRAFPending = true;
+        requestAnimationFrame(() => {
+          sliderRAFPending = false;
+          updateModelTransform(true);
+        });
+      }
     });
 
     input.addEventListener("input", () => {
@@ -8623,6 +8786,15 @@ function initAdminUI(allMapObjects: any[]) {
   };
 
 
+  // Name inputs
+  const nameInputs = {
+    vi: document.getElementById('name-vi') as HTMLInputElement,
+    en: document.getElementById('name-en') as HTMLInputElement,
+    zh: document.getElementById('name-zh') as HTMLInputElement,
+    ja: document.getElementById('name-ja') as HTMLInputElement,
+    ko: document.getElementById('name-ko') as HTMLInputElement
+  };
+
   // Load Data
   const loadAreaData = async (id: string) => {
     // 1. Get DB Data
@@ -8632,20 +8804,30 @@ function initAdminUI(allMapObjects: any[]) {
     const rawObj = allMapObjects.find(o => o.id === id);
     let nativeDesc = "";
     let nativeImage = "";
+    let nativeName = "";
 
     if (rawObj) {
       nativeDesc = rawObj.description || "";
-      // Extract image from object
-      if (rawObj.image) {
-        nativeImage = typeof rawObj.image === 'string' ? rawObj.image : (rawObj.image.url || rawObj.image.src || "");
-      } else if (rawObj.images && rawObj.images.length > 0) {
-        const first = rawObj.images[0];
-        nativeImage = typeof first === 'string' ? first : (first.url || first.src || "");
+      nativeName = rawObj.name || "";
+
+      // Extraction Logic
+      if (rawObj.images && Array.isArray(rawObj.images) && rawObj.images.length > 0) {
+        nativeImage = rawObj.images[0].url || rawObj.images[0];
+      } else if (rawObj.media && Array.isArray(rawObj.media) && rawObj.media.length > 0) {
+        nativeImage = rawObj.media[0].url || rawObj.media[0];
+      } else {
+        nativeImage = rawObj.logo?.original || rawObj.logo?.large || rawObj.logo?.medium || rawObj.logo?.small || rawObj.logo || rawObj.image || rawObj.x_ray_image_url || "";
+      }
+
+      // Ensure nativeImage is a string
+      if (typeof nativeImage !== 'string') {
+        nativeImage = (nativeImage as any).url || (nativeImage as any).src || "";
       }
     }
 
     // Default values from DB
     let descVI = "", descEN = "", descZH = "", descJA = "", descKO = "";
+    let nameVI = "", nameEN = "", nameZH = "", nameJA = "", nameKO = "";
     let img = "";
 
     if (locData) {
@@ -8657,8 +8839,16 @@ function initAdminUI(allMapObjects: any[]) {
         descJA = locData.descriptions.ja || "";
         descKO = locData.descriptions.ko || "";
       } else if (locData.description) {
-        // Fallback legacy
         descVI = locData.description;
+      }
+
+      // Names (From AreaList cache)
+      if (locData.names) {
+        nameVI = locData.names.vn || "";
+        nameEN = locData.names.en || "";
+        nameZH = locData.names.zh || "";
+        nameJA = locData.names.ja || "";
+        nameKO = locData.names.ko || "";
       }
 
       // Image
@@ -8666,22 +8856,27 @@ function initAdminUI(allMapObjects: any[]) {
     }
 
     // SMART SYNC POLICY:
-    // If DB image is "fake" (Unsplash) or empty, use Native Mappedin Image
-    if (!img || img.includes("unsplash.com") || img === "NULL") {
-      if (nativeImage) img = nativeImage;
+    // Mappedin CDN URLs use SAS tokens that expire after a few hours.
+    // If the DB has a CDN URL, it's almost certainly expired - ALWAYS use SDK's fresh URL.
+    const isExpiredCdnUrl = img && img.includes("cdn.mappedin.com");
+    const isFakeOrEmpty = !img || img.includes("unsplash.com") || img === "NULL";
+
+    if (isFakeOrEmpty || isExpiredCdnUrl) {
+      if (nativeImage) {
+        img = nativeImage;
+        console.log("Using fresh SDK image instead of expired DB URL");
+      }
     }
 
     // If DB description is empty or looks fake (starts with Lorem), use Native
-    // We'll populate VI tab with native description if VI is empty or fake
     if (!descVI || descVI.startsWith("Lorem") || descVI === "NULL") {
       if (nativeDesc) descVI = nativeDesc;
     }
 
     // AUTO-TRANSLATE (REAL API)
-    // If other languages are empty, translate from VI
     if (descVI && (!descEN || !descZH || !descJA || !descKO)) {
       const translate = async (text: string, to: string, elId: string) => {
-        if ((document.getElementById(elId) as HTMLTextAreaElement).value) return; // Skip if already filled
+        if ((document.getElementById(elId) as HTMLTextAreaElement).value) return;
 
         (document.getElementById(elId) as HTMLTextAreaElement).value = "Translating...";
         try {
@@ -8696,18 +8891,31 @@ function initAdminUI(allMapObjects: any[]) {
           }
         } catch (e) {
           console.error("Translation failed", e);
-          (document.getElementById(elId) as HTMLTextAreaElement).value = text; // Fallback to copy
+          (document.getElementById(elId) as HTMLTextAreaElement).value = text;
         }
       };
 
-      // Fire translations in parallel
       if (!descEN) translate(descVI, 'en', 'info-en');
       if (!descZH) translate(descVI, 'zh-CN', 'info-zh');
       if (!descJA) translate(descVI, 'ja', 'info-ja');
       if (!descKO) translate(descVI, 'ko', 'info-ko');
     }
 
-    // Populate UI
+    // Policy for Names: If DB names are empty, use Native Mappedin Name
+    if (!nameVI) nameVI = nativeName;
+    if (!nameEN) nameEN = nativeName;
+    if (!nameZH) nameZH = nativeName;
+    if (!nameJA) nameJA = nativeName;
+    if (!nameKO) nameKO = nativeName;
+
+    // Populate UI - Names
+    if (nameInputs.vi) nameInputs.vi.value = nameVI;
+    if (nameInputs.en) nameInputs.en.value = nameEN;
+    if (nameInputs.zh) nameInputs.zh.value = nameZH;
+    if (nameInputs.ja) nameInputs.ja.value = nameJA;
+    if (nameInputs.ko) nameInputs.ko.value = nameKO;
+
+    // Populate UI - Descriptions
     (document.getElementById('info-vi') as HTMLTextAreaElement).value = descVI;
     (document.getElementById('info-en') as HTMLTextAreaElement).value = descEN;
     (document.getElementById('info-zh') as HTMLTextAreaElement).value = descZH;
@@ -8751,16 +8959,26 @@ function initAdminUI(allMapObjects: any[]) {
     });
   }
 
-  // Image Upload Handling
+  // Image Preview (Simplified)
   const updateImagePreview = (url: string) => {
-    if (url) {
+    console.log("Loading preview:", url);
+    if (url && url.length > 5) {
       imgPreview.src = url;
       imgPreview.style.display = 'block';
       noImageText.style.display = 'none';
     } else {
+      imgPreview.src = "";
       imgPreview.style.display = 'none';
       noImageText.style.display = 'block';
+      noImageText.textContent = "No Image";
     }
+  };
+
+  imgPreview.onerror = () => {
+    console.warn("Direct image load failed:", imgPreview.src);
+    imgPreview.style.display = 'none';
+    noImageText.style.display = 'block';
+    noImageText.textContent = "Lỗi tải ảnh";
   };
 
   imgInput.addEventListener('input', () => updateImagePreview(imgInput.value));
@@ -8836,6 +9054,11 @@ function initAdminUI(allMapObjects: any[]) {
 
       const payload = {
         id: id,
+        name_vi: nameInputs.vi?.value || '',
+        name_en: nameInputs.en?.value || '',
+        name_zh: nameInputs.zh?.value || '',
+        name_ja: nameInputs.ja?.value || '',
+        name_ko: nameInputs.ko?.value || '',
         vn: (document.getElementById('info-vi') as HTMLTextAreaElement).value,
         en: (document.getElementById('info-en') as HTMLTextAreaElement).value,
         zh: (document.getElementById('info-zh') as HTMLTextAreaElement).value,

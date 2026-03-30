@@ -9,8 +9,42 @@ dotenv.config({ path: path.join(__dirname, '../.env') });
 
 let config: sql.config | null = null;
 
-// 1. ƯU TIÊN CAO NHẤT: Biến môi trường (Cho Render/Production)
-if (process.env.DB_SERVER) {
+// 1. ƯU TIÊN: Appsettings.json (Dành cho Localhost - Máy của bạn)
+let appSettingsPath = path.join(__dirname, 'appsettings.json');
+if (!fs.existsSync(appSettingsPath)) {
+    appSettingsPath = path.join(__dirname, '..', 'appsettings.json');
+}
+
+if (fs.existsSync(appSettingsPath)) {
+    try {
+        const appSettings = JSON.parse(fs.readFileSync(appSettingsPath, 'utf-8'));
+        const connectionString = appSettings.ConnectionStrings?.DefaultConnection;
+
+        if (connectionString) {
+            console.log('🏠 [Local] Using appsettings.json for DB');
+            const getPart = (key: string) => {
+                const match = connectionString.match(new RegExp(`${key}=([^;]+)`, 'i'));
+                return match ? match[1] : null;
+            };
+
+            config = {
+                server: getPart('Server') || 'localhost',
+                database: getPart('Database') || 'MappedIn3DModels',
+                user: getPart('User Id') || 'sa',
+                password: getPart('Password') || '',
+                options: {
+                    encrypt: getPart('Encrypt') === 'true',
+                    trustServerCertificate: getPart('TrustServerCertificate') === 'true'
+                }
+            };
+        }
+    } catch (e) {
+        console.warn('⚠️ Parse appsettings fail:', e);
+    }
+}
+
+// 2. DỰ PHÒNG: Biến môi trường (Dành cho Render Production)
+if (!config && process.env.DB_SERVER) {
     console.log('🌐 [Production] Using Environment Variables for DB');
     config = {
         server: process.env.DB_SERVER,
@@ -22,42 +56,6 @@ if (process.env.DB_SERVER) {
             trustServerCertificate: true
         }
     };
-}
-
-// 2. ƯU TIÊN THẤP HƠN: Appsettings.json (Cho Localhost)
-if (!config) {
-    let appSettingsPath = path.join(__dirname, 'appsettings.json');
-    if (!fs.existsSync(appSettingsPath)) {
-        appSettingsPath = path.join(__dirname, '..', 'appsettings.json');
-    }
-
-    if (fs.existsSync(appSettingsPath)) {
-        try {
-            const appSettings = JSON.parse(fs.readFileSync(appSettingsPath, 'utf-8'));
-            const connectionString = appSettings.ConnectionStrings?.DefaultConnection;
-
-            if (connectionString) {
-                console.log('🏠 [Local] Using appsettings.json for DB');
-                const getPart = (key: string) => {
-                    const match = connectionString.match(new RegExp(`${key}=([^;]+)`, 'i'));
-                    return match ? match[1] : null;
-                };
-
-                config = {
-                    server: getPart('Server') || 'localhost',
-                    database: getPart('Database') || 'MappedIn3DModels',
-                    user: getPart('User Id') || 'sa',
-                    password: getPart('Password') || '',
-                    options: {
-                        encrypt: getPart('Encrypt') === 'true',
-                        trustServerCertificate: getPart('TrustServerCertificate') === 'true'
-                    }
-                };
-            }
-        } catch (e) {
-            console.warn('⚠️ Parse appsettings fail:', e);
-        }
-    }
 }
 
 // 3. MẶC ĐỊNH CUỐI CÙNG
