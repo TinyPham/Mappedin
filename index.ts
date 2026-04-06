@@ -6866,7 +6866,9 @@ async function init() {
     rotation: number[];
     scale: number[];
     originalCoordinate: any;
-    floorId?: string; // Add floorId explicitly
+    floorId?: string; // Raw FloorId from DB (may be comma-separated)
+    homeFloorId?: string; // Actual floor of the real model instance
+    visibleFloorIds?: string[]; // Parsed list of ALL floors this model should appear on
     thumb?: string; // Add thumb to metadata
     displayWebsite?: number | boolean; // 1/true = visible, 0/false = hidden
   }
@@ -7203,12 +7205,18 @@ async function init() {
         // Skip duplicate check if we trust DB ID
         if (MODEL_INSTANCE_REGISTRY.has(m.uuid)) continue;
 
-        // Resolve Floor object
+        // MULTI-FLOOR SUPPORT: Parse comma-separated FloorId
+        // First ID = "home floor" (real model), remaining IDs = shadow copy targets
+        const rawFloorId = (m.floorId || "").toString();
+        const floorIdParts = rawFloorId.split(',').map((id: string) => id.trim()).filter((id: string) => id !== "");
+        const homeFloorId = floorIdParts.length > 0 ? floorIdParts[0] : m.floorId;
+
+        // Resolve Floor object (use HOME floor for the real instance)
         const floors = mapData.getByType("floor");
-        let targetFloor = floors.find((f: any) => f.id === m.floorId);
+        let targetFloor = floors.find((f: any) => f.id === homeFloorId);
 
         // Specific fallback for User's Floor 2 ID
-        if (!targetFloor && m.floorId === "m_d4b5674c0b15e099") {
+        if (!targetFloor && homeFloorId === "m_d4b5674c0b15e099") {
           targetFloor = floors.find((f: any) => {
             const n = (f.name || "").toLowerCase();
             return n.includes("tầng 2") || n.includes("tang 2") || n.includes("floor 2");
@@ -7218,7 +7226,7 @@ async function init() {
         // Final fallback
         targetFloor = targetFloor || mapView.currentFloor;
 
-        console.log(`📍 Placing model ${m.name || m.uuid} on floor: ${targetFloor?.name} (${targetFloor?.id})`);
+        console.log(`📍 Placing model ${m.name || m.uuid} on floor: ${targetFloor?.name} (${targetFloor?.id})${floorIdParts.length > 1 ? ` (+${floorIdParts.length - 1} shadow floors)` : ''}`);
 
         const coord = mapView.createCoordinate(m.latitude, m.longitude, targetFloor);
 
@@ -7259,7 +7267,9 @@ async function init() {
             rotation: m.rotation,
             scale: m.scale,
             originalCoordinate: coord,
-            floorId: targetFloor?.id || m.floorId,
+            floorId: rawFloorId, // KEEP RAW (comma-separated) for DB persistence
+            homeFloorId: targetFloor?.id || homeFloorId, // Actual floor of real instance
+            visibleFloorIds: floorIdParts, // Parsed list of ALL floors this model should appear on
             displayWebsite: m.displayWebsite,
             thumb: m.thumb || m.thumbnail
           });
@@ -7275,8 +7285,8 @@ async function init() {
       console.error("❌ Error loading from API:", e);
     }
 
-    // NEW: After loading all models, ensure Overview models are visible on current floor
-    showOverviewModelsOnAllFloors();
+    // NEW: After loading all models, create shadow copies for cross-floor models
+    syncCrossFloorModels();
   };
 
   // ============================================
@@ -7287,44 +7297,58 @@ async function init() {
   // SOLUTION: Create temporary "shadow copies" of Overview models on the current floor.
   // When floor changes, remove old shadows and create new ones.
 
-  const overviewShadowInstances: any[] = []; // Track shadow copies for cleanup
+  const crossFloorShadowInstances: any[] = []; // Track shadow copies for cleanup
 
-  const showOverviewModelsOnAllFloors = async () => {
+  const syncCrossFloorModels = async () => {
     const overviewId = overviewFloor?.id;
-    if (!overviewId) return;
-
     const currentFloorId = mapView.currentFloor.id;
+    const currentFloor = mapView.currentFloor;
 
     // Step 1: Remove ALL existing shadow copies from previous floor
-    for (const shadow of overviewShadowInstances) {
+    for (const shadow of crossFloorShadowInstances) {
       try {
         mapView.Models.remove(shadow);
       } catch (e) { /* already removed or invalid */ }
     }
-    overviewShadowInstances.length = 0; // Clear array
+    crossFloorShadowInstances.length = 0; // Clear array
 
-    // Step 2: If we ARE on Overview, originals are shown by SDK - no shadows needed
-    if (currentFloorId === overviewId) {
-      console.log(`✈️ On Overview floor - originals visible, no shadows needed.`);
-      return;
-    }
-
-    // Step 3: For each model on the Overview floor, create a shadow copy on the CURRENT floor
-    const currentFloor = mapView.currentFloor;
     let shadowCount = 0;
 
-    // Collect Overview models first (iterate registry)
-    const overviewModels: { meta: any; instance: any }[] = [];
+    // Step 2: Collect models that need shadow copies on this floor
+    // A model needs a shadow on this floor if:
+    //   (a) It lives on the Overview floor (always visible everywhere), OR
+    //   (b) Its visibleFloorIds list includes the current floor (but current floor != home floor)
+    const modelsNeedingShadow: { meta: any; instance: any }[] = [];
     MODEL_ID_REGISTRY.forEach((meta) => {
-      if (meta.floorId !== overviewId) return;
+      const homeFloor = meta.homeFloorId || meta.floorId;
+
+      // Don't shadow if we're already on the model's home floor (original is visible)
+      if (homeFloor === currentFloorId) return;
+
+      let needsShadow = false;
+
+      // (a) Overview models: visible on ALL floors
+      if (overviewId && homeFloor === overviewId) {
+        needsShadow = true;
+      }
+
+      // (b) Multi-floor models: check if current floor is in the visibility list
+      if (meta.visibleFloorIds && meta.visibleFloorIds.length > 1) {
+        if (meta.visibleFloorIds.includes(currentFloorId)) {
+          needsShadow = true;
+        }
+      }
+
+      if (!needsShadow) return;
+
       const instance = MODEL_INSTANCE_REGISTRY.get(meta.uuid);
       if (!instance) return;
-      overviewModels.push({ meta, instance });
+      modelsNeedingShadow.push({ meta, instance });
     });
 
-    for (const { meta, instance } of overviewModels) {
+    // Step 3: Create shadow copies on the CURRENT floor
+    for (const { meta, instance } of modelsNeedingShadow) {
       try {
-        // Create coordinate on CURRENT floor (same lat/lon, different floor)
         const origCoord = meta.originalCoordinate;
         if (!origCoord) continue;
 
@@ -7359,20 +7383,20 @@ async function init() {
         (shadowModel as any)._isShadow = true;
         (shadowModel as any)._sourceUUID = meta.uuid;
 
-        overviewShadowInstances.push(shadowModel);
+        crossFloorShadowInstances.push(shadowModel);
         shadowCount++;
       } catch (e) {
-        console.warn(`Could not create shadow for Overview model ${meta.uuid}:`, e);
+        console.warn(`Could not create shadow for model ${meta.uuid}:`, e);
       }
     }
 
     if (shadowCount > 0) {
-      console.log(`✈️ Created ${shadowCount} shadow copies of Overview models on floor: ${currentFloorId}`);
+      console.log(`✈️ Created ${shadowCount} shadow copies on floor: ${currentFloorId}`);
     }
   };
 
   // Expose globally for floor-change handler
-  (window as any).syncModelInstancesVisibility = showOverviewModelsOnAllFloors;
+  (window as any).syncModelInstancesVisibility = syncCrossFloorModels;
 
   // Helper: Update Model Transform
   // NEW: Debounced API Save
@@ -7416,7 +7440,7 @@ async function init() {
     if (isNaN(newLat)) newLat = meta.originalCoordinate.latitude;
     if (isNaN(newLon)) newLon = meta.originalCoordinate.longitude;
 
-    const currentFloor = mapData.getByType("floor").find((f: any) => f.id === (meta.floorId || mapView.currentFloor.id)) || mapView.currentFloor;
+    const currentFloor = mapData.getByType("floor").find((f: any) => f.id === (meta.homeFloorId || meta.floorId || mapView.currentFloor.id)) || mapView.currentFloor;
     const newCoord = mapView.createCoordinate(newLat, newLon, currentFloor);
 
 
@@ -7439,7 +7463,7 @@ async function init() {
       rotation: newRot,
       scale: newScale,
       originalCoordinate: newCoord,
-      floorId: currentFloor.id
+      floorId: meta.floorId // PRESERVE raw comma-separated floorId for DB
     };
 
     // Check if position actually changed (lat/lon)
