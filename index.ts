@@ -2734,6 +2734,14 @@ async function init() {
       // Cập nhật visibility của UI controls (ví hạn ẩn nút thêm model/phân loại khi ở overview)
       updateUIVisibility();
 
+      // NEW: Create shadow copies of Overview models on this floor
+      // Small delay to ensure floor render completes before adding shadows
+      if (typeof (window as any).syncModelInstancesVisibility === 'function') {
+        setTimeout(() => {
+          (window as any).syncModelInstancesVisibility();
+        }, 300);
+      }
+
       // AUTO-REHIGHLIGHT: If a subcategory is active, re-pin locations on this floor
       if (activeSubCategoryId) {
         reapplyActiveSubCategoryPins();
@@ -7188,13 +7196,9 @@ async function init() {
       for (const m of models) {
         if (isViewOnly) {
           // DATABASE-DRIVEN VISIBILITY: Only show models explicitly marked for website
-          // Handle both 1 (number) and true (boolean) for robustness
           const shouldShow = m.displayWebsite == 1 || m.displayWebsite === true;
           if (!shouldShow) continue;
-          console.log(`👁️ Displaying model on website: ${m.name || m.uuid}`);
         }
-
-
 
         // Skip duplicate check if we trust DB ID
         if (MODEL_INSTANCE_REGISTRY.has(m.uuid)) continue;
@@ -7216,8 +7220,6 @@ async function init() {
 
         console.log(`📍 Placing model ${m.name || m.uuid} on floor: ${targetFloor?.name} (${targetFloor?.id})`);
 
-
-
         const coord = mapView.createCoordinate(m.latitude, m.longitude, targetFloor);
 
         // Ensure URL is absolute or resolve from asset map
@@ -7228,7 +7230,6 @@ async function init() {
         };
 
         let finalUrl = m.url;
-        // If it's a known asset ID, use that instead of a URL
         if (modelAssetMap[finalUrl]) {
           finalUrl = modelAssetMap[finalUrl];
         } else if (finalUrl && finalUrl.startsWith("./")) {
@@ -7237,43 +7238,141 @@ async function init() {
           finalUrl = `${SERVER_URL}/${finalUrl}`;
         }
 
+        try {
+          const model = await mapView.Models.add(coord, finalUrl, {
+            interactive: true,
+            scale: m.scale,
+            rotation: m.rotation,
+          });
 
-        const model = await mapView.Models.add(coord, finalUrl, {
-          interactive: true,
-          scale: m.scale,
-          rotation: m.rotation,
-        });
+          // Re-attach Properties
+          (model as any).url = finalUrl;
+          (model as any).uuid = m.uuid;
+          (model as any).originalCoordinate = coord;
 
+          // Register Metadata
+          MODEL_ID_REGISTRY.set(model.id, {
+            url: m.url,
+            uuid: m.uuid,
+            name: m.name,
+            desc: m.desc,
+            rotation: m.rotation,
+            scale: m.scale,
+            originalCoordinate: coord,
+            floorId: targetFloor?.id || m.floorId,
+            displayWebsite: m.displayWebsite,
+            thumb: m.thumb || m.thumbnail
+          });
 
-        // Re-attach Properties
-        (model as any).url = finalUrl;
-        (model as any).uuid = m.uuid;
-        (model as any).originalCoordinate = coord;
+          // Register Instance
+          MODEL_INSTANCE_REGISTRY.set(m.uuid, model);
 
-        // Register Metadata
-        MODEL_ID_REGISTRY.set(model.id, {
-          url: m.url,
-          uuid: m.uuid,
-          name: m.name,
-          desc: m.desc,
-          rotation: m.rotation,
-          scale: m.scale,
-          originalCoordinate: coord,
-          floorId: targetFloor?.id || m.floorId,
-          displayWebsite: m.displayWebsite,
-          thumb: m.thumb || m.thumbnail // Support both names
-        });
-
-
-        // Register Instance
-        MODEL_INSTANCE_REGISTRY.set(m.uuid, model);
-
-        // (Label Marker creation removed as per user request)
+        } catch (modelError) {
+          console.error(`❌ Failed to add model ${m.uuid}:`, modelError);
+        }
       }
     } catch (e) {
       console.error("❌ Error loading from API:", e);
     }
+
+    // NEW: After loading all models, ensure Overview models are visible on current floor
+    showOverviewModelsOnAllFloors();
   };
+
+  // ============================================
+  // OVERVIEW MODELS PERSISTENCE ACROSS FLOORS
+  // ============================================
+  // Mappedin SDK hides models when they belong to a different floor.
+  // .show() does NOT override this behavior.
+  // SOLUTION: Create temporary "shadow copies" of Overview models on the current floor.
+  // When floor changes, remove old shadows and create new ones.
+
+  const overviewShadowInstances: any[] = []; // Track shadow copies for cleanup
+
+  const showOverviewModelsOnAllFloors = async () => {
+    const overviewId = overviewFloor?.id;
+    if (!overviewId) return;
+
+    const currentFloorId = mapView.currentFloor.id;
+
+    // Step 1: Remove ALL existing shadow copies from previous floor
+    for (const shadow of overviewShadowInstances) {
+      try {
+        mapView.Models.remove(shadow);
+      } catch (e) { /* already removed or invalid */ }
+    }
+    overviewShadowInstances.length = 0; // Clear array
+
+    // Step 2: If we ARE on Overview, originals are shown by SDK - no shadows needed
+    if (currentFloorId === overviewId) {
+      console.log(`✈️ On Overview floor - originals visible, no shadows needed.`);
+      return;
+    }
+
+    // Step 3: For each model on the Overview floor, create a shadow copy on the CURRENT floor
+    const currentFloor = mapView.currentFloor;
+    let shadowCount = 0;
+
+    // Collect Overview models first (iterate registry)
+    const overviewModels: { meta: any; instance: any }[] = [];
+    MODEL_ID_REGISTRY.forEach((meta) => {
+      if (meta.floorId !== overviewId) return;
+      const instance = MODEL_INSTANCE_REGISTRY.get(meta.uuid);
+      if (!instance) return;
+      overviewModels.push({ meta, instance });
+    });
+
+    for (const { meta, instance } of overviewModels) {
+      try {
+        // Create coordinate on CURRENT floor (same lat/lon, different floor)
+        const origCoord = meta.originalCoordinate;
+        if (!origCoord) continue;
+
+        const shadowCoord = mapView.createCoordinate(
+          origCoord.latitude,
+          origCoord.longitude,
+          currentFloor
+        );
+
+        // Resolve URL (same as original)
+        let shadowUrl = (instance as any).url || meta.url;
+        const modelAssetMap: Record<string, any> = {
+          "car": car,
+          "three_palm": tree_palm,
+          "tree_palm": tree_palm
+        };
+        if (modelAssetMap[shadowUrl]) {
+          shadowUrl = modelAssetMap[shadowUrl];
+        } else if (shadowUrl && shadowUrl.startsWith("./")) {
+          shadowUrl = shadowUrl.replace("./", `${SERVER_URL}/`);
+        } else if (shadowUrl && !shadowUrl.startsWith("http")) {
+          shadowUrl = `${SERVER_URL}/${shadowUrl}`;
+        }
+
+        const shadowModel = await mapView.Models.add(shadowCoord, shadowUrl, {
+          interactive: false, // Shadow copies are NOT interactive (prevents click conflicts)
+          scale: meta.scale,
+          rotation: meta.rotation,
+        });
+
+        // Tag it as shadow
+        (shadowModel as any)._isShadow = true;
+        (shadowModel as any)._sourceUUID = meta.uuid;
+
+        overviewShadowInstances.push(shadowModel);
+        shadowCount++;
+      } catch (e) {
+        console.warn(`Could not create shadow for Overview model ${meta.uuid}:`, e);
+      }
+    }
+
+    if (shadowCount > 0) {
+      console.log(`✈️ Created ${shadowCount} shadow copies of Overview models on floor: ${currentFloorId}`);
+    }
+  };
+
+  // Expose globally for floor-change handler
+  (window as any).syncModelInstancesVisibility = showOverviewModelsOnAllFloors;
 
   // Helper: Update Model Transform
   // NEW: Debounced API Save
