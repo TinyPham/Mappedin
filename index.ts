@@ -438,11 +438,11 @@ class TranslationManager {
 
     // 2. FALLBACK: Check if it's Overview by name
     const searchTarget = (originalName || floorIdOrCode || '').toLowerCase();
-    const isOverview = searchTarget.includes('overview') || 
-                       searchTarget.includes('tổng quan') || 
-                       searchTarget.includes('tong quan') ||
-                       searchTarget.includes('toàn cảnh');
-    
+    const isOverview = searchTarget.includes('overview') ||
+      searchTarget.includes('tổng quan') ||
+      searchTarget.includes('tong quan') ||
+      searchTarget.includes('toàn cảnh');
+
     if (isOverview) {
       const overviewFloor = this.data.floors?.find((f: any) => f.code === 'OVERVIEW');
       if (overviewFloor?.names?.[this.currentLang]) {
@@ -622,6 +622,7 @@ async function init() {
   let animationTotalDistance: number = 0; // Tổng khoảng cách của segment
   let initialVenueCenter: any = null; // Lưu tọa độ trung tâm khởi tạo để đổi tầng
   let isManualFloorSwitch: boolean = false; // Cờ đánh dấu đang chuyển tầng thủ công (vô hiệu hóa AUTO-SWITCH)
+  let _isWarmupSwitch: boolean = false; // Cờ đánh dấu đang warm-up floor (bỏ qua side effects)
   let isProgrammaticZoom: boolean = false; // Cờ đánh dấu đang zoom từ category (vô hiệu hóa AUTO-SWITCH)
   let isInOverview: boolean = true; // Cờ đánh dấu đang ở Overview mode (CRITICAL for floor sync)
   let lastActiveFloorId: string | null = null; // Lưu floor ID cuối cùng trước khi về Overview
@@ -686,14 +687,42 @@ async function init() {
     return name.includes("overview") || name.includes("tổng quan") || name.includes("tong quan");
   });
 
+  // Lấy danh sách tất cả các tầng để preload
+  const allFloors = mapData.getByType("floor");
+
   // Hiển thị map 3D
   const mapView = await show3dMap(
     document.getElementById("mappedin-map") as HTMLDivElement,
-    mapData
+    mapData,
+    {
+      multiFloorView: {
+        enabled: true,
+        floorGap: "auto", // Tự động tính khoảng cách tầng
+        updateCameraElevationOnFloorChange: true,
+      },
+      // CRITICAL: Preload ALL floors so see-through/atrium areas work immediately
+      // Without this, floors only load geometry when visited - causing missing see-through
+      preloadFloors: allFloors,
+    }
   );
 
   // Expose mapView globally for easier debugging and access from console
   (window as any).mapView = mapView;
+
+  // ============================================
+  // PRELOAD ALL FLOORS: Force SDK to load geometry for see-through/atrium
+  // Uses updateState to load geometry WITHOUT switching floors (invisible to user)
+  // ============================================
+  try {
+    for (const floor of allFloors) {
+      try {
+        mapView.updateState(floor, { geometry: { visible: true } } as any);
+      } catch (e) { /* some floors may not support this */ }
+    }
+    console.log(`✅ All ${allFloors.length} floors geometry set to visible for see-through support.`);
+  } catch (e) {
+    console.warn("Could not preload floor geometry:", e);
+  }
 
   // ASSIGN UI ELEMENTS
   controlsPanel = document.getElementById("model-controls-panel");
@@ -2567,17 +2596,17 @@ async function init() {
       const floorId = option.value;
       // ALWAYS use the original name if we preserved it, otherwise fallback to current text
       const nameForLookup = (option.dataset.originalName || option.text).toLowerCase();
-      
+
       // Try to find translation by MappedinId
       let floorData = floorMap.get(floorId);
-      
+
       // FALLBACK: If MappedinId doesn't match (common for Overview), try to find by FloorCode or name
       if (!floorData) {
-        const isOverview = nameForLookup.includes('overview') || 
-                           nameForLookup.includes('tổng quan') ||
-                           nameForLookup.includes('tong quan') ||
-                           nameForLookup.includes('toàn cảnh');
-        
+        const isOverview = nameForLookup.includes('overview') ||
+          nameForLookup.includes('tổng quan') ||
+          nameForLookup.includes('tong quan') ||
+          nameForLookup.includes('toàn cảnh');
+
         if (isOverview) {
           // Find specifically the row with FloorCode 'OVERVIEW'
           floorData = floors.find((f: any) => f.code === 'OVERVIEW');
@@ -2586,7 +2615,7 @@ async function init() {
           floorData = floors.find((f: any) => f.code === floorId);
         }
       }
-      
+
       if (floorData?.names?.[TranslationManager.currentLang]) {
         option.textContent = floorData.names[TranslationManager.currentLang];
       }
@@ -2724,6 +2753,10 @@ async function init() {
     previousFloorId = id;
     floorSelector.value = id;
     console.log("Floor changed to: ", event?.floor.name);
+
+    // SKIP all side effects during warm-up switch (multi-floor activation workaround)
+    if (_isWarmupSwitch) return;
+
     try {
       if ((window as any).syncURL) (window as any).syncURL(true);
       if (connectionMarkersVisible) renderConnectionOverlaysForCurrentFloor();
@@ -2768,9 +2801,21 @@ async function init() {
     // Đánh dấu đang chuyển tầng thủ công để vô hiệu hóa AUTO-SWITCH
     isManualFloorSwitch = true;
 
-
     // Đợi setFloor hoàn thành trước khi animate camera
     try {
+      // MULTI-FLOOR FIX: When switching FROM Overview, the first setFloor only activates
+      // the multi-floor system but doesn't fully render see-through.
+      // Solution: switch to Overview's ground floor briefly, then to the target floor.
+      if (isInOverview && !isOverview) {
+        const warmupFloor = allFloors.find((f: any) => f.id !== floorId && f.id !== overviewFloor?.id);
+        if (warmupFloor) {
+          _isWarmupSwitch = true; // Suppress side effects
+          await mapView.setFloor(warmupFloor.id);
+          await new Promise(r => setTimeout(r, 50));
+          _isWarmupSwitch = false;
+        }
+      }
+
       await mapView.setFloor(floorId);
       // Cập nhật dropdown thủ công để đảm bảo đồng bộ
       floorSelector.value = floorId;
@@ -2784,6 +2829,7 @@ async function init() {
         lastActiveFloorId = floorId; // Save as last active floor
       }
     } catch (err) {
+      _isWarmupSwitch = false; // Safety reset
       console.warn("Error setting floor:", err);
     }
 
@@ -6866,9 +6912,7 @@ async function init() {
     rotation: number[];
     scale: number[];
     originalCoordinate: any;
-    floorId?: string; // Raw FloorId from DB (may be comma-separated)
-    homeFloorId?: string; // Actual floor of the real model instance
-    visibleFloorIds?: string[]; // Parsed list of ALL floors this model should appear on
+    floorId?: string; // Add floorId explicitly
     thumb?: string; // Add thumb to metadata
     displayWebsite?: number | boolean; // 1/true = visible, 0/false = hidden
   }
@@ -7205,18 +7249,12 @@ async function init() {
         // Skip duplicate check if we trust DB ID
         if (MODEL_INSTANCE_REGISTRY.has(m.uuid)) continue;
 
-        // MULTI-FLOOR SUPPORT: Parse comma-separated FloorId
-        // First ID = "home floor" (real model), remaining IDs = shadow copy targets
-        const rawFloorId = (m.floorId || "").toString();
-        const floorIdParts = rawFloorId.split(',').map((id: string) => id.trim()).filter((id: string) => id !== "");
-        const homeFloorId = floorIdParts.length > 0 ? floorIdParts[0] : m.floorId;
-
-        // Resolve Floor object (use HOME floor for the real instance)
+        // Resolve Floor object
         const floors = mapData.getByType("floor");
-        let targetFloor = floors.find((f: any) => f.id === homeFloorId);
+        let targetFloor = floors.find((f: any) => f.id === m.floorId);
 
         // Specific fallback for User's Floor 2 ID
-        if (!targetFloor && homeFloorId === "m_d4b5674c0b15e099") {
+        if (!targetFloor && m.floorId === "m_d4b5674c0b15e099") {
           targetFloor = floors.find((f: any) => {
             const n = (f.name || "").toLowerCase();
             return n.includes("tầng 2") || n.includes("tang 2") || n.includes("floor 2");
@@ -7226,7 +7264,7 @@ async function init() {
         // Final fallback
         targetFloor = targetFloor || mapView.currentFloor;
 
-        console.log(`📍 Placing model ${m.name || m.uuid} on floor: ${targetFloor?.name} (${targetFloor?.id})${floorIdParts.length > 1 ? ` (+${floorIdParts.length - 1} shadow floors)` : ''}`);
+        console.log(`📍 Placing model ${m.name || m.uuid} on floor: ${targetFloor?.name} (${targetFloor?.id})`);
 
         const coord = mapView.createCoordinate(m.latitude, m.longitude, targetFloor);
 
@@ -7267,9 +7305,7 @@ async function init() {
             rotation: m.rotation,
             scale: m.scale,
             originalCoordinate: coord,
-            floorId: rawFloorId, // KEEP RAW (comma-separated) for DB persistence
-            homeFloorId: targetFloor?.id || homeFloorId, // Actual floor of real instance
-            visibleFloorIds: floorIdParts, // Parsed list of ALL floors this model should appear on
+            floorId: targetFloor?.id || m.floorId,
             displayWebsite: m.displayWebsite,
             thumb: m.thumb || m.thumbnail
           });
@@ -7285,8 +7321,8 @@ async function init() {
       console.error("❌ Error loading from API:", e);
     }
 
-    // NEW: After loading all models, create shadow copies for cross-floor models
-    syncCrossFloorModels();
+    // NEW: After loading all models, ensure Overview models are visible on current floor
+    showOverviewModelsOnAllFloors();
   };
 
   // ============================================
@@ -7297,58 +7333,44 @@ async function init() {
   // SOLUTION: Create temporary "shadow copies" of Overview models on the current floor.
   // When floor changes, remove old shadows and create new ones.
 
-  const crossFloorShadowInstances: any[] = []; // Track shadow copies for cleanup
+  const overviewShadowInstances: any[] = []; // Track shadow copies for cleanup
 
-  const syncCrossFloorModels = async () => {
+  const showOverviewModelsOnAllFloors = async () => {
     const overviewId = overviewFloor?.id;
+    if (!overviewId) return;
+
     const currentFloorId = mapView.currentFloor.id;
-    const currentFloor = mapView.currentFloor;
 
     // Step 1: Remove ALL existing shadow copies from previous floor
-    for (const shadow of crossFloorShadowInstances) {
+    for (const shadow of overviewShadowInstances) {
       try {
         mapView.Models.remove(shadow);
       } catch (e) { /* already removed or invalid */ }
     }
-    crossFloorShadowInstances.length = 0; // Clear array
+    overviewShadowInstances.length = 0; // Clear array
 
+    // Step 2: If we ARE on Overview, originals are shown by SDK - no shadows needed
+    if (currentFloorId === overviewId) {
+      console.log(`✈️ On Overview floor - originals visible, no shadows needed.`);
+      return;
+    }
+
+    // Step 3: For each model on the Overview floor, create a shadow copy on the CURRENT floor
+    const currentFloor = mapView.currentFloor;
     let shadowCount = 0;
 
-    // Step 2: Collect models that need shadow copies on this floor
-    // A model needs a shadow on this floor if:
-    //   (a) It lives on the Overview floor (always visible everywhere), OR
-    //   (b) Its visibleFloorIds list includes the current floor (but current floor != home floor)
-    const modelsNeedingShadow: { meta: any; instance: any }[] = [];
+    // Collect Overview models first (iterate registry)
+    const overviewModels: { meta: any; instance: any }[] = [];
     MODEL_ID_REGISTRY.forEach((meta) => {
-      const homeFloor = meta.homeFloorId || meta.floorId;
-
-      // Don't shadow if we're already on the model's home floor (original is visible)
-      if (homeFloor === currentFloorId) return;
-
-      let needsShadow = false;
-
-      // (a) Overview models: visible on ALL floors
-      if (overviewId && homeFloor === overviewId) {
-        needsShadow = true;
-      }
-
-      // (b) Multi-floor models: check if current floor is in the visibility list
-      if (meta.visibleFloorIds && meta.visibleFloorIds.length > 1) {
-        if (meta.visibleFloorIds.includes(currentFloorId)) {
-          needsShadow = true;
-        }
-      }
-
-      if (!needsShadow) return;
-
+      if (meta.floorId !== overviewId) return;
       const instance = MODEL_INSTANCE_REGISTRY.get(meta.uuid);
       if (!instance) return;
-      modelsNeedingShadow.push({ meta, instance });
+      overviewModels.push({ meta, instance });
     });
 
-    // Step 3: Create shadow copies on the CURRENT floor
-    for (const { meta, instance } of modelsNeedingShadow) {
+    for (const { meta, instance } of overviewModels) {
       try {
+        // Create coordinate on CURRENT floor (same lat/lon, different floor)
         const origCoord = meta.originalCoordinate;
         if (!origCoord) continue;
 
@@ -7383,20 +7405,20 @@ async function init() {
         (shadowModel as any)._isShadow = true;
         (shadowModel as any)._sourceUUID = meta.uuid;
 
-        crossFloorShadowInstances.push(shadowModel);
+        overviewShadowInstances.push(shadowModel);
         shadowCount++;
       } catch (e) {
-        console.warn(`Could not create shadow for model ${meta.uuid}:`, e);
+        console.warn(`Could not create shadow for Overview model ${meta.uuid}:`, e);
       }
     }
 
     if (shadowCount > 0) {
-      console.log(`✈️ Created ${shadowCount} shadow copies on floor: ${currentFloorId}`);
+      console.log(`✈️ Created ${shadowCount} shadow copies of Overview models on floor: ${currentFloorId}`);
     }
   };
 
   // Expose globally for floor-change handler
-  (window as any).syncModelInstancesVisibility = syncCrossFloorModels;
+  (window as any).syncModelInstancesVisibility = showOverviewModelsOnAllFloors;
 
   // Helper: Update Model Transform
   // NEW: Debounced API Save
@@ -7440,7 +7462,7 @@ async function init() {
     if (isNaN(newLat)) newLat = meta.originalCoordinate.latitude;
     if (isNaN(newLon)) newLon = meta.originalCoordinate.longitude;
 
-    const currentFloor = mapData.getByType("floor").find((f: any) => f.id === (meta.homeFloorId || meta.floorId || mapView.currentFloor.id)) || mapView.currentFloor;
+    const currentFloor = mapData.getByType("floor").find((f: any) => f.id === (meta.floorId || mapView.currentFloor.id)) || mapView.currentFloor;
     const newCoord = mapView.createCoordinate(newLat, newLon, currentFloor);
 
 
@@ -7463,7 +7485,7 @@ async function init() {
       rotation: newRot,
       scale: newScale,
       originalCoordinate: newCoord,
-      floorId: meta.floorId // PRESERVE raw comma-separated floorId for DB
+      floorId: currentFloor.id
     };
 
     // Check if position actually changed (lat/lon)
