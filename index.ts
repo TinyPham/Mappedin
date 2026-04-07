@@ -2052,6 +2052,14 @@ async function init() {
       bgColor = "#FFCDD2"; // Saturated Red for Restricted/Staff Area
     }
 
+    // Apply custom overriding via localStorage
+    try {
+      const customColors = JSON.parse(localStorage.getItem('customAreaColors') || '{}');
+      if (customColors[obj.id]) {
+        bgColor = customColors[obj.id];
+      }
+    } catch(e) {}
+
     return {
       color: obj.name ? bgColor : "#eeece7", // Non-named areas stay gray
       hoverColor: obj.name ? (bgColor === "#FFF176" ? "#FFEE58" : (bgColor === "#FFCDD2" ? "#EF9A9A" : "#FFF7CC")) : "#eeece7"
@@ -3818,7 +3826,13 @@ async function init() {
         // Khu vực không có tên: màu #ffffff, không có hover
         // Khu vực không có tên: màu #ffffff, không có hover (hoverColor = #ffffff)
         // Khu vực có tên: màu trắng, hover vàng
-        const defaultColor = objectToReset.name ? "#FFFFFF" : "#eeece7";
+        let defaultColor = objectToReset.name ? "#FFFFFF" : "#eeece7";
+        try {
+          const customColors = JSON.parse(localStorage.getItem('customAreaColors') || '{}');
+          if (customColors[objectToReset.id]) {
+            defaultColor = customColors[objectToReset.id];
+          }
+        } catch(e) {}
         mapView.updateState(objectToReset, {
           interactive: true,
           color: defaultColor,
@@ -3865,7 +3879,14 @@ async function init() {
           // Khu vực không có tên: màu #ffffff, không có hover (hoverColor = #ffffff)
           // Khu vực không có tên: màu #ffffff, không có hover (hoverColor = #ffffff)
           // Khu vực có tên: màu trắng, hover vàng
-          const defaultColor = obj.name ? "#FFFFFF" : "#eeece7";
+          let defaultColor = obj.name ? "#FFFFFF" : "#eeece7";
+          try {
+            const customColors = JSON.parse(localStorage.getItem('customAreaColors') || '{}');
+            if (customColors[obj.id]) {
+              defaultColor = customColors[obj.id];
+            }
+          } catch(e) {}
+          
           mapView.updateState(obj, {
             interactive: true,
             color: defaultColor,
@@ -3890,6 +3911,7 @@ async function init() {
       highlightObject(selectedSpace);
     }
   };
+  (window as any).refreshMapColors = updateHighlights;
 
   /**
    * Draw navigation path
@@ -4752,6 +4774,20 @@ async function init() {
 
     if (titleElement) {
       titleElement.textContent = displayName;
+    }
+
+    const btnEditColor = document.getElementById("btn-edit-current-area-color");
+    if (btnEditColor) {
+      if (space && space.id && displayName && !displayName.toLowerCase().includes("khu vực không tên")) {
+        btnEditColor.style.display = "block";
+        btnEditColor.onclick = () => {
+          if (typeof (window as any).openAreaColorModalForSingleSpace === 'function') {
+            (window as any).openAreaColorModalForSingleSpace(space);
+          }
+        };
+      } else {
+        btnEditColor.style.display = "none";
+      }
     }
 
     // AUTO-FILL Search Input (Restored from Backup)
@@ -8723,7 +8759,15 @@ async function init() {
 
   // 14. INIT ADMIN UI
   try {
+    (window as any).globalMapView = mapView;
+    (window as any).globalMapData = mapData;
     initAdminUI(allMapObjects);
+    initAreaColorUI(allMapObjects, mapView, mapData);
+    
+    // Apply custom area colors immediately on load
+    if (typeof (window as any).refreshMapColors === 'function') {
+      (window as any).refreshMapColors();
+    }
   } catch (e) {
     console.error("Failed to initialize Admin UI:", e);
   }
@@ -9282,13 +9326,232 @@ init();
 
 // Hook helper to run after init
 const originalInit = (window as any).debugLogAllNames;
-// We need to run initAdminUI *after* map objects are loaded.
-// The easiest way is to call it inside init() right before returning or set a timeout.
-// I'll append a call to initAdminUI inside the existing init function via a separate edit or assume allMapObjects is global.
-// Wait, init() has allMapObjects local const. I should modify init() to call initAdminUI(allMapObjects).
-// But init() is huge. I'll search for where init() ends and use the `allMapObjects` variable if it's available or exposed.
-// Actually, `allMapObjects` was defined inside `init()`.
-// I created `initAdminUI` outside. I need to call it FROM inside `init`.
-// I will verify where to call it content-wise.
 
+export function initAreaColorUI(allMapObjects: any[], mapView: any, mapData: any) {
+  const modal = document.getElementById("area-color-modal");
+  const btnOpen = document.getElementById("btn-open-area-color");
+  const btnClose = document.getElementById("btn-close-area-color");
+  const btnApply = document.getElementById("btn-apply-area-color");
+  const btnClear = document.getElementById("btn-clear-area-color");
+  const searchInput = document.getElementById("color-area-search") as HTMLInputElement;
+  const listContainer = document.getElementById("color-area-list");
+  const colorPicker = document.getElementById("area-color-picker") as HTMLInputElement;
+  const colorHex = document.getElementById("area-color-hex") as HTMLInputElement;
 
+  let selectedAreaIds = new Set<string>();
+  
+  if (!modal || !btnOpen || !listContainer) return;
+
+  // Render checkbox list
+  const renderList = (filter = "") => {
+    let spaces = mapData.getByType('space');
+    
+    // Filter out unnamed spaces
+    spaces = spaces.filter((s: any) => s.name && s.name.trim() !== '' && !s.name.toLowerCase().includes("khu vực không tên"));
+
+    // Convert to arrays and sort
+    const items = spaces.map((s: any) => {
+      const name = TranslationManager.getName(s) || s.name || s.id;
+      let floorName = s.floor?.name;
+      const floorId = s.floor?.id;
+      if (floorId && TranslationManager?.data?.floors) {
+        let floorData = TranslationManager.data.floors.find((f: any) => f.mappedinId === floorId || f.code === floorId);
+        if (!floorData) {
+          const nameLookup = (floorName || "").toLowerCase();
+          const isOverview = nameLookup.includes('overview') || nameLookup.includes('tổng quan') || nameLookup.includes('tong quan') || nameLookup.includes('toàn cảnh');
+          if (isOverview) {
+            floorData = TranslationManager.data.floors.find((f: any) => f.code === 'OVERVIEW');
+          }
+        }
+        if (floorData?.names?.[TranslationManager.currentLang]) {
+          floorName = floorData.names[TranslationManager.currentLang];
+        }
+      }
+      return { id: s.id, name, floor: floorName || '' };
+    });
+    
+    items.sort((a: any, b: any) => a.name.localeCompare(b.name));
+    
+    const term = filter.toLowerCase();
+    const visibleItems = items.filter((i: any) => i.name.toLowerCase().includes(term));
+    
+    const allChecked = visibleItems.length > 0 && visibleItems.every((i: any) => selectedAreaIds.has(i.id));
+
+    listContainer.innerHTML = `
+      <div style="border-bottom:1px solid #ddd; padding-bottom:5px; margin-bottom:5px; font-weight:bold;">
+        <input type="checkbox" id="color-chk-all" ${allChecked ? 'checked' : ''}>
+        <label for="color-chk-all" style="cursor:pointer;">Chọn tất cả khu vực hiển thị</label>
+      </div>
+      ${visibleItems.map((item: any) => {
+        const checked = selectedAreaIds.has(item.id) ? 'checked' : '';
+        return `
+          <div style="display:flex; align-items:flex-start; margin-bottom:6px;">
+            <input type="checkbox" class="color-area-checkbox" id="color-chk-${item.id}" value="${item.id}" ${checked} style="margin-top:3px;">
+            <label for="color-chk-${item.id}" style="cursor:pointer; line-height:1.2; font-size:13px; color:#333; flex:1; margin-left:8px;">
+               <div style="font-weight:500;">${item.name}</div>
+               ${item.floor ? `<div style="font-size:11px; color:#888; margin-top:2px;">Tầng: ${item.floor}</div>` : ''}
+            </label>
+          </div>
+        `;
+      }).join('')}
+    `;
+
+    // Attach events
+    const chkAll = document.getElementById("color-chk-all") as HTMLInputElement;
+    if (chkAll) {
+      chkAll.onchange = (e) => {
+        const checked = (e.target as HTMLInputElement).checked;
+        visibleItems.forEach((item: any) => {
+          if (checked) selectedAreaIds.add(item.id);
+          else selectedAreaIds.delete(item.id);
+        });
+        renderList(filter); // Re-render to update checks
+      };
+    }
+
+    const checkboxes = listContainer.querySelectorAll('.color-area-checkbox');
+    checkboxes.forEach((chk: any) => {
+      (chk as HTMLInputElement).onchange = (e: any) => {
+        if (e.target.checked) selectedAreaIds.add(e.target.value);
+        else selectedAreaIds.delete(e.target.value);
+        
+        // Recheck 'select all'
+        const allVisibleChecked = visibleItems.every((i: any) => selectedAreaIds.has(i.id));
+        if (chkAll) chkAll.checked = allVisibleChecked;
+        
+        // If exactly 1 item is selected, display its current color
+        if (selectedAreaIds.size === 1) {
+          try {
+            const customColors = JSON.parse(localStorage.getItem('customAreaColors') || '{}');
+            const singleId = Array.from(selectedAreaIds)[0];
+            const singleObj = spaces.find((s:any) => s.id === singleId);
+            const currentColor = customColors[singleId] || (singleObj?.name ? "#FFFFFF" : "#eeece7");
+            colorPicker.value = currentColor;
+            colorHex.value = currentColor;
+          } catch(e) {}
+        }
+      };
+    });
+  };
+
+  // Inputs sync
+  colorPicker.oninput = (e) => {
+    colorHex.value = (e.target as HTMLInputElement).value;
+  };
+  colorHex.oninput = (e) => {
+    const val = (e.target as HTMLInputElement).value;
+    if (/^#[0-9A-Fa-f]{6}$/.test(val)) {
+      colorPicker.value = val;
+    }
+  };
+
+  searchInput.oninput = () => {
+    renderList(searchInput.value);
+  };
+
+  // Open Handlers
+  btnOpen.addEventListener("click", () => {
+    modal.classList.remove("hidden");
+    selectedAreaIds.clear();
+    searchInput.value = "";
+    renderList();
+  });
+  
+  btnClose?.addEventListener("click", () => {
+    modal.classList.add("hidden");
+  });
+
+  // Apply colors
+  btnApply?.addEventListener("click", () => {
+    if (selectedAreaIds.size === 0) {
+      alert("Vui lòng chọn ít nhất một khu vực!");
+      return;
+    }
+    const color = colorHex.value;
+    const spaces = mapData.getByType('space');
+    let count = 0;
+    
+    const customColors = JSON.parse(localStorage.getItem('customAreaColors') || '{}');
+    
+    for (const space of spaces) {
+      if (selectedAreaIds.has(space.id)) {
+        customColors[space.id] = color;
+        try {
+          mapView.updateState(space, { color: color });
+          count++;
+        } catch(e) { console.error("Error setting color", e); }
+      }
+    }
+    localStorage.setItem('customAreaColors', JSON.stringify(customColors));
+    if (typeof (window as any).refreshMapColors === 'function') {
+      (window as any).refreshMapColors();
+    }
+    const successPopup = document.getElementById("success-popup");
+    const okBtn = document.getElementById("btn-success-ok");
+    if (successPopup && okBtn) {
+       const msgEl = successPopup.querySelector('p');
+       if (msgEl) msgEl.textContent = `Đã đổi màu nền thành công cho ${count} khu vực!`;
+       successPopup.style.display = "flex";
+       okBtn.onclick = () => successPopup.style.display = "none";
+    } else {
+       alert(`Đã đổi màu nền thành công cho ${count} khu vực!`);
+    }
+    modal.classList.add("hidden");
+  });
+
+  // Clear colors
+  btnClear?.addEventListener("click", () => {
+    if (selectedAreaIds.size === 0) {
+      alert("Vui lòng chọn ít nhất một khu vực!");
+      return;
+    }
+    const spaces = mapData.getByType('space');
+    let count = 0;
+    
+    const customColors = JSON.parse(localStorage.getItem('customAreaColors') || '{}');
+    
+    for (const space of spaces) {
+      if (selectedAreaIds.has(space.id)) {
+        delete customColors[space.id];
+        try {
+          const defaultColor = space.name ? "#FFFFFF" : "#eeece7";
+          mapView.updateState(space, { color: defaultColor });
+          count++;
+        } catch(e) { }
+      }
+    }
+    localStorage.setItem('customAreaColors', JSON.stringify(customColors));
+    if (typeof (window as any).refreshMapColors === 'function') {
+      (window as any).refreshMapColors();
+    }
+    const successPopup = document.getElementById("success-popup");
+    const okBtn = document.getElementById("btn-success-ok");
+    if (successPopup && okBtn) {
+       const msgEl = successPopup.querySelector('p');
+       if (msgEl) msgEl.textContent = `Đã xóa màu nền thành công cho ${count} khu vực!`;
+       successPopup.style.display = "flex";
+       okBtn.onclick = () => successPopup.style.display = "none";
+    } else {
+       alert(`Đã xóa màu nền thành công cho ${count} khu vực!`);
+    }
+    modal.classList.add("hidden");
+  });
+
+  // Export for individual edit support
+  (window as any).openAreaColorModalForSingleSpace = (space: any) => {
+    modal.classList.remove("hidden");
+    selectedAreaIds.clear();
+    selectedAreaIds.add(space.id);
+    searchInput.value = TranslationManager.getName(space) || space.name || space.id;
+    
+    // Set the color picker to the current space's color
+    try {
+      const customColors = JSON.parse(localStorage.getItem('customAreaColors') || '{}');
+      const currentColor = customColors[space.id] || (space.name ? "#FFFFFF" : "#eeece7");
+      colorPicker.value = currentColor;
+      colorHex.value = currentColor;
+    } catch(e) {}
+    
+    renderList(searchInput.value);
+  };
+}

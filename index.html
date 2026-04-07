@@ -794,8 +794,10 @@
         </div>
 
         <div class="popup-content">
-          <h3 id="area-title" style="margin: 0 0 10px 0; font-size: 1.25em; font-weight: bold;">Nhấp vào một khu vực để
-            xem thông tin...</h3>
+          <div style="display: flex; align-items: flex-start; justify-content: space-between;">
+            <h3 id="area-title" style="margin: 0 0 10px 0; font-size: 1.25em; font-weight: bold; padding-right: 10px;">Nhấp vào một khu vực để xem thông tin...</h3>
+            <button id="btn-edit-current-area-color" class="icon-btn" style="display: none; background: #f0f0f0; border: 1px solid #ddd; padding: 4px; border-radius: 4px; cursor: pointer;" title="Đổi màu nền khu vực">🎨</button>
+          </div>
           <p id="area-description" style="margin-bottom: 15px; color: #555; line-height: 1.5;"></p>
           <button id="directions-btn" data-i18n="directions_btn">Dẫn đường</button>
 
@@ -877,6 +879,8 @@
         <!-- NEW: Area Information Admin Button -->
         <button id="btn-open-admin-info" class="sidebar-btn secondary" data-i18n="sidebar_area_info">Thông tin khu
           vực</button>
+        <!-- NEW: Area Color Admin Button -->
+        <button id="btn-open-area-color" class="sidebar-btn secondary">Màu nền khu vực</button>
       </div>
     </div>
   </div>
@@ -1239,6 +1243,38 @@
         <div class="modal-footer">
           <button id="btn-save-classification" class="modal-btn save">Lưu thay đổi</button>
           <button id="btn-cancel-classification" class="modal-btn cancel">Hủy</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Area Color Modal -->
+    <div id="area-color-modal" class="modal-overlay hidden">
+      <div class="modal-container" style="width: 500px; max-width: 90%; background: white; border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.2); margin: auto;">
+        <div class="modal-header" style="border-bottom: 1px solid #eee; padding: 20px;">
+          <h3 style="margin: 0; font-size: 18px; color: #333;">Thay đổi màu nền khu vực</h3>
+          <button id="btn-close-area-color" class="close-btn" style="font-size: 20px;">✕</button>
+        </div>
+        <div class="modal-body" style="padding: 20px;">
+          <div style="margin-bottom: 15px;">
+            <label style="font-weight: 600; display: block; margin-bottom: 5px; color: #555;">Chọn khu vực:</label>
+            <div style="display:flex; flex-direction:column; gap:8px;">
+               <input type="text" id="color-area-search" placeholder="Tìm kiếm khu vực..." style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;">
+               <div id="color-area-list" style="border: 1px solid #ddd; border-radius: 4px; padding: 10px; max-height: 250px; overflow-y: auto; background: #fafafa;">
+                 <!-- rendered via JS: checkboxes -->
+               </div>
+            </div>
+          </div>
+          <div style="margin-bottom: 15px;">
+             <label style="font-weight: 600; display: block; margin-bottom: 5px; color: #555;">Chọn màu nền:</label>
+             <div style="display:flex; gap:10px; align-items:center;">
+               <input type="color" id="area-color-picker" style="width:40px; height:40px; padding:0; border:none; cursor:pointer;" value="#4CAF50">
+               <input type="text" id="area-color-hex" style="flex:1; padding:10px; border:1px solid #ddd; border-radius:4px; font-family: monospace; box-sizing: border-box;" value="#4CAF50" placeholder="#RRGGBB">
+             </div>
+          </div>
+        </div>
+        <div class="modal-footer" style="padding: 15px 20px; border-top: 1px solid #eee; display: flex; justify-content: flex-end; gap: 10px; background: #fafafa;">
+          <button id="btn-clear-area-color" style="padding: 10px 20px; border: 1px solid #ddd; background: white; border-radius: 6px; cursor: pointer; color: #555;">Xóa màu</button>
+          <button id="btn-apply-area-color" style="padding: 10px 20px; background: #085ebb; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">Áp dụng màu</button>
         </div>
       </div>
     </div>
