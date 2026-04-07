@@ -7796,6 +7796,12 @@ async function init() {
       }
 
       btnAddModel.classList.add("active");
+      
+      const searchInput = document.getElementById("model-search-input") as HTMLInputElement;
+      const searchClear = document.getElementById("model-search-clear") as HTMLButtonElement;
+      if (searchInput) searchInput.value = "";
+      if (searchClear) searchClear.style.display = "none";
+
       renderModelPicker();
       modalPicker?.classList.remove("hidden");
     });
@@ -7810,7 +7816,7 @@ async function init() {
   }
 
   // Render Grid
-  const renderModelPicker = async () => {
+  const renderModelPicker = async (searchQuery: string = "") => {
     if (!modelGrid) return;
 
     // Fetch from API if empty
@@ -7821,12 +7827,15 @@ async function init() {
 
     modelGrid.innerHTML = "";
 
-    if (AVAILABLE_MODELS.length === 0) {
-      modelGrid.innerHTML = `<div style='grid-column: span 3; text-align: center; padding: 20px;'>${TranslationManager.t('no_models', 'No models found. Check folder.')}</div>`;
+    const query = searchQuery.trim().toLowerCase();
+    const visibleModels = AVAILABLE_MODELS.filter(m => (m.name || m.file || '').toLowerCase().includes(query));
+
+    if (visibleModels.length === 0) {
+      modelGrid.innerHTML = `<div style='grid-column: span 10; text-align: center; padding: 20px; color: #666;'>Không tìm thấy mô hình nào.</div>`;
       return;
     }
 
-    AVAILABLE_MODELS.forEach((model) => {
+    visibleModels.forEach((model) => {
       const item = document.createElement("div");
       item.className = "model-item";
 
@@ -7840,10 +7849,10 @@ async function init() {
       const thumbSrc = thumbName ? `${SERVER_URL}/Model3D/thumbnail/${thumbName}` : "";
 
       item.innerHTML = `
-        <div class="model-item-preview" style="width:100%; height:90px; display:flex; align-items:center; justify-content:center; background:#ffffff; border:1px solid #f0f0f0; border-radius:4px; overflow:hidden; padding:5px;">
+        <div class="model-item-preview" style="width:100%; height:90px; display:flex; align-items:center; justify-content:center; background:#ffffff; border:1px solid #f0f0f0; border-radius:8px; overflow:hidden; padding:5px;">
           ${thumbSrc ? `<img src="${thumbSrc}" alt="${model.name}" onerror="this.style.display='none'; this.parentElement.innerHTML='<span style=\\'font-size:24px;\\'>📦</span>';" style="max-width:100%; max-height:100%; object-fit:contain;" />` : `<span style="font-size:24px;">📦</span>`}
         </div>
-        <span style="font-size:12px; margin-top:5px; text-align:center; font-weight:500; color:#333;">${model.name}</span>
+        <span style="font-size:12px; margin-top:8px; display:block; text-align:center; font-weight:500; color:#333;">${model.name}</span>
       `;
       item.addEventListener("click", () => {
         startPlacingModel(model);
@@ -7852,6 +7861,29 @@ async function init() {
       modelGrid.appendChild(item);
     });
   };
+
+  // Setup 3D Model Search Listeners
+  const modelSearchInput = document.getElementById("model-search-input") as HTMLInputElement;
+  const modelSearchClear = document.getElementById("model-search-clear") as HTMLButtonElement;
+
+  if (modelSearchInput && modelSearchClear) {
+    modelSearchInput.addEventListener("input", () => {
+      const val = modelSearchInput.value;
+      if (val.length > 0) {
+        modelSearchClear.style.display = "block";
+      } else {
+        modelSearchClear.style.display = "none";
+      }
+      renderModelPicker(val);
+    });
+
+    modelSearchClear.addEventListener("click", () => {
+      modelSearchInput.value = "";
+      modelSearchClear.style.display = "none";
+      renderModelPicker("");
+      modelSearchInput.focus();
+    });
+  }
 
   // Start Placement Mode
   const startPlacingModel = (modelConfig: any) => {

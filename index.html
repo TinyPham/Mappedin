@@ -1204,8 +1204,14 @@
           <h3 data-i18n="select_model_title">Chọn mô hình 3D</h3>
           <button id="btn-close-picker" class="close-btn">✕</button>
         </div>
+        <div style="padding: 15px 20px 0 20px; border-bottom: 1px solid #f0f0f0;">
+          <div style="position: relative; display: flex; align-items: center;">
+            <input type="text" id="model-search-input" placeholder="Tìm kiếm mô hình 3D..." style="width: 100%; padding: 10px 35px 10px 15px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; outline: none; box-sizing: border-box;">
+            <button id="model-search-clear" style="position: absolute; right: 10px; background: none; border: none; font-size: 16px; color: #999; cursor: pointer; display: none; padding: 5px;">✕</button>
+          </div>
+        </div>
         <div id="model-grid"
-          style="padding: 20px; display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 15px; max-height: 60vh; overflow-y: auto;">
+          style="padding: 20px; display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 15px; max-height: 55vh; overflow-y: auto;">
           <!-- Models injected via JS -->
         </div>
       </div>
