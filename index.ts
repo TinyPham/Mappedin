@@ -659,6 +659,8 @@ async function init() {
   let sliderRotY: HTMLInputElement | null = null;
   let inputRotZ: HTMLInputElement | null = null;
   let sliderRotZ: HTMLInputElement | null = null;
+  let inputElevation: HTMLInputElement | null = null;
+  let sliderElevation: HTMLInputElement | null = null;
   let inputScaleX: HTMLInputElement | null = null;
   let inputScaleY: HTMLInputElement | null = null;
   let inputScaleZ: HTMLInputElement | null = null;
@@ -740,6 +742,8 @@ async function init() {
   sliderRotY = document.getElementById("slider-rot-y") as HTMLInputElement;
   inputRotZ = document.getElementById("inp-rot-z") as HTMLInputElement;
   sliderRotZ = document.getElementById("slider-rot-z") as HTMLInputElement;
+  inputElevation = document.getElementById("inp-elevation") as HTMLInputElement;
+  sliderElevation = document.getElementById("slider-elevation") as HTMLInputElement;
   inputScaleX = document.getElementById("scale-x") as HTMLInputElement;
   inputScaleY = document.getElementById("scale-y") as HTMLInputElement;
   inputScaleZ = document.getElementById("scale-z") as HTMLInputElement;
@@ -5086,10 +5090,13 @@ async function init() {
           placingPreviewModel = null;
         }
 
+        const elevation = (placingMode === 'new') ? (placingModelConfig.elevation || 0) : (sourceModelData?.elevation || 0);
+
         const model = await mapView.Models.add(coord, url, {
           interactive: true,
           scale: scale,
-          rotation: rotation
+          rotation: rotation,
+          verticalOffset: elevation
         });
 
         console.log("✅ Model added immediately to map view");
@@ -5110,7 +5117,8 @@ async function init() {
         const newMeta: ModelMetadata = {
           url, uuid, name, desc: finalDesc, rotation, scale, originalCoordinate: coord, floorId: targetFloor.id,
           thumb: (placingMode === 'new') ? placingModelConfig.thumb : sourceModelData?.thumb,
-          displayWebsite: inpPublic?.checked ? 1 : 0
+          displayWebsite: inpPublic?.checked ? 1 : 0,
+          elevation: elevation
         };
 
 
@@ -6934,6 +6942,8 @@ async function init() {
   inputRotY = document.getElementById("inp-rot-y") as HTMLInputElement;
   sliderRotZ = document.getElementById("slider-rot-z") as HTMLInputElement;
   inputRotZ = document.getElementById("inp-rot-z") as HTMLInputElement;
+  sliderElevation = document.getElementById("slider-elevation") as HTMLInputElement;
+  inputElevation = document.getElementById("inp-elevation") as HTMLInputElement;
   inputScaleX = document.getElementById("scale-x") as HTMLInputElement;
   inputScaleY = document.getElementById("scale-y") as HTMLInputElement;
   inputScaleZ = document.getElementById("scale-z") as HTMLInputElement;
@@ -6951,6 +6961,7 @@ async function init() {
     floorId?: string; // Add floorId explicitly
     thumb?: string; // Add thumb to metadata
     displayWebsite?: number | boolean; // 1/true = visible, 0/false = hidden
+    elevation?: number; // Add vertical height
   }
 
 
@@ -7188,7 +7199,8 @@ async function init() {
       rotation: roundRotation(meta.rotation),
       scale: roundScale(meta.scale),
       displayWebsite: meta.displayWebsite || 0,
-      thumb: meta.thumb // Sync thumbnail to DB
+      thumb: meta.thumb, // Sync thumbnail to DB
+      elevation: meta.elevation || 0
     };
 
 
@@ -7229,6 +7241,9 @@ async function init() {
     if (sliderRotY) sliderRotY.value = (r[1] || 0) + "";
     if (inputRotZ) inputRotZ.value = (r[2] || 0) + "";
     if (sliderRotZ) sliderRotZ.value = (r[2] || 0) + "";
+
+    if (inputElevation) inputElevation.value = (meta.elevation || 0) + "";
+    if (sliderElevation) sliderElevation.value = (meta.elevation || 0) + "";
 
     const s = meta.scale;
     if (inputScaleX) inputScaleX.value = s[0] + "";
@@ -7325,6 +7340,7 @@ async function init() {
             interactive: true,
             scale: m.scale,
             rotation: m.rotation,
+            verticalOffset: m.elevation || 0
           });
 
           // Re-attach Properties
@@ -7343,7 +7359,8 @@ async function init() {
             originalCoordinate: coord,
             floorId: targetFloor?.id || m.floorId,
             displayWebsite: m.displayWebsite,
-            thumb: m.thumb || m.thumbnail
+            thumb: m.thumb || m.thumbnail,
+            elevation: m.elevation || 0
           });
 
           // Register Instance
@@ -7435,6 +7452,7 @@ async function init() {
           interactive: false, // Shadow copies are NOT interactive (prevents click conflicts)
           scale: meta.scale,
           rotation: meta.rotation,
+          verticalOffset: meta.elevation || 0
         });
 
         // Tag it as shadow
@@ -7486,6 +7504,8 @@ async function init() {
     const angleY = parseFloat(inputRotY?.value || "0") || 0;
     const angleZ = parseFloat(inputRotZ?.value || "0") || 0;
     const newRot: [number, number, number] = [angleX, angleY, angleZ];
+    
+    const elevationVal = parseFloat(inputElevation?.value || "0") || 0;
 
     const newScale: [number, number, number] = [
       parseFloat(inputScaleX?.value || "1") || 1,
@@ -7521,7 +7541,8 @@ async function init() {
       rotation: newRot,
       scale: newScale,
       originalCoordinate: newCoord,
-      floorId: currentFloor.id
+      floorId: currentFloor.id,
+      elevation: elevationVal
     };
 
     // Check if position actually changed (lat/lon)
@@ -7536,7 +7557,8 @@ async function init() {
         try {
           mapView.updateState(activeModelInstance, {
             rotation: newRot,
-            scale: newScale
+            scale: newScale,
+            verticalOffset: elevationVal
           });
         } catch (e) {
           console.warn("updateState failed, falling back to remove+add", e);
@@ -7582,7 +7604,8 @@ async function init() {
     const newInstance = await mapView.Models.add(newCoord, url, {
       interactive: true,
       scale: newScale,
-      rotation: newRot
+      rotation: newRot,
+      verticalOffset: newMeta.elevation || 0
     });
 
     // Attach same properties
@@ -7636,6 +7659,7 @@ async function init() {
   if (sliderRotX && inputRotX) bindSlider(sliderRotX, inputRotX);
   if (sliderRotY && inputRotY) bindSlider(sliderRotY, inputRotY);
   if (sliderRotZ && inputRotZ) bindSlider(sliderRotZ, inputRotZ);
+  if (sliderElevation && inputElevation) bindSlider(sliderElevation, inputElevation);
 
   if (inputScaleX) inputScaleX.addEventListener("input", () => updateModelTransform(true));
   if (inputScaleY) inputScaleY.addEventListener("input", () => updateModelTransform(true));
@@ -7956,7 +7980,8 @@ async function init() {
           const newGhost = await mapView.Models.add(coord, previewUrl, {
             interactive: false,
             scale: placingModelConfig.scale || [1, 1, 1],
-            rotation: placingModelConfig.rotation || [0, 0, 0]
+            rotation: placingModelConfig.rotation || [0, 0, 0],
+            verticalOffset: placingModelConfig.elevation || 0
           });
 
           // SUCCESSFUL ADD: Now we can cleanup and hide 2D
