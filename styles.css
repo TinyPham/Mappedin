@@ -29,9 +29,9 @@ body {
   width: 380px;
   min-width: 380px;
   height: 100%;
-  background-color: #E8E6df;
-  /* Beige Airport Theme */
-  border-right: 1px solid rgba(0, 0, 0, 0.1);
+  background-color: #FAFAFA;
+  /* Premium White Theme */
+  border-right: 1px solid #E8E8E8;
   display: flex;
   flex-direction: column;
   z-index: 1100;
@@ -44,13 +44,7 @@ body {
   border-bottom: 1px solid #dcdad4;
 }
 
-#sidebar-content {
-  flex: 1;
-  overflow-y: auto;
-  padding: 15px;
-  display: flex;
-  flex-direction: column;
-}
+#sidebar-content { flex: 1; overflow-y: auto; padding: 0 !important; display: flex; flex-direction: column; } .category-panel-grid, #category-section, .sidebar-actions { padding: 15px; }
 
 /* Category Panel Grid (The active ones below search) */
 .category-panel-grid {
@@ -79,11 +73,11 @@ body {
 .category-grid-item:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  border-color: #4CAF50;
+  border-color: #214ca6;
 }
 
 .category-grid-item.active {
-  background-color: #4CAF50 !important;
+  background-color: #214ca6 !important;
   color: white !important;
 }
 
@@ -635,4 +629,154 @@ body.placing-mode #mappedin-map {
   width: 0;
   /* Distribute evenly */
   text-align: center;
+}/* =========================================
+   CUSTOM PRO DROPDOWNS (LANGUAGE & FLOOR)
+   ========================================= */
+.pro-dropdown-wrapper {
+  position: relative; /* CHỐT CHẶN TỌA ĐỘ CHO MENU CON */
+  font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  user-select: none;
 }
+.pro-dropdown-toggle {
+  background: white;
+  padding: 10px 16px;
+  border-radius: 30px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  transition: all 0.2s ease;
+  border: 1px solid rgba(0,0,0,0.05);
+}
+.pro-dropdown-toggle:hover {
+  background: #f8f9fa;
+  border-color: rgba(0,0,0,0.1);
+}
+.pro-dropdown-toggle.primary {
+  background: white;
+  color: #333;
+  border: 1px solid rgba(0,0,0,0.05);
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+.pro-dropdown-toggle.primary:hover {
+  background: #f8f9fa;
+}
+.pro-dropdown-toggle .arrow {
+  transition: transform 0.3s ease;
+}
+.pro-dropdown-wrapper.open .arrow {
+  transform: rotate(180deg);
+}
+
+.pro-dropdown-menu {
+  position: absolute;
+  top: 110%;
+  right: 0;
+  background: white;
+  min-width: 160px;
+  border-radius: 12px;
+  box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+  padding: 8px;
+  display: none;
+  flex-direction: column;
+  gap: 4px;
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  border: 1px solid rgba(0,0,0,0.05);
+}
+.pro-dropdown-menu.bottom-up {
+  top: auto;
+  bottom: 110%;
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%) translateY(10px);
+}
+.pro-dropdown-wrapper.open .pro-dropdown-menu {
+  display: flex;
+  opacity: 1;
+  transform: translateX(0) translateY(0);
+}
+.pro-dropdown-wrapper.open .pro-dropdown-menu.bottom-up {
+  transform: translateX(-50%) translateY(0);
+}
+
+.pro-dropdown-item {
+  padding: 10px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #444;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 500;
+  text-align: left;
+  position: relative;
+  overflow: hidden;
+}
+.pro-dropdown-item:hover {
+  background: #f5f7fa;
+  color: #214ca6;
+}
+.pro-dropdown-item.custom-active {
+  background: transparent;
+  color: #214ca6;
+  font-weight: 700;
+}
+.pro-dropdown-item.custom-active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 60%;
+  background: #214ca6;
+  border-radius: 0 4px 4px 0;
+}
+
+/* ========================================= 
+   LOD (LEVEL OF DETAIL) ZOOM EFFECT 
+   ========================================= */
+body.zoom-out-mode .mappedin-poi-marker {
+  opacity: 0.15 !important;
+  transform: scale(0.6) !important;
+  pointer-events: none !important;
+  filter: grayscale(100%);
+}
+
+/* ========================================= 
+   CUSTOM SCROLLBAR (INCHEON STYLE) 
+   ========================================= */
+#sidebar-content::-webkit-scrollbar,
+.category-area-list::-webkit-scrollbar,
+#search-results::-webkit-scrollbar {
+  width: 4px;
+}
+#sidebar-content::-webkit-scrollbar-track,
+.category-area-list::-webkit-scrollbar-track,
+#search-results::-webkit-scrollbar-track {
+  background: transparent;
+}
+#sidebar-content::-webkit-scrollbar-thumb,
+.category-area-list::-webkit-scrollbar-thumb,
+#search-results::-webkit-scrollbar-thumb {
+  background: #d0d5dd;
+  border-radius: 4px;
+}
+#sidebar-content::-webkit-scrollbar-thumb:hover,
+.category-area-list::-webkit-scrollbar-thumb:hover,
+#search-results::-webkit-scrollbar-thumb:hover {
+  background: #98a2b3;
+}
+/* Firefox */
+#sidebar-content,
+.category-area-list,
+#search-results {
+  scrollbar-width: thin;
+  scrollbar-color: #d0d5dd transparent;
+}
+

@@ -13,7 +13,8 @@
       "dom"
     ],
     "moduleResolution": "node",
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "ignoreDeprecations": "6.0"
   },
   "include": [
     "./**/*"
@@ -21,6 +22,8 @@
   "exclude": [
     "node_modules",
     "dist",
-    "backend"
+    "backend",
+    "inspect_labels.js",
+    "**/*.js"
   ]
 }

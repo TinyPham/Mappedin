@@ -139,7 +139,11 @@ class TranslationManager {
     document.querySelectorAll('[data-i18n]').forEach((el) => {
       const key = el.getAttribute('data-i18n');
       if (key) {
-        el.textContent = this.t(key);
+        if (key === 'need_directions') {
+          el.innerHTML = this.t(key);
+        } else {
+          el.textContent = this.t(key);
+        }
       }
     });
     document.querySelectorAll('[data-i18n-placeholder]').forEach((el) => {
@@ -200,6 +204,20 @@ class TranslationManager {
       'ja': '出る',
       'ko': '출구'
     },
+    'action_take_connection': {
+      'vn': 'Đi qua cổng/vạch liên kết',
+      'en': 'Take connection',
+      'zh': '采取连接',
+      'ja': '乗り継ぎ',
+      'ko': '연결 이용'
+    },
+    'action_exit_connection': {
+      'vn': 'Rời khỏi khu vực liên kết',
+      'en': 'Exit connection',
+      'zh': '离开连接',
+      'ja': '連絡通路を出る',
+      'ko': '연결 종료'
+    },
     'no_results_found': {
       'vn': 'Không tìm thấy kết quả',
       'en': 'No results found',
@@ -235,12 +253,19 @@ class TranslationManager {
       'ja': '次',
       'ko': '단계'
     },
+    'speed_label': {
+      'vn': 'Tốc độ:',
+      'en': 'Speed:',
+      'zh': '速度:',
+      'ja': '速度:',
+      'ko': '속도:'
+    },
     'step_by_step': {
-      'vn': 'Hướng dẫn từng bước:',
-      'en': 'Step-by-step instructions:',
-      'zh': '逐步说明:',
-      'ja': 'ステップバイステップの手順:',
-      'ko': '단계별 지침:'
+      'vn': 'CHỈ DẪN LỘ TRÌNH',
+      'en': 'ROUTE GUIDANCE',
+      'zh': '路线指南',
+      'ja': '経路案内',
+      'ko': '경로 안내'
     },
     'not_found': {
       'vn': 'Không tìm thấy đường đi',
@@ -298,13 +323,7 @@ class TranslationManager {
       'ja': '利用',
       'ko': '타다'
     },
-    'action_exit_connection': {
-      'vn': 'Ra khỏi',
-      'en': 'Exit from',
-      'zh': '退出',
-      'ja': '出る',
-      'ko': '나가기'
-    },
+
     'action_start': {
       'vn': 'Bắt đầu',
       'en': 'Start',
@@ -388,6 +407,141 @@ class TranslationManager {
       'zh': '龙城国际机场',
       'ja': 'ロンタイン国際空港',
       'ko': '롱탄 국제공항'
+    },
+    'linked_floors': {
+      'vn': 'Tầng liên kết',
+      'en': 'Connected Floors',
+      'zh': '连接楼层',
+      'ja': '接続フロア',
+      'ko': '연결된 층'
+    },
+    'route_start': {
+      'vn': 'Đi từ đây',
+      'en': 'Start',
+      'zh': '从这出发',
+      'ja': 'ここから',
+      'ko': '여기서 출발'
+    },
+    'route_via': {
+      'vn': 'Điểm dừng',
+      'en': 'Via',
+      'zh': '经过',
+      'ja': '経由',
+      'ko': '경유'
+    },
+    'route_end': {
+      'vn': 'Tới đây',
+      'en': 'End',
+      'zh': '到这里',
+      'ja': 'ここまで',
+      'ko': '여기까지'
+    },
+    'tab_search': {
+      'vn': 'Tìm kiếm',
+      'en': 'Search',
+      'zh': '搜索',
+      'ja': '検索',
+      'ko': '검색'
+    },
+    'route_preview': {
+      'vn': 'Xem trước lộ trình',
+      'en': 'Route Preview',
+      'zh': '路线预览',
+      'ja': 'ルートプレビュー',
+      'ko': '경로 미리보기'
+    },
+
+    'back_btn': {
+      'vn': 'Quay lại danh mục',
+      'en': 'Back to categories',
+      'zh': '返回分类',
+      'ja': 'カテゴリに戻る',
+      'ko': '카테고리로 돌아가기'
+    },
+    'area_color_btn': {
+      'vn': 'Màu nền khu vực',
+      'en': 'Area background',
+      'zh': '区域背景颜色',
+      'ja': 'エリアの背景色',
+      'ko': '구역 배경색'
+    },
+    'sidebar_area_info': {
+      'vn': 'Thông tin khu vực',
+      'en': 'Area information',
+      'zh': '区域详情',
+      'ja': 'エリア情報',
+      'ko': '구역 정보'
+    },
+
+    'tab_directions': {
+      'vn': 'Chỉ đường',
+      'en': 'Directions',
+      'zh': '路线',
+      'ja': '経路',
+      'ko': '길찾기'
+    },
+    'from_label': {
+      'vn': 'Đi từ',
+      'en': 'Departure',
+      'zh': '起点',
+      'ja': '出発地',
+      'ko': '출발지'
+    },
+    'to_label': {
+      'vn': 'Đi đến',
+      'en': 'Destination',
+      'zh': '终点',
+      'ja': '目的地',
+      'ko': '목적지'
+    },
+    'search_departure_placeholder': {
+      'vn': 'Tìm điểm đi',
+      'en': 'Search Departure',
+      'zh': '搜索起点',
+      'ja': '出発地を検索',
+      'ko': '출발지 검색'
+    },
+    'search_destination_placeholder': {
+      'vn': 'Tìm điểm đến',
+      'en': 'Search Destination',
+      'zh': '搜索终点',
+      'ja': '目的地を検索',
+      'ko': '목적지 검색'
+    },
+    'need_directions': {
+      'vn': 'Bạn cần <span style="color: #214ca6;">chỉ đường</span>?',
+      'en': 'Need <span style="color: #214ca6;">directions</span>?',
+      'zh': '需要 <span style="color: #214ca6;">路线指引</span> 吗？',
+      'ja': ' <span style="color: #214ca6;">経路案内</span> が必要ですか？',
+      'ko': ' <span style="color: #214ca6;">길찾기</span> 가 필요하신가요?'
+    },
+    'frequent_locations': {
+      'vn': 'Địa điểm gợi ý',
+      'en': 'Frequent Locations',
+      'zh': '常用地点',
+      'ja': 'おすすめの場所',
+      'ko': '추천 장소'
+    },
+    'stopover_label': {
+      'vn': 'Điểm dừng',
+      'en': 'Stopover',
+      'zh': '中转点',
+      'ja': '経由地',
+      'ko': '경유지'
+    },
+    'stopover_placeholder': {
+      'vn': 'Chọn điểm dừng',
+      'en': 'Select Stopover',
+      'zh': '选择中转点',
+      'ja': '経由地を選択',
+      'ko': '경유지 선택'
+    },
+    'minute_label_short': {
+      'vn': 'phút',
+      'en': 'min',
+      'zh': '分',
+      'ja': '分',
+      'ko': '분'
     }
   };
 
@@ -457,6 +611,7 @@ class TranslationManager {
   static getName(obj: any): string {
     if (!obj) return '';
     const id = obj.id || obj.mappedinId; // handle mixed objects
+    const lang = (this.currentLang || 'vn').toLowerCase();
 
     // 1. Check if this is a category (has subcategories property)
     if (obj.subcategories !== undefined) {
@@ -471,10 +626,38 @@ class TranslationManager {
     }
 
     // 3. Check DB locations (Dynamic from Translation_Locations)
-    const locData = this.data.locations?.[id];
-    // Support new object structure { names: { vn, en... } }
-    if (locData?.names?.[this.currentLang]) {
-      return locData.names[this.currentLang];
+    // Thử cả obj.id lẫn obj.mappedinId vì SDK và DB có thể dùng ID format khác nhau
+    const locData = this.data.locations?.[id] ||
+      (obj.mappedinId ? this.data.locations?.[obj.mappedinId] : null) ||
+      (obj.id && obj.id !== id ? this.data.locations?.[obj.id] : null);
+
+    // 3a. Nếu tìm thấy và có bản dịch cho ngôn ngữ hiện tại → trả ngay
+    if (locData?.names?.[lang]) {
+      return locData.names[lang];
+    }
+
+    // 3b. Cross-reference: Nếu ID trực tiếp không có bản dịch,
+    // tìm trong tất cả locations khác có cùng tên VN (hoặc cùng obj.name)
+    // để lấy bản dịch từ entry đã hoàn chỉnh
+    if (lang !== 'vn' && this.data.locations) {
+      const vnName = locData?.names?.['vn'] || obj.name || '';
+      if (vnName) {
+        const allLocs = this.data.locations;
+        for (const key of Object.keys(allLocs)) {
+          if (key === id) continue;
+          const candidate = allLocs[key];
+          if (candidate?.names?.['vn'] === vnName && candidate.names[lang]) {
+            return candidate.names[lang];
+          }
+        }
+      }
+    }
+
+    // 3c. Nếu vẫn không tìm được, fallback theo thứ tự: VN -> EN -> bất kỳ
+    if (locData?.names) {
+      const fallback = locData.names['vn'] || locData.names['en'] ||
+        Object.values(locData.names).find((v: any) => v && (v as string).length > 0);
+      if (fallback) return fallback as string;
     }
     // Support string fallback (if any)
     if (typeof locData === 'string') return locData;
@@ -485,22 +668,55 @@ class TranslationManager {
 
 
   // Get Rich Content (Desc, Image, etc)
-  static getLocationContent(id: string) {
-    return this.data.locations?.[id] || null;
+  static getLocationContent(id: string, obj?: any) {
+    // Thử tra trực tiếp bằng ID
+    let locData = this.data.locations?.[id] || null;
+
+    // Cross-reference: thử mappedinId nếu có obj
+    if (!locData && obj?.mappedinId) {
+      locData = this.data.locations?.[obj.mappedinId] || null;
+    }
+    if (!locData && obj?.id && obj.id !== id) {
+      locData = this.data.locations?.[obj.id] || null;
+    }
+
+    return locData;
   }
 
   // NEW: Get Localized Description
-  static getLocationDescription(id: string): string {
-    const locData = this.getLocationContent(id);
-    if (!locData) return "";
+  static getLocationDescription(id: string, obj?: any): string {
+    const locData = this.getLocationContent(id, obj);
+    const lang = (this.currentLang || 'vn').toLowerCase();
 
-    // Check for localized descriptions object (from AreaInformation)
-    if (locData.descriptions && locData.descriptions[this.currentLang]) {
-      return locData.descriptions[this.currentLang];
+    // 1. Check for localized descriptions object (from AreaInformation)
+    if (locData?.descriptions?.[lang]) {
+      return locData.descriptions[lang];
     }
 
-    // Fallback to legacy description field if exists
-    if (locData.description) {
+    // 2. Cross-reference: tìm bản ghi khác cùng tên VN có description cho ngôn ngữ hiện tại
+    if (lang !== 'vn' && this.data.locations) {
+      const vnName = locData?.names?.['vn'] || obj?.name || '';
+      if (vnName) {
+        const allLocs = this.data.locations;
+        for (const key of Object.keys(allLocs)) {
+          if (key === id) continue;
+          const candidate = allLocs[key];
+          if (candidate?.names?.['vn'] === vnName && candidate?.descriptions?.[lang]) {
+            return candidate.descriptions[lang];
+          }
+        }
+      }
+    }
+
+    // 3. Fallback: thử VN description nếu ngôn ngữ khác không có
+    if (locData?.descriptions) {
+      const fallback = locData.descriptions['vn'] || locData.descriptions['en'] ||
+        Object.values(locData.descriptions).find((v: any) => v && (v as string).length > 0);
+      if (fallback) return fallback as string;
+    }
+
+    // 4. Fallback to legacy description field if exists
+    if (locData?.description) {
       return locData.description;
     }
 
@@ -561,6 +777,11 @@ class TranslationManager {
       // Recreate map name marker with new translation
       if ((window as any).createMapNameMarker) {
         (window as any).createMapNameMarker();
+      }
+
+      // Re-draw navigation if active to update instruction languages
+      if ((window as any).drawNavigation && (window as any).isNavigationActive) {
+        (window as any).drawNavigation();
       }
     } catch (e) { console.warn("Failed to refresh some UI components", e); }
   }
@@ -752,6 +973,25 @@ async function init() {
   } catch (e) {
     console.warn("Could not hide default labels", e);
   }
+
+  // Tùy chỉnh FloatingLabels v6
+
+  // Triệt để ẩn marker nhãn bằng cách cấu hình cả FloatingLabels, FlatLabels và Labels trong SDK
+  try {
+    const labelSystems = ['FloatingLabels', 'FlatLabels', 'Labels'];
+    labelSystems.forEach(sys => {
+      if ((mapView as any)[sys]) {
+        (mapView as any)[sys].labelAllLocations({
+          appearance: {
+            marker: {
+              size: 0,
+              opacity: 0
+            }
+          }
+        });
+      }
+    });
+  } catch (e) { }
 
   // Lưu tọa độ trung tâm khởi tạo để dùng cho việc căn giữa sau này
   initialVenueCenter = { ...mapView.Camera.center };
@@ -1020,6 +1260,7 @@ async function init() {
   }
   console.groupEnd();
   let currentSearchResults: any[] = []; // Track active search results
+  let selectedSpace: any = null;
   let currentSearchMarkers: any[] = []; // Track active search markers
 
   // NEW: Track persistent category/subcategory state
@@ -1108,8 +1349,17 @@ async function init() {
 
     // Hide results when clicking outside
     document.addEventListener("click", (e) => {
+      // 1. Hide main search results
       if (!searchInput.contains(e.target as Node) && !searchResults.contains(e.target as Node)) {
         searchResults.style.display = "none";
+      }
+      // 2. Hide wayfinding inline results
+      const wayfindingPanel = document.getElementById("wayfinding-panel");
+      const wayfindingResults = document.getElementById("wayfinding-search-results");
+      if (wayfindingResults && wayfindingPanel) {
+        if (!wayfindingPanel.contains(e.target as Node) && !wayfindingResults.contains(e.target as Node)) {
+          wayfindingResults.style.display = "none";
+        }
       }
     });
 
@@ -1192,36 +1442,27 @@ async function init() {
       });
       */
 
-      // 2. Filter and group objects by name
-      const groupedResults = new Map<string, { primaryObject: any; objects: any[] }>();
-      const isOverview = isMapInOverview();
-      const currentFloorId = mapView.currentFloor?.id;
+      // 2. Filter results (DO NOT GROUP, as per user request to list all independently)
+      // Tìm kiếm trả kết quả từ TẤT CẢ các tầng, không filter theo tầng hiện tại
+      const allMatchedObjects: { name: string, primaryObject: any }[] = [];
 
       allMapObjects.forEach((obj) => {
         const localizedName = TranslationManager.getName(obj);
         if (localizedName && smartMatch(query, localizedName)) {
-          const objFloorId = obj.floor?.id || obj.floorId || (typeof obj.floor === 'string' ? obj.floor : null);
-
-          // Filter by floor or show all if in Overview
-          if (isOverview || (currentFloorId && objFloorId === currentFloorId)) {
-            if (!groupedResults.has(localizedName)) {
-              groupedResults.set(localizedName, { primaryObject: obj, objects: [] });
-            }
-            groupedResults.get(localizedName)!.objects.push(obj);
-          }
+          allMatchedObjects.push({ name: localizedName, primaryObject: obj });
         }
       });
 
-      const uniqueResults = Array.from(groupedResults.entries())
-        .slice(0, 15) // Show slightly more results
-        .map(([name, data]) => ({
-          name,
-          objects: data.objects,
-          primaryObject: data.primaryObject
-        }));
+      // Show up to 25 items individual locations
+      const uniqueResults = allMatchedObjects.slice(0, 25);
 
       if (uniqueResults.length === 0 && matchedCategories.length === 0 && matchedSubCategories.length === 0) {
-        searchResults.innerHTML = `<div class="search-result-item" style="cursor:default;">${TranslationManager.t('no_results_found', 'Không tìm thấy kết quả')}</div>`;
+        searchResults.innerHTML = `
+          <div style="padding: 24px 16px; text-align: center; color: #999; font-size: 13px;">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ddd" stroke-width="1.5" style="margin-bottom:6px;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <div>${TranslationManager.t('no_results_found', 'Không tìm thấy kết quả')}</div>
+          </div>
+        `;
         searchResults.style.display = "block";
         clearSearchMarkers();
         return;
@@ -1232,33 +1473,53 @@ async function init() {
       // Render Location Results
       uniqueResults.forEach((result) => {
         const item = document.createElement("div");
-        item.className = "search-result-item";
+        item.style.cssText = `
+          display: flex; align-items: center;
+          padding: 10px 16px;
+          border-bottom: 1px solid #f0f2f5;
+          cursor: pointer;
+          background: white;
+          transition: all 0.2s ease;
+          border-left: 3px solid transparent;
+        `;
 
-        // Clean name: Remove "room", "door", "gate" (case insensitive) as requested
+        item.onmouseenter = () => {
+          item.style.backgroundColor = "#f0f4ff";
+          item.style.borderLeft = "3px solid #cbd5e1";
+        };
+        item.onmouseleave = () => {
+          item.style.backgroundColor = "white";
+          item.style.borderLeft = "3px solid transparent";
+        };
+
         const cleanName = result.name.replace(/room|door|gate/gi, '').trim();
-
-        const name = document.createElement("div");
-        name.className = "search-result-name";
-        name.textContent = cleanName;
-
-        const category = document.createElement("div");
-        category.className = "search-result-category";
 
         const floorObj = result.primaryObject.floor;
         const floorName = floorObj ? TranslationManager.getFloorName(floorObj.mappedinId || floorObj.id || floorObj.code, floorObj.name) : "";
-        const count = result.objects.length;
 
-        // Formatting: Only Floor + Count (localized)
-        const locCountLabel = TranslationManager.t('locations_count', 'vị trí');
-        category.textContent = `${floorName}${count > 1 ? ` • ${count} ${locCountLabel}` : ""}`;
-
-        item.appendChild(name);
-        item.appendChild(category);
+        item.innerHTML = `
+          <div style="
+            flex-shrink: 0; width: 32px; height: 32px;
+            border-radius: 50%; background: #f0f4f8;
+            display: flex; align-items: center; justify-content: center;
+            margin-right: 12px;
+          ">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#214ca6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+          </div>
+          <div style="flex: 1; overflow: hidden;">
+            <div style="font-weight: 500; font-size: 13px; color: #1a1a2e; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${cleanName}</div>
+            ${floorName ? `<div style="font-size: 11px; color: #999; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${floorName}</div>` : ''}
+          </div>
+          <div style="flex-shrink: 0; margin-left: 8px; color: #ccc;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+          </div>
+        `;
 
         item.addEventListener("click", async () => {
           searchInput.value = "";
           searchClearBtn.style.display = "none";
           searchResults.style.display = "none";
+
           const categorySection = document.getElementById("category-section");
           if (categorySection) categorySection.style.display = "block";
 
@@ -1281,7 +1542,15 @@ async function init() {
           }
 
           setTimeout(() => {
-            highlightObjects(result.objects, "📍");
+            // Focus and highlight only this single selected location
+            highlightObjects([obj], "📍");
+
+            // Open the detail information panel in the sidebar
+            if (typeof (window as any).updateInfo === "function") {
+              (window as any).updateInfo(obj);
+            } else if (typeof updateInfo === "function") {
+              updateInfo(obj);
+            }
           }, 300);
         });
 
@@ -1679,11 +1948,11 @@ async function init() {
             `.replace(/\s+/g, ' ');
 
             markerHtml = `
-              <div style="display:flex;flex-direction:column;align-items:center;gap:3px;">
-                <div style="width:34px;height:34px;background:#fff;border-radius:4px;padding:2px;box-shadow:0 3px 6px rgba(0,0,0,0.2);display:flex;align-items:center;justify-content:center;border:1px solid rgba(0,0,0,0.05);overflow:hidden;">
-                  <img src="${activeIconUrl}" alt="${label}" onerror="${onerrorStr}" style="width:100%;height:100%;object-fit:cover;" />
+              <div class="mappedin-poi-marker" style="display:flex;flex-direction:column;align-items:center;gap:3px; transition: opacity 0.3s ease, transform 0.3s ease;">
+                <div style="width:34px;height:34px;display:flex;align-items:center;justify-content:center;background:#fff;border-radius:50%;box-shadow:0 3px 6px rgba(0,0,0,0.15);border:1.5px solid #fff;">
+                  <img src="${activeIconUrl}" alt="${label}" onerror="${onerrorStr}" style="width:20px;height:20px;object-fit:contain;" />
                 </div>
-                <div style="font-size:11px;line-height:12px;background:rgba(255,255,255,0.95);padding:2px 8px;border-radius:4px;color:#111;white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,0.15);font-weight:600;border:1px solid rgba(0,0,0,0.05);">
+                <div style="font-size:13px;line-height:1.2;font-weight:600;color:#333;text-shadow:0 0 4px rgba(255,255,255,0.9),0 0 8px rgba(255,255,255,0.8);white-space:nowrap;">
                   ${label}
                 </div>
               </div>
@@ -1691,13 +1960,13 @@ async function init() {
           } else {
             // Không có image → dùng box icon 📦
             markerHtml = `
-              <div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
-                <div style="background:rgba(255,255,255,0.92);border-radius:999px;padding:4px;box-shadow:0 1px 4px rgba(0,0,0,0.18);display:flex;align-items:center;justify-content:center;">
+              <div class="mappedin-poi-marker" style="display:flex;flex-direction:column;align-items:center;gap:2px; transition: opacity 0.3s ease, transform 0.3s ease;">
+                <div style="display:flex;align-items:center;justify-content:center;filter:drop-shadow(0 0 4px rgba(255,255,255,0.8));">
                   <div style="width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:20px;">
                     ${boxIconFallback}
                   </div>
                 </div>
-                <div style="font-size:11px;line-height:11px;background:rgba(255,255,255,0.92);padding:2px 6px;border-radius:999px;color:#111;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,0.18);">
+                <div style="font-size:13px;line-height:1.2;font-weight:600;color:#333;text-shadow:0 0 4px rgba(255,255,255,0.9),0 0 8px rgba(255,255,255,0.8);white-space:nowrap;">
                   ${label}
                 </div>
               </div>
@@ -1814,11 +2083,11 @@ async function init() {
     const showLabel = alwaysShowLabel ? true : z >= threshold + labelOffset;
 
     return `<div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
-      <div style="background:rgba(255,255,255,0.92);border-radius:999px;padding:4px;box-shadow:0 1px 4px rgba(0,0,0,0.18);display:flex;align-items:center;justify-content:center;">
-        <img src="${icon}" alt="${text}" style="width:${size}px;height:${size}px;object-fit:contain;" />
-      </div>
+    <div style="width:${size + 12}px;height:${size + 12}px;display:flex;align-items:center;justify-content:center;background:#fff;border-radius:50%;box-shadow:0 3px 6px rgba(0,0,0,0.15);border:1.5px solid #fff;">
+      <img src="${icon}" alt="${text}" style="width:${size}px;height:${size}px;object-fit:contain;" />
+    </div>
       ${showLabel
-        ? `<div style="font-size:11px;line-height:11px;background:rgba(255,255,255,0.92);padding:2px 6px;border-radius:999px;color:#111;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,0.18);">
+        ? `<div style="font-size:13px;line-height:1.2;font-weight:600;color:#333;text-shadow:0 0 4px rgba(255,255,255,0.9), 0 0 8px rgba(255, 255, 255, 0.8);white-space:nowrap;">
               ${text}
             </div>`
         : ""
@@ -2030,40 +2299,567 @@ async function init() {
    * - Hover màu vàng nhạt (nếu có name)
    * - Space không có location thì không interactive
    */
-  // Helper: Get base color for an object based on its name keywords
-  const getObjectBaseStyle = (obj: any) => {
-    const name = (obj.name || "").toLowerCase();
+  // === HỆ THỐNG MÀU PREMIUM AIRPORT - TẦNG TRỆT ===
+  // ID tầng trệt trong Mappedin
+  const GF_FLOOR_ID = 'm_dae8f26a40f6017f';
 
-    let bgColor = "#FFFFFF"; // Default to White
+  // Bảng màu phân lớp theo vai trò không gian
+  // Nguyên tắc: 70% trung tính sáng, 20% xám xanh lạnh, 10% nhấn ấm
+  const GF_ZONE_PALETTE: Record<string, { fill: string; hover: string }> = {
+    public_landside: { fill: '#F4F0E8', hover: '#EDE8DC' },  // Sảnh đến, khu công cộng
+    airside: { fill: '#E4EBF2', hover: '#D8E2EC' },  // Hành lang airside, pier
+    gate: { fill: '#DCE5EC', hover: '#D0DBE5' },  // Cửa ra tàu bay
+    operational: { fill: '#C7D0D8', hover: '#BBC6D0' },  // Đường công vụ, hậu cần
+    fnb: { fill: '#E8D5BC', hover: '#DFCAAE' },  // F&B, ẩm thực, cà phê
+    retail: { fill: '#E2D4C4', hover: '#D9C9B7' },  // Cửa hàng, mua sắm
+    restroom: { fill: '#DCEAF2', hover: '#CFE1ED' },  // WC, nhà vệ sinh
+    passenger_service: { fill: '#D8E4ED', hover: '#CBDCE8' },  // ATM, thông tin, đổi tiền
+    special_amenity: { fill: '#DCC8BE', hover: '#D2BAB0' },  // Massage, cầu nguyện
+    security: { fill: '#C8D3DE', hover: '#BBC8D5' },  // Hải quan, nhập cảnh
+    lounge: { fill: '#E0D8CE', hover: '#D6CCBF' },  // Phòng chờ VIP, CIP
+    office: { fill: '#D0D5DB', hover: '#C4CAD2' },  // Văn phòng
+  };
 
-    // User Request: Only color specific areas (Public vs Restricted)
-    // Multilingual support for coloring
-    const isPublicName = name.includes("công cộng") || name.includes("public") ||
-      name.includes("公共") || name.includes("공공");
-    const isRestrictedName = name.includes("hạn chế") || name.includes("nhân viên") || name.includes("viên") ||
-      name.includes("restricted") || name.includes("staff") ||
-      name.includes("禁区") || name.includes("制限") || name.includes("禁") ||
-      name.includes("スタッフ") || name.includes("직원") ||
-      name.includes("立ち入り禁止");
+  // Phân loại khu vực tầng trệt theo tên
+  const classifyGFZone = (name: string): string => {
+    const n = name.toLowerCase();
 
-    if (isPublicName) {
-      bgColor = "#FFF176"; // Saturated Yellow for Public Area
-    } else if (isRestrictedName) {
-      bgColor = "#FFCDD2"; // Saturated Red for Restricted/Staff Area
+    // F&B / Ẩm thực - nhấn ấm nhẹ, dễ nhận biết
+    if (n.includes('cà phê') || n.includes('coffee') || n.includes('bánh ngọt') ||
+      n.includes('bakery') || n.includes('đồ ăn nhanh') || n.includes('fast food') ||
+      n.includes('món ăn địa phương') || n.includes('local food') ||
+      n.includes('ẩm thực') || n.includes('food court') || n.includes('dining') ||
+      n.includes('tráng miệng') || n.includes('dessert') || n.includes('f&b') ||
+      n.includes('quầy bar') || n.includes('nhà hàng') || n.includes('restaurant') ||
+      n.includes('thực phẩm') || n.includes('đồ ăn') || n.includes('bán đồ ăn')) {
+      return 'fnb';
     }
 
-    // Apply custom overriding via localStorage
+    // WC / Nhà vệ sinh - xanh ice nhạt, sạch sẽ
+    if (n.includes('nhà vệ sinh') || n.includes('wc') || n.includes('toilet') ||
+      n.includes('restroom') || n.includes('vệ sinh')) {
+      return 'restroom';
+    }
+
+    // Tiện ích đặc biệt - hồng be ấm, khác biệt với retail
+    if (n.includes('massage') || n.includes('cầu nguyện') || n.includes('prayer') ||
+      n.includes('nghỉ ngơi') || n.includes('nap zone') || n.includes('rest area') ||
+      n.includes('hút thuốc') || n.includes('smoking')) {
+      return 'special_amenity';
+    }
+
+    // Cửa ra tàu bay / Gates - xanh thép lạnh
+    if (n.includes('cửa ra tàu bay') || n.includes('gate ') || n.includes('cổng đến') ||
+      n.includes('arrival gate')) {
+      return 'gate';
+    }
+
+    // Vận hành / Đường công vụ - xám đậm hơn, tách khỏi hành khách
+    if (n.includes('công vụ') || n.includes('service road') ||
+      n.includes('băng chuyền hành lý') || n.includes('baggage conveyor') ||
+      n.includes('hành lý quá khổ') || n.includes('oversized')) {
+      return 'operational';
+    }
+
+    // An ninh / Hải quan / Nhập cảnh / Hành lý
+    if (n.includes('hải quan') || n.includes('customs') || n.includes('nhập cảnh') ||
+      n.includes('immigration') || n.includes('an ninh') || n.includes('security') ||
+      n.includes('sinh trắc') || n.includes('biometric') ||
+      n.includes('nhận hành lý') || n.includes('baggage claim') ||
+      n.includes('nối chuyến') || n.includes('transfer') ||
+      n.includes('hành lý thất lạc') || n.includes('lost')) {
+      return 'security';
+    }
+
+    // Phòng chờ / Lounge - be ấm tinh tế
+    if (n.includes('phòng chờ') || n.includes('lounge') || n.includes('cip') ||
+      n.includes('visa') || n.includes('thương gia') || n.includes('business class')) {
+      return 'lounge';
+    }
+
+    // Dịch vụ hành khách - xanh dịu, dễ nhận ra
+    if (n.includes('atm') || n.includes('thông tin du lịch') || n.includes('tourist info') ||
+      n.includes('đổi ngoại tệ') || n.includes('currency') || n.includes('ngoại tệ') ||
+      n.includes('viễn thông') || n.includes('telecom') || n.includes('ngân hàng') ||
+      n.includes('bank') || n.includes('bưu điện') || n.includes('post') ||
+      n.includes('đón tiễn') || n.includes('pick up') || n.includes('welcome') ||
+      n.includes('y tế') || n.includes('medical')) {
+      return 'passenger_service';
+    }
+
+    // Retail / Cửa hàng - be taupe, nổi vừa đủ
+    if (n.includes('cửa hàng') || n.includes('shop') || n.includes('store') ||
+      n.includes('miễn thuế') || n.includes('duty free') || n.includes('bán lẻ') ||
+      n.includes('retail') || n.includes('lưu niệm') || n.includes('souvenir') ||
+      n.includes('tiện lợi') || n.includes('convenience') || n.includes('sách') ||
+      n.includes('book') || n.includes('tiệm hoa') || n.includes('flower') ||
+      n.includes('trang sức') || n.includes('jewelry') || n.includes('mỹ phẩm') ||
+      n.includes('cosmetic') || n.includes('thời trang') || n.includes('fashion') ||
+      n.includes('rượu') || n.includes('liquor') || n.includes('thuốc lá') ||
+      n.includes('tobacco') || n.includes('điện tử') || n.includes('electronic') ||
+      n.includes('nhà thuốc') || n.includes('pharmacy')) {
+      return 'retail';
+    }
+
+    // Văn phòng - xám trung tính
+    if (n.includes('văn phòng') || n.includes('office')) {
+      return 'office';
+    }
+
+    // Khu ga đi / đến - airside
+    if (n.includes('ga đến') || n.includes('ga đi') || n.includes('departure') ||
+      n.includes('arrival') || n.includes('khu ga')) {
+      return 'airside';
+    }
+
+    // Khu công cộng / Landside - ấm, sáng, thân thiện
+    if (n.includes('sảnh') || n.includes('hall') || n.includes('công cộng') ||
+      n.includes('public') || n.includes('cửa ra vào') || n.includes('entrance') ||
+      n.includes('vui chơi') || n.includes('kids') || n.includes('văn hóa') ||
+      n.includes('cultural') || n.includes('triển lãm') || n.includes('internet') ||
+      n.includes('đỗ xe') || n.includes('parking') || n.includes('khách sạn') ||
+      n.includes('hotel') || n.includes('taxi')) {
+      return 'public_landside';
+    }
+
+    // Mặc định cho tầng trệt: airside (phần lớn GF là khu airside)
+    return 'airside';
+  };
+
+  // === HỆ THỐNG MÀU PREMIUM AIRPORT - TẦNG 1 (PROCESSING FLOOR) ===
+  const F1_ZONE_PALETTE: Record<string, { fill: string; hover: string }> = {
+    // 1. Processing Zones
+    customs_security: { fill: '#AEBAC5', hover: '#A0ACB8' }, // Kiểm soát biên giới/hải quan
+    baggage_zone: { fill: '#D4E0EA', hover: '#C8D6E1' }, // Nền nhận hành lý tổng (đậm hơn airside 1 bậc)
+    baggage_island: { fill: '#C6D4E1', hover: '#B9C8D5' }, // Băng chuyền neo khối
+    transfer_desk: { fill: '#BDCBD6', hover: '#B0BECA' }, // Điểm nối chuyến
+    service_counter: { fill: '#C8D3DE', hover: '#BBC8D5' }, // Hành lý thất lạc, đón tiễn
+
+    // 2. Commercial & Comfort
+    fnb_retail: { fill: '#D8B58D', hover: '#CDA980' }, // Điểm nhấn ấm F&B Retail
+    waiting_lounge: { fill: '#E3DACD', hover: '#D9CFC1' }, // Cầu nối Lounge/Airside
+    passenger_service: { fill: '#DCEAF2', hover: '#CFE1ED' }, // Tiện ích phổ thông (WC, ATM)
+
+    // 3. Foundation / Base
+    public_landside: { fill: '#F4F0E8', hover: '#EDE8DC' }, // Khu sảnh đón
+    airside: { fill: '#DCE5EC', hover: '#D0DBE5' }, // Nền Airside chung
+    operational: { fill: '#C7D0D8', hover: '#BBC6D0' }, // Khu vận hành
+    neutral_support: { fill: '#EEF2F5', hover: '#E2E8ED' }, // SAFE FALLBACK
+  };
+
+  const classifyF1Zone = (name?: string): string => {
+    const n = (name || '').toLowerCase().trim();
+
+    // 1. Customs & Security
+    if (n.includes('nhập cảnh') || n.includes('hải quan') || n.includes('customs') || n.includes('immigration')) return 'customs_security';
+
+    // 2. Baggage System (Hierarchy 2 lớp không gian)
+    // Lớp 1: Khối băng chuyền
+    if (n.includes('đảo nhận hành lý') || n.includes('baggage claim island') || n.includes('băng chuyền hành lý') || n.includes('carousel')) return 'baggage_island';
+    // Lớp 2: Diện tích nền xung quanh băng chuyền (Bao gồm Hành lý quá khổ)
+    if (n.includes('khu nhận hành lý') || n.includes('nhận hành lý nội địa') || n.includes('nhận hành lý quốc tế') || n.includes('baggage claim') || n.includes('hành lý quá khổ')) return 'baggage_zone';
+
+    // 3. Transfer Edge
+    if (n.includes('nối chuyến') || n.includes('transfer')) return 'transfer_desk';
+
+    // 4. Retail, F&B & Commercial (Warm Accent)
+    if (n.includes('miễn thuế') || n.includes('cửa hàng') || n.includes('shop') || n.includes('retail') ||
+      n.includes('cà phê') || n.includes('bánh ngọt') || n.includes('đồ ăn') || n.includes('ẩm thực') ||
+      n.includes('nhà thuốc') || n.includes('nhà sách') || n.includes('hoa') || n.includes('flower') ||
+      n.includes('món ăn địa phương') || n.includes('văn hóa truyền thống') || n.includes('đổi ngoại tệ') ||
+      n.includes('currency exchange') || n.includes('currency')) return 'fnb_retail';
+
+    // 5. Waiting & Lounges (Comforting Area)
+    if (n.includes('phòng chờ') || n.includes('lounge') || n.includes('visa') ||
+      n.includes('khu ga đến quốc nội') || n.includes('waiting')) return 'waiting_lounge';
+
+    // 6. Service Counters (Operational Services/Resolutions)
+    if (n.includes('hành lý thất lạc') || n.includes('lost and found') || n.includes('lost & found') || n.includes('quầy hành lý thất lạc') || n.includes('lost') ||
+      n.includes('đón tiễn') || n.includes('pick up')) return 'service_counter';
+
+    // 7. General Passenger Services (Utilities)
+    if (n.includes('wc') || n.includes('vệ sinh') || n.includes('thang máy') || n.includes('thang cuốn') ||
+      n.includes('elevator') || n.includes('escalator') || n.includes('ngân hàng') || n.includes('bank') ||
+      n.includes('thông tin du lịch') || n.includes('atm') || n.includes('information')) return 'passenger_service';
+
+    // 8. Public / Landside (Siết chặt keyword)
+    if (n.includes('cửa ra vào sảnh') || n.includes('cửa ra sảnh') || n.includes('sảnh công cộng') || n.includes('public concourse') || n.includes('sảnh đón') || n.includes('sảnh đến')) return 'public_landside';
+
+    // 9. Operational explicitly
+    if (n.includes('công vụ') || n.includes('service road')) return 'operational';
+
+    // 10. Cửa ra tàu bay
+    if (n.includes('cửa ra tàu bay') || n.includes('gate')) return 'airside';
+
+    // SAFE FALLBACK
+    return 'neutral_support';
+  };
+
+  // === HỆ THỐNG MÀU PREMIUM AIRPORT - TẦNG 2 (DEPARTURE & WAITING FLOOR) ===
+  const F2_ZONE_PALETTE: Record<string, { fill: string; hover: string }> = {
+    airside_concourse: { fill: '#DCE5EC', hover: '#D0DBE5' },
+    gate_edge: { fill: '#D0DBE5', hover: '#C4D0DB' },
+    waiting_lounge: { fill: '#E3DACD', hover: '#D9CFC1' },
+    special_amenity: { fill: '#DCC8BE', hover: '#D2BAB0' }, // premium comfort/amenities
+    fnb_retail: { fill: '#D8B58D', hover: '#CDA980' },
+    passenger_service: { fill: '#DCEAF2', hover: '#CFE1ED' },
+    landscape_decor: { fill: '#E4E9E5', hover: '#E4E9E5' }, // không hover
+    operational: { fill: '#C7D0D8', hover: '#C7D0D8' }, // không hover
+    neutral_support: { fill: '#EEF2F5', hover: '#E2E8ED' },
+  };
+
+  const classifyF2Zone = (name?: string): string => {
+    const n = (name || '').toLowerCase().trim();
+
+    // 1. Gate edge
+    if (n.includes('cửa ra tàu bay') || n.includes('gate')) {
+      return 'gate_edge';
+    }
+
+    // 2. Special amenity / comfort
+    if (
+      n.includes('cip') ||
+      n.includes('hạng thương gia') ||
+      n.includes('vip') ||
+      n.includes('cầu nguyện') ||
+      n.includes('massage') ||
+      n.includes('em bé') ||
+      n.includes('trẻ em') ||
+      n.includes('internet') ||
+      n.includes('game') ||
+      n.includes('hút thuốc')
+    ) {
+      return 'special_amenity';
+    }
+
+    // 3. Retail / F&B / hospitality
+    if (
+      n.includes('quầy bar') ||
+      n.includes('cửa hàng') ||
+      n.includes('tiện lợi') ||
+      n.includes('convenience') ||
+      n.includes('thời trang') ||
+      n.includes('mỹ phẩm') ||
+      n.includes('cosmetics') ||
+      n.includes('lưu niệm') ||
+      n.includes('souvenir') ||
+      n.includes('điện tử') ||
+      n.includes('electronics') ||
+      n.includes('trang sức') ||
+      n.includes('jewelry') ||
+      n.includes('rượu') ||
+      n.includes('thuốc lá') ||
+      n.includes('duty free') ||
+      n.includes('ngoại tệ') ||
+      n.includes('currency') ||
+      n.includes('exchange') ||
+      n.includes('cà phê') ||
+      n.includes('bánh ngọt') ||
+      n.includes('món ăn') ||
+      n.includes('tráng miệng') ||
+      n.includes('ẩm thực') ||
+      n.includes('thực phẩm')
+    ) {
+      return 'fnb_retail';
+    }
+
+    // 4. Waiting rooms / lounges
+    if (
+      n.includes('phòng chờ') ||
+      n.includes('lounge')
+    ) {
+      return 'waiting_lounge';
+    }
+
+    // 5. Airside concourse / departure areas
+    if (
+      n.includes('khu ga đi') ||
+      n.includes('concourse') ||
+      n.includes('boarding') ||
+      n.includes('airside') ||
+      n.includes('departure') ||
+      n.includes('hành lang') ||
+      n.includes('corridor')
+    ) {
+      return 'airside_concourse';
+    }
+
+    // 6. Landscape
+    if (
+      n.includes('cảnh quan') ||
+      n.includes('landscape') ||
+      n.includes('trồng cây')
+    ) {
+      return 'landscape_decor';
+    }
+
+    // 7. Passenger services
+    if (
+      n.includes('wc') ||
+      n.includes('vệ sinh') ||
+      n.includes('thang máy') ||
+      n.includes('thang cuốn') ||
+      n.includes('phòng y tế') ||
+      n.includes('medical')
+    ) {
+      return 'passenger_service';
+    }
+
+    // 8. Operational
+    if (
+      n.includes('kỹ thuật') ||
+      n.includes('băng chuyền')
+    ) {
+      return 'operational';
+    }
+
+    return 'neutral_support';
+  };
+
+  // === HỆ THỐNG MÀU PREMIUM AIRPORT - TẦNG 3 (CHECK-IN & DEPARTURE HALL) ===
+  const F3_ZONE_PALETTE: Record<string, { fill: string; hover: string }> = {
+    checkin_island: { fill: '#E1D7C8', hover: '#D4C7B5' },
+    customs_security: { fill: '#AEBAC5', hover: '#A0ACB8' },
+    baggage_service: { fill: '#C8D3DE', hover: '#C8D3DE' }, // không hover
+    service_counter: { fill: '#C8D3DE', hover: '#BBC8D5' }, // Quầy hỗ trợ bưu điện, ngoại tệ
+    special_amenity: { fill: '#DCC8BE', hover: '#D2BAB0' }, // CIP, baby care
+    fnb_retail: { fill: '#D8B58D', hover: '#CDA980' },
+    passenger_service: { fill: '#DCEAF2', hover: '#CFE1ED' },
+    public_landside: { fill: '#F4F0E8', hover: '#EDE8DC' },
+    exhibit_decor: { fill: '#E4E9E5', hover: '#E4E9E5' }, // không hover
+    neutral_support: { fill: '#EEF2F5', hover: '#E2E8ED' },
+  };
+
+  const classifyF3Zone = (name?: string): string => {
+    const n = (name || '').toLowerCase().trim();
+
+    // 1. Security / screening / exit
+    if (
+      n.includes('an ninh') ||
+      n.includes('xuất cảnh') ||
+      n.includes('hải quan') ||
+      n.includes('soi chiếu') ||
+      n.includes('security')
+    ) {
+      return 'customs_security';
+    }
+
+    // 2. Check-in islands / counters
+    if (
+      n.includes('đảo làm thủ tục') ||
+      n.includes('quầy thủ tục') ||
+      n.includes('check-in')
+    ) {
+      return 'checkin_island';
+    }
+
+    // 3. Baggage service / support
+    if (
+      n.includes('oog') ||
+      n.includes('quá khổ') ||
+      n.includes('đóng gói') ||
+      n.includes('lưu trữ hành lý') ||
+      n.includes('gửi hành lý')
+    ) {
+      return 'baggage_service';
+    }
+
+    // 4. Special amenity / premium support
+    if (
+      n.includes('cip') ||
+      n.includes('hạng thương gia') ||
+      n.includes('vip') ||
+      n.includes('em bé')
+    ) {
+      return 'special_amenity';
+    }
+
+    // 5. Retail / F&B
+    if (
+      n.includes('cửa hàng') ||
+      n.includes('tiện lợi') ||
+      n.includes('cà phê') ||
+      n.includes('bánh ngọt') ||
+      n.includes('đồ ăn') ||
+      n.includes('ẩm thực') ||
+      n.includes('food') ||
+      n.includes('món ăn')
+    ) {
+      return 'fnb_retail';
+    }
+
+    // 6. Service Counter (Tách riêng khỏi passenger service để dọn dẹp)
+    if (
+      n.includes('ngoại tệ') ||
+      n.includes('exchange') ||
+      n.includes('bưu điện') ||
+      n.includes('post office') ||
+      n.includes('dịch vụ')
+    ) {
+      return 'service_counter';
+    }
+
+    // 7. Passenger service
+    if (
+      n.includes('wc') ||
+      n.includes('vệ sinh') ||
+      n.includes('thang máy') ||
+      n.includes('thang cuốn') ||
+      n.includes('thông tin') ||
+      n.includes('information')
+    ) {
+      return 'passenger_service';
+    }
+
+    // 8. Exhibition / decor
+    if (
+      n.includes('triển lãm') ||
+      n.includes('exhibition') ||
+      n.includes('trưng bày')
+    ) {
+      return 'exhibit_decor';
+    }
+
+    // 9. Public landside / main hall / entrances
+    if (
+      n.includes('sảnh d') ||
+      n.includes('sảnh check-in') ||
+      n.includes('check-in hall') ||
+      n.includes('departure hall') ||
+      n.includes('làm thủ tục') ||
+      n.includes('sảnh chính') ||
+      n.includes('cửa vào sảnh') ||
+      n.includes('cửa ra vào sảnh') ||
+      n.includes('public concourse') ||
+      n.includes('public')
+    ) {
+      return 'public_landside';
+    }
+
+    return 'neutral_support';
+  };
+
+  // === HỆ THỐNG MÀU MASTER (MASTER TOKEN SYSTEM) - Áp dụng cho TẤT CẢ các tầng ===
+  const MASTER_PALETTE: Record<string, { fill: string; hover: string }> = {
+    // 1. MACRO ZONES (Khu vực nền lớn) - Chuyển sang mã HEX đã pha sáng (Mô phỏng 65% opacity trên nền trắng)
+    international: { fill: '#E7ECF4', hover: '#D8E2F0' }, // Quốc tế (Xanh lam nhạt trong vắt)
+    domestic: { fill: '#F0ECE5', hover: '#E8E2D6' }, // Quốc nội (Be ngà ấm mịn)
+    restricted: { fill: '#DBE8F4', hover: '#C9DDED' }, // Khu cách ly chung (Xanh trời sáng)
+    public: { fill: '#FAFAFB', hover: '#F0F0F3' },  // Khu công cộng (Trắng xám cực nét)
+
+    // 2. MICRO ZONES (Khu vực chức năng - Màu đặc (solid) tinh tế, quy hoạch hài hòa với tone Navy #214ca6)
+    retail: { fill: '#A3B1C6', hover: '#8F9FB5' },  // Bán lẻ, Mua sắm (Xanh Indigo tro sang trọng, hợp rơ với Navy)
+    dining: { fill: '#E0A96D', hover: '#D1965A' },  // Ẩm thực, Nhà hàng (Vàng Nâu Hổ phách, nhã nhặn kích thích vị giác)
+    special: { fill: '#DCC8BE', hover: '#D2BAB0' },  // CIP, Baby Care, VIP (Hồng đất sang trọng)
+    controlled: { fill: '#A1ADBC', hover: '#909EAE' },  // An ninh, Hải quan (Xám Than thép - tạo giới tuyến cứng cáp)
+    utility: { fill: '#C4D8E8', hover: '#B0C9DA' },  // WC, Thang máy (Xanh biển sáng thanh thoát)
+    checkin: { fill: '#8BC3B0', hover: '#7BB3A0' },  // Đảo check-in (Xanh Mint tươi dịu, nổi bật sảnh ngoài)
+    operational: { fill: '#CDD5DC', hover: '#C2CBD4' },  // Hành lý, Băng chuyền (Xám nhạt công vụ)
+    gate: { fill: '#DFE5D3', hover: '#D2DBBE' },  // Cửa ra tàu bay/Khu chờ (Xanh lá Sage pastel - mỏ neo thị giác)
+  };
+
+  const classifyZone = (name?: string): string => {
+    const n = (name || '').toLowerCase().trim();
+
+    // 0. BẪY ĐẶC BIỆT CHO CÁC KHU VỰC LỚN (Macro Zone Traps)
+    if (n.includes('phòng chờ cách ly')) return 'restricted';
+    if (n.includes('phòng chờ quốc tế') || n.includes('sảnh quốc tế') || n.includes('sảnh đi quốc tế') || n.includes('sảnh đến quốc tế')) return 'international';
+    if (n.includes('phòng chờ quốc nội') || n.includes('sảnh quốc nội') || n.includes('sảnh đi quốc nội') || n.includes('sảnh đến quốc nội')) return 'domestic';
+
+    // 1. MICRO FUNCTIONAL ZONES (Ưu tiên kiểm tra trước)
+    if (n.includes('an ninh') || n.includes('xuất cảnh') || n.includes('hải quan') ||
+      n.includes('soi chiếu') || n.includes('security') || n.includes('nhập cảnh') ||
+      n.includes('customs') || n.includes('immigration')) return 'controlled';
+
+    if (n.includes('đảo làm thủ tục') || n.includes('quầy thủ tục') ||
+      n.includes('check-in')) return 'checkin';
+
+    if (n.includes('cửa ra tàu bay') || n.includes('gate') || n.includes('ghế chờ')) return 'gate';
+
+    if (n.includes('cip') || n.includes('hạng thương gia') || n.includes('vip') ||
+      n.includes('em bé') || n.includes('cầu nguyện') || n.includes('massage') ||
+      n.includes('hút thuốc') || n.includes('phòng chờ') || n.includes('lounge')) return 'special';
+
+    if (n.includes('cà phê') || n.includes('bánh ngọt') || n.includes('đồ ăn') || n.includes('ẩm thực') ||
+      n.includes('food') || n.includes('món ăn') || n.includes('quầy bar') || n.includes('nhà hàng') ||
+      n.includes('restaurant') || n.includes('cafe')) return 'dining';
+
+    if (n.includes('cửa hàng') || n.includes('tiện lợi') || n.includes('miễn thuế') ||
+      n.includes('duty free') || n.includes('mỹ phẩm') ||
+      n.includes('lưu niệm') || n.includes('souvenir') || n.includes('thời trang') ||
+      n.includes('trang sức') || n.includes('rượu') || n.includes('thuốc lá') ||
+      n.includes('điện tử') || n.includes('nhà thuốc') || n.includes('convenience') ||
+      n.includes('nhà sách') || n.includes('shop') || n.includes('retail') || n.includes('bán lẻ')) return 'retail';
+
+    if (n.includes('oog') || n.includes('quá khổ') || n.includes('đóng gói') ||
+      n.includes('lưu trữ hành lý') || n.includes('gửi hành lý') ||
+      n.includes('băng chuyền') || n.includes('kỹ thuật') || n.includes('công vụ') ||
+      n.includes('hành lý thất lạc') || n.includes('lost') ||
+      n.includes('đảo nhận hành lý') || n.includes('carousel') ||
+      n.includes('nhận hành lý') || n.includes('baggage')) return 'operational';
+
+    if (n.includes('wc') || n.includes('vệ sinh') || n.includes('thang máy') ||
+      n.includes('thang cuốn') || n.includes('thông tin') || n.includes('ngoại tệ') ||
+      n.includes('exchange') || n.includes('bưu điện') || n.includes('atm') ||
+      n.includes('ngân hàng') || n.includes('y tế') || n.includes('medical')) return 'utility';
+
+    // 2. MACRO ZONES (Khoảng nền rộng lớn)
+    if (n.includes('quốc tế') || n.includes('international') || n.includes('intl')) return 'international';
+    if (n.includes('quốc nội') || n.includes('domestic')) return 'domestic';
+
+    if (n.includes('hạn chế') || n.includes('cách ly') || n.includes('restricted') || n.includes('airside') ||
+      n.includes('khu ga') || n.includes('concourse') || n.includes('boarding') || n.includes('hành lang') ||
+      n.includes('corridor') || n.includes('nối chuyến') || n.includes('transfer')) return 'restricted';
+
+    if (n.includes('sảnh') || n.includes('hall') || n.includes('công cộng') ||
+      n.includes('public') || n.includes('cửa ra vào sảnh') || n.includes('cửa vào sảnh') ||
+      n.includes('entrance') || n.includes('triển lãm') || n.includes('vui chơi') ||
+      n.includes('landside')) return 'public';
+
+    // 3. Fallback mặc định
+    return 'public';
+  };
+
+  // Lấy style cơ bản cho một khu vực dựa trên phân loại vai trò không gian
+  const getObjectBaseStyle = (obj: any) => {
+    const name = (obj.name || "");
+    const objFloorId = obj?.floor?.id || obj?.floorId || (typeof obj?.floor === 'string' ? obj.floor : null);
+    const isOverviewPoly = overviewFloor && objFloorId === overviewFloor.id;
+
+    // Khu vực không có tên
+    if (!name || name.trim() === '') {
+      if (isOverviewPoly) {
+        // Overview Roof: Bạc kim loại mượt (Metallic Silver) để tôn hình khối mái nhà
+        return { color: '#D5DCE4', hoverColor: '#D5DCE4' };
+      }
+      // Các không gian chết bên trong tầng: Off-white nguyên bản để không vỡ layout màu
+      return { color: '#F9F8F6', hoverColor: '#F9F8F6' };
+    }
+
+    // Phân loại theo Master Token System (áp dụng cho TẤT CẢ tầng)
+    const zoneType = classifyZone(name);
+    const palette = MASTER_PALETTE[zoneType] || MASTER_PALETTE['public'];
+    let bgColor = palette.fill;
+    let hoverColor = palette.fill; // KHÓA HOVER: Gán hoverColor bằng chính màu nền tĩnh
+
+    // localStorage override vẫn hoạt động cho tất cả tầng
     try {
       const customColors = JSON.parse(localStorage.getItem('customAreaColors') || '{}');
       if (customColors[obj.id]) {
         bgColor = customColors[obj.id];
       }
-    } catch(e) {}
+    } catch (e) { }
 
-    return {
-      color: obj.name ? bgColor : "#eeece7", // Non-named areas stay gray
-      hoverColor: obj.name ? (bgColor === "#FFF176" ? "#FFEE58" : (bgColor === "#FFCDD2" ? "#EF9A9A" : "#FFF7CC")) : "#eeece7"
-    };
+    return { color: bgColor, hoverColor: hoverColor };
+  };
+
+
+  let spotlightRefreshTimeout: any = null;
+  const triggerSpotlightRefresh = () => {
+    if (spotlightRefreshTimeout) clearTimeout(spotlightRefreshTimeout);
+    spotlightRefreshTimeout = setTimeout(() => {
+      applyAreaColors();
+    }, 50);
   };
 
   /**
@@ -2086,22 +2882,28 @@ async function init() {
       }
 
       // Check if this object is currently selected/highlighted by search
-      const isSelected = currentSearchResults.some(s => s.id === obj.id);
+      // 1. Lấy trạng thái Focus
+      const isSelected = currentSearchResults.some((s: any) => s.id === obj.id);
+      const isSelectedSpaceLocal = selectedSpace && selectedSpace.id === obj.id;
       const isWayfindingPoint = obj.id === (window as any).wayfindingOrigin?.id || obj.id === (window as any).wayfindingDestination?.id;
+
+      const hasAnyFocus = currentSearchResults.length > 0 || selectedSpace || isWayfindingPoint;
+      const isTargetFocus = isSelected || isSelectedSpaceLocal || isWayfindingPoint;
 
       let style = getObjectBaseStyle(obj);
 
-      // WAYFINDING PRIORITY: If it's a wayfinding point, always highlight green
-      if (isWayfindingPoint) {
-        style.color = "#4CAF50";
+      // 2. BẬT ĐÈN SÂN KHẤU (SPOTLIGHT EFFECT)
+      if (isTargetFocus) {
+        style.color = "#214ca6";     // Navy Blue
+        style.hoverColor = "#1a3c85";
       }
-      // SEARCH PRIORITY: If selected by search, use tinted base or green
-      else if (isSelected) {
-        if (style.color === "#FFF176") style.color = "#FBC02D"; // Darker Yellow for selection
-        else if (style.color === "#FFCDD2") style.color = "#EF9A9A"; // Darker Red for selection
-        else style.color = "#4CAF50"; // Default selection green
+      // Dập tắt ánh sáng kết cấu xung quanh
+      else if (hasAnyFocus) {
+        if (obj.name && obj.name.trim() !== '') {
+          style.color = "#E8EAEF";
+          style.hoverColor = "#E8EAEF";
+        }
       }
-
       const stateUpdate: any = {
         interactive: true,
         color: style.color,
@@ -2195,7 +2997,6 @@ async function init() {
   // ============================================
   // 9. HOVER HANDLER
   // ============================================
-  let selectedSpace: any = null;
 
   /**
    * Xử lý hover: đảm bảo object đã chọn giữ màu xanh lá khi hover
@@ -2399,21 +3200,21 @@ async function init() {
 
             markerHtml = `
             <div style="display:flex;flex-direction:column;align-items:center;gap:3px;">
-              <div style="width:34px;height:34px;background:#fff;border-radius:4px;padding:2px;box-shadow:0 3px 6px rgba(0,0,0,0.2);display:flex;align-items:center;justify-content:center;border:1px solid rgba(0,0,0,0.05);overflow:hidden;">
-                <img src="${activeIconUrl}" alt="${name}" onerror="${onerrorStr}" style="width:100%;height:100%;object-fit:cover;" />
+              <div style="width:34px;height:34px;background:#fff;border-radius:50%;box-shadow:0 3px 6px rgba(0,0,0,0.2);display:flex;align-items:center;justify-content:center;border:1.5px solid #fff;">
+                <img src="${activeIconUrl}" alt="${name}" onerror="${onerrorStr}" style="width:20px;height:20px;object-fit:contain;" />
               </div>
-              <div style="font-size:11px;line-height:12px;background:rgba(255,255,255,0.95);padding:2px 8px;border-radius:4px;color:#111;white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,0.15);font-weight:600;border:1px solid rgba(0,0,0,0.05);">
+              <div style="font-size:13px;line-height:1.2;font-weight:600;color:#333;text-shadow:0 0 4px rgba(255,255,255,0.9),0 0 8px rgba(255,255,255,0.8);white-space:nowrap;">
                 ${name}
               </div>
             </div>`;
           } else {
             const firstLetter = name.charAt(0).toUpperCase();
             markerHtml = `
-            <div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:3px;">
               <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:bold;font-size:14px;">
                 ${firstLetter}
               </div>
-              <div style="font-size:11px;line-height:11px;background:rgba(255,255,255,0.95);padding:2px 6px;border-radius:999px;color:#111;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,0.2);font-weight:500;">
+              <div style="font-size:13px;line-height:1.2;font-weight:600;color:#333;text-shadow:0 0 4px rgba(255,255,255,0.9),0 0 8px rgba(255,255,255,0.8);white-space:nowrap;">
                 ${name}
               </div>
             </div>`;
@@ -2527,11 +3328,11 @@ async function init() {
 
     // Tạo marker HTML cho tên bản đồ với ảnh airplane.jpg
     const markerHtml = `
-      <div id="main-airport-label" style="display:flex;flex-direction:column;align-items:center;gap:2px;transition:opacity 0.2s;">
+      <div id="main-airport-label" style="display:flex;flex-direction:column;align-items:center;gap:3px;transition:opacity 0.2s;">
         <div style="width:40px;height:40px;border-radius:50%;overflow:hidden;border:3px solid #fff;box-shadow:0 3px 8px rgba(0,0,0,0.4);background:#fff;display:flex;align-items:center;justify-content:center;">
           <img src="${airplaneIconUrl}" alt="${mapName}" style="width:100%;height:100%;object-fit:cover;" />
         </div>
-        <div style="font-size:12px;line-height:12px;background:rgba(255,255,255,0.98);padding:4px 8px;border-radius:999px;color:#111;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,0.25);font-weight:600;max-width:250px;text-align:center;">
+        <div style="font-size:13px;line-height:1.2;font-weight:600;color:#333;text-shadow:0 0 4px rgba(255,255,255,0.9),0 0 8px rgba(255,255,255,0.8);white-space:nowrap;text-align:center;">
           ${mapName}
         </div>
       </div>
@@ -2568,18 +3369,9 @@ async function init() {
     }
   };
 
-  // Add listener for camera changes to handle zoom visibility
-  mapView.on('camera-change', () => {
-    // Only check if we are on Overview, as marker is only shown on Overview
-    const isOverview = mapData.getByType("floor").find((f: any) =>
-      f.name?.toLowerCase().includes("overview") ||
-      f.name?.toLowerCase().includes("tổng quan")
-    )?.id === mapView.currentFloor?.id;
 
-    if (isOverview) {
-      checkZoomVisibility();
-    }
-  });
+  // Quản lý trạng thái Marker & Zoom (Đã được hợp nhất vào camera-change bên dưới)
+
 
   // Expose createMapNameMarker to window for language change updates
   (window as any).createMapNameMarker = createMapNameMarker;
@@ -3042,7 +3834,7 @@ async function init() {
     // Helper function to get name in current language
     const getCategoryName = (cat: any) => {
       const lang = TranslationManager.currentLang || 'vn';
-      return cat[lang] || cat.vn || '';
+      return cat.names?.[lang] || cat.names?.vn || cat[lang] || cat.vn || '';
     };
 
     const currentFloorId = mapView.currentFloor.id;
@@ -3084,12 +3876,27 @@ async function init() {
       categoryList.style.flexDirection = "column";
       categoryList.style.gridTemplateColumns = "none"; // disable grid
       const backBtn = document.createElement("div");
-      backBtn.className = "category-item back-item";
-      backBtn.style.gridColumn = "1 / -1";
+      backBtn.style.cssText = `
+                display: flex; align-items: center; gap: 10px;
+                padding: 12px 16px;
+                cursor: pointer; color: #214ca6;
+                font-weight: 600; font-size: 14px;
+                border-bottom: 1px solid #e8ecf4;
+                transition: all 0.2s ease;
+                background: #fafbfd;
+            `;
       backBtn.innerHTML = `
-            <div class="category-icon-box">⬅️</div>
-            <div class="category-label-box">${TranslationManager.t('back_btn', 'Quay lại')}</div>
-        `;
+                <div style="
+                    width: 28px; height: 28px; border-radius: 50%;
+                    background: #f0f4f8; display: flex; align-items: center; justify-content: center;
+                    transition: all 0.2s;
+                ">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                </div>
+                <span>${TranslationManager.t('back_btn', 'Quay lại danh mục')}</span>
+            `;
+      backBtn.onmouseenter = () => { backBtn.style.background = "#eef3ff"; };
+      backBtn.onmouseleave = () => { backBtn.style.background = "#fafbfd"; };
       backBtn.onclick = () => {
         // Clear highlights when returning to main categories
         activeCategoryId = null;
@@ -3109,39 +3916,95 @@ async function init() {
         const activeSubs = parentCat.subcategories.filter((s: any) => isSubActiveOnFloor(s.id));
 
         if (activeSubs.length === 0) {
-          categoryList.innerHTML += `<div style="grid-column: 1/-1; padding:20px; text-align:center; color:#999;">${TranslationManager.t('no_categories_for_floor', 'Không có danh mục cho tầng này')}</div>`;
+          const emptyMsg = document.createElement("div");
+          emptyMsg.style.cssText = `
+                        padding: 32px 20px; text-align: center; color: #999;
+                        font-size: 13px; font-style: italic;
+                    `;
+          emptyMsg.innerHTML = `
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#ddd" stroke-width="1.5" style="margin-bottom:8px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                        <div>${TranslationManager.t('no_categories_for_floor', 'Không có danh mục cho tầng này')}</div>
+                    `;
+          categoryList.appendChild(emptyMsg);
         }
 
         activeSubs.forEach((sub: any) => {
           const item = document.createElement("div");
-          item.className = "category-item sub-item";
-          if (activeSubCategoryId === sub.id.toString()) item.classList.add('active');
+          const isActive = activeSubCategoryId === sub.id.toString();
 
-          // Subcategory Item Styling
-          item.style.width = "100%";
-          item.style.boxSizing = "border-box";
+          // Không dùng class cũ để tránh xung đột CSS
+          item.className = isActive ? "sub-item-header-modern" : "";
 
           const subName = getCategoryName(sub);
 
-          if (activeSubCategoryId === sub.id.toString()) {
-            // ACTIVE STATE: Centered Header WITH ICON (User Request: visible white text)
-            item.style.justifyContent = "center";
-            item.style.backgroundColor = "#085ebb"; // Dark blue background for white text contrast
-            item.style.boxShadow = "none";
-            item.style.border = "none";
-            item.style.borderBottom = "2px solid #003d82";
-            item.style.borderRadius = "0";
-            item.style.padding = "10px 0";
+          // === INCHEON STYLE: Row layout với icon tròn, text, chevron ===
+          item.style.display = "flex";
+          item.style.alignItems = "center";
+          item.style.padding = "12px 16px";
+          item.style.cursor = "pointer";
+          item.style.transition = "all 0.2s ease";
+          item.style.borderBottom = "1px solid #f0f0f0";
+          item.style.width = "100%";
+          item.style.boxSizing = "border-box";
 
-            item.innerHTML = `
-                  <div class="category-icon-box">${getIconHtml(sub.icon, "📍")}</div>
-                  <div style="font-weight:700; color:white; font-size:15px;">${subName}</div>
-              `;
+          if (isActive) {
+            item.style.backgroundColor = "#f0f4ff";
+            item.style.borderLeft = "3px solid #214ca6";
           } else {
-            item.innerHTML = `
-                  <div class="category-icon-box">${getIconHtml(sub.icon, "📍")}</div>
-                  <div class="category-label-box">${subName}</div>
-              `;
+            item.style.backgroundColor = "white";
+            item.style.borderLeft = "3px solid transparent";
+          }
+
+          // Icon tròn nền nhạt (chuẩn Incheon style)
+          const iconCircle = `<div style="
+                        flex-shrink: 0;
+                        width: 40px; height: 40px;
+                        border-radius: 50%;
+                        background: ${isActive ? '#214ca6' : '#f0f4f8'};
+                        display: flex; align-items: center; justify-content: center;
+                        margin-right: 12px;
+                        transition: all 0.2s;
+                    ">
+                        <div style="
+                            width: 22px; height: 22px;
+                            display: flex; align-items: center; justify-content: center;
+                            ${isActive ? 'filter: brightness(10);' : ''}
+                        ">${getIconHtml(sub.icon, "📍")}</div>
+                    </div>`;
+
+          // Tên subcategory
+          const textBlock = `<div style="flex: 1; overflow: hidden;">
+                        <div style="
+                            font-weight: ${isActive ? '600' : '500'};
+                            font-size: 14px;
+                            color: ${isActive ? '#214ca6' : '#1a1a2e'};
+                            white-space: nowrap;
+                            overflow: hidden;
+                            text-overflow: ellipsis;
+                        ">${subName}</div>
+                    </div>`;
+
+          // Chevron mũi tên (xoay xuống khi active)
+          const chevron = `<div style="
+                        flex-shrink: 0; margin-left: 8px; color: ${isActive ? '#214ca6' : '#bbb'};
+                        transition: transform 0.3s;
+                        transform: ${isActive ? 'rotate(90deg)' : 'rotate(0deg)'};
+                    ">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+                    </div>`;
+
+          item.innerHTML = iconCircle + textBlock + chevron;
+
+          // Hover effect (chỉ khi không active)
+          if (!isActive) {
+            item.onmouseenter = () => {
+              item.style.backgroundColor = "#f8faff";
+              item.style.borderLeft = "3px solid #cbd5e1";
+            };
+            item.onmouseleave = () => {
+              item.style.backgroundColor = "white";
+              item.style.borderLeft = "3px solid transparent";
+            };
           }
 
           item.onclick = () => {
@@ -3149,82 +4012,94 @@ async function init() {
           };
           categoryList.appendChild(item);
 
-          // NEW: Render Assigned Areas list if active
-          if (activeSubCategoryId === sub.id.toString()) {
+          // === AREA LIST: Render khi active (Incheon accordion style) ===
+          if (isActive) {
             const areaContainer = document.createElement("div");
             areaContainer.className = "category-area-list";
-            // Reset margin/padding for full width look
-            areaContainer.style.marginLeft = "0";
-            areaContainer.style.width = "100%";
-            areaContainer.style.boxSizing = "border-box";
-            areaContainer.style.marginBottom = "8px";
-            areaContainer.style.borderLeft = "none"; // Remove old border
-            // Scrollable if too long (User Request)
-            areaContainer.style.maxHeight = "300px";
-            areaContainer.style.overflowY = "auto";
-            areaContainer.style.backgroundColor = "#fff";
+            areaContainer.style.cssText = `
+                            margin: 0; width: 100%; box-sizing: border-box;
+                            max-height: 350px; overflow-y: auto;
+                            background: #fafbfd;
+                            border-bottom: 2px solid #e8ecf4;
+                        `;
 
             // Get assigned areas for this subcategory
             const assignedMIDs = assignedMap.get(sub.id.toString()) || [];
             if (assignedMIDs.length > 0) {
-              // Determine if we are focusing on a specific area
-              // We can track this via global or just check highlighting
-              // For now, let's just render them.
-
-              // User Request: Filter by floor if not in Overview
               const currentFloorId = isMapInOverview() ? null : mapView.currentFloor.id;
               let areas = allMapObjects.filter(o => assignedMIDs.indexOf(o.id) !== -1);
 
               if (currentFloorId) {
                 areas = areas.filter(a => {
                   const fId = a.floor?.id || a.floorId || (typeof a.floor === 'string' ? a.floor : null);
-                  // Match floor logic
                   return fId === currentFloorId;
                 });
               }
-              // Sort by name
-              areas.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+              // Sort by localized name
+              areas.sort((a, b) => (TranslationManager.getName(a) || a.name || '').localeCompare(TranslationManager.getName(b) || b.name || ''));
 
               areas.forEach((area, index) => {
                 const areaItem = document.createElement("div");
-                areaItem.style.padding = "8px 12px";
-                areaItem.style.fontSize = "13px";
-                areaItem.style.cursor = "pointer";
-                areaItem.style.color = "#333";
-                areaItem.style.borderBottom = "1px solid #f0f0f0";
-                areaItem.style.display = "flex";
-                areaItem.style.flexDirection = "column";
-
-                // ALTERNATING COLORS (User Request: "đan xen nền xám nhẹ và màu trắng")
-                areaItem.style.backgroundColor = index % 2 === 0 ? "#f9f9f9" : "white";
-
-                // Name
-                const nameSpan = document.createElement("span");
-                nameSpan.innerText = TranslationManager.getName(area) || area.name || area.id;
-                nameSpan.style.fontWeight = "500";
-                areaItem.appendChild(nameSpan);
-
-                // Floor (if available) - User Request
-                const floorName = area.floor?.name || (typeof area.floor === 'string' ? area.floor : null);
-                if (floorName) {
-                  const floorSpan = document.createElement("span");
-                  floorSpan.innerText = floorName;
-                  floorSpan.style.fontSize = "10px";
-                  floorSpan.style.opacity = "0.7";
-                  areaItem.appendChild(floorSpan);
-                }
-
                 const isFocused = currentSearchResults.length === 1 && currentSearchResults[0].id === area.id;
-                if (isFocused) {
-                  areaItem.style.backgroundColor = "#085ebb"; // Blue BG (overrides alternating)
-                  areaItem.style.color = "white"; // White Text
-                  nameSpan.style.color = "white";
-                  if (areaItem.children[1]) (areaItem.children[1] as HTMLElement).style.color = "rgba(255,255,255,0.8)";
-                } else {
-                  // Hover effects (preserve alternating color)
-                  const defaultBg = areaItem.style.backgroundColor;
-                  areaItem.onmouseenter = () => { areaItem.style.backgroundColor = "#e8f4f8"; };
-                  areaItem.onmouseleave = () => { areaItem.style.backgroundColor = defaultBg; };
+
+                // === INCHEON STYLE: Mỗi area item là một row flex đẹp mắt ===
+                areaItem.style.cssText = `
+                                    display: flex; align-items: center;
+                                    padding: 10px 16px 10px 28px;
+                                    cursor: pointer;
+                                    transition: all 0.2s ease;
+                                    border-bottom: 1px solid #f0f2f5;
+                                    background: ${isFocused ? '#eef3ff' : 'transparent'};
+                                    border-left: 3px solid ${isFocused ? '#214ca6' : 'transparent'};
+                                `;
+
+                // Icon pin nhỏ
+                const pinIcon = `<div style="
+                                    flex-shrink: 0; width: 28px; height: 28px;
+                                    border-radius: 50%;
+                                    background: ${isFocused ? '#214ca6' : '#e8ecf4'};
+                                    display: flex; align-items: center; justify-content: center;
+                                    margin-right: 12px;
+                                ">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${isFocused ? 'white' : '#666'}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                                </div>`;
+
+                // Tên + tầng
+                const areaName = TranslationManager.getName(area) || area.name || area.id;
+                const rawFloorName = area.floor?.name || (typeof area.floor === 'string' ? area.floor : null);
+                const floorMappedId = area.floor?.mappedinId || area.floor?.id || area.floorId || (typeof area.floor === 'string' ? area.floor : null);
+                const localizedFloorName = floorMappedId ? TranslationManager.getFloorName(floorMappedId, rawFloorName || '') : rawFloorName;
+
+                const textInfo = `<div style="flex: 1; overflow: hidden;">
+                                    <div style="
+                                        font-weight: ${isFocused ? '600' : '400'};
+                                        font-size: 13px;
+                                        color: ${isFocused ? '#214ca6' : '#333'};
+                                        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+                                    ">${areaName}</div>
+                                    ${localizedFloorName ? `<div style="
+                                        font-size: 11px; color: #999; margin-top: 1px;
+                                        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+                                    ">${localizedFloorName}</div>` : ''}
+                                </div>`;
+
+                // Chevron nhỏ
+                const miniChevron = `<div style="flex-shrink:0; margin-left:8px; color:#ccc;">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+                                </div>`;
+
+                areaItem.innerHTML = pinIcon + textInfo + miniChevron;
+
+                // Hover (chỉ khi không focus)
+                if (!isFocused) {
+                  areaItem.onmouseenter = () => {
+                    areaItem.style.backgroundColor = "#f0f4ff";
+                    areaItem.style.borderLeft = "3px solid #cbd5e1";
+                  };
+                  areaItem.onmouseleave = () => {
+                    areaItem.style.backgroundColor = "transparent";
+                    areaItem.style.borderLeft = "3px solid transparent";
+                  };
                 }
 
                 areaItem.onclick = (e) => {
@@ -3384,11 +4259,9 @@ async function init() {
     collapseBtn.addEventListener("click", () => setCategoryPanelState(false));
   }
 
-  // Hook into floor change to update UI and Colors
-  mapView.on("floor-change", () => {
-    updateUIVisibility();
-    applyAreaColors();
-  });
+
+  // Floor-change logic đã được xử lý ở lắng nghe sự kiện floor-change chính (dòng 3312+)
+
 
   // Helper: Thực hiện chuyển tầng có khóa bảo vệ
   const performFloorSwitch = async (targetFloorId: string, reason: string) => {
@@ -3522,6 +4395,14 @@ async function init() {
       }
     }
 
+    // Logic ẩn/hiện nhãn theo mức Zoom
+    const currentZoom = transform.zoomLevel;
+    if (currentZoom <= 17.5) {
+      document.body.classList.add('zoom-out-mode');
+    } else {
+      document.body.classList.remove('zoom-out-mode');
+    }
+
     // Luôn cập nhật Marker Overview (Airport name)
     if (type === "overview") {
       checkZoomVisibility();
@@ -3590,6 +4471,8 @@ async function init() {
   // ============================================
   let wayfindingOrigin: any = null;
   let wayfindingDestination: any = null;
+  let wayfindingStopovers: any[] = [];
+  let isSelectingStopoverIndex: number = -1; // -1 means none
   let wayfindingDirections: any = null;
   let simplifiedInstructionsGlobal: any[] = []; // Global store for demo
   let routeTotalSecondsGlobal: number = 0; // Global store for demo
@@ -3823,20 +4706,12 @@ async function init() {
     const objectToReset = allMapObjects.find((o: any) => o.id === obj.id);
     if (objectToReset) {
       try {
-        // Khu vực không có tên: màu #ffffff, không có hover
-        // Khu vực không có tên: màu #ffffff, không có hover (hoverColor = #ffffff)
-        // Khu vực có tên: màu trắng, hover vàng
-        let defaultColor = objectToReset.name ? "#FFFFFF" : "#eeece7";
-        try {
-          const customColors = JSON.parse(localStorage.getItem('customAreaColors') || '{}');
-          if (customColors[objectToReset.id]) {
-            defaultColor = customColors[objectToReset.id];
-          }
-        } catch(e) {}
+        // Sử dụng getObjectBaseStyle để lấy màu mặc định theo vai trò khu vực
+        const resetStyle = getObjectBaseStyle(objectToReset);
         mapView.updateState(objectToReset, {
           interactive: true,
-          color: defaultColor,
-          hoverColor: updateObjectHoverColor(objectToReset), // #ffffff cho không có tên, #FFFACD cho có tên
+          color: resetStyle.color,
+          hoverColor: resetStyle.hoverColor,
         });
       } catch (e) {
         // Bỏ qua nếu không thể updateState
@@ -3866,7 +4741,6 @@ async function init() {
    */
   const updateHighlights = () => {
     // Reset tất cả objects trước
-    // Reset tất cả objects trước
     allMapObjects.forEach((obj: any) => {
       try {
         // Skip if object is currently a search result
@@ -3874,23 +4748,15 @@ async function init() {
           return;
         }
 
-        // Chỉ reset màu nếu không phải origin, destination hoac selectedSpace
-        if (obj.id !== wayfindingOrigin?.id && obj.id !== wayfindingDestination?.id && obj.id !== selectedSpace?.id) {
-          // Khu vực không có tên: màu #ffffff, không có hover (hoverColor = #ffffff)
-          // Khu vực không có tên: màu #ffffff, không có hover (hoverColor = #ffffff)
-          // Khu vực có tên: màu trắng, hover vàng
-          let defaultColor = obj.name ? "#FFFFFF" : "#eeece7";
-          try {
-            const customColors = JSON.parse(localStorage.getItem('customAreaColors') || '{}');
-            if (customColors[obj.id]) {
-              defaultColor = customColors[obj.id];
-            }
-          } catch(e) {}
-          
+        // Chỉ reset màu nếu không phải origin, destination hoac selectedSpace hoac thuoc dang chon lam stopovers
+        const isStopover = wayfindingStopovers.some(s => s && s.id === obj.id);
+        if (obj.id !== wayfindingOrigin?.id && obj.id !== wayfindingDestination?.id && obj.id !== selectedSpace?.id && !isStopover) {
+          // Sử dụng getObjectBaseStyle để lấy màu mặc định theo vai trò khu vực
+          const refreshStyle = getObjectBaseStyle(obj);
           mapView.updateState(obj, {
             interactive: true,
-            color: defaultColor,
-            hoverColor: updateObjectHoverColor(obj), // #ffffff cho không có tên, #FFFACD cho có tên
+            color: refreshStyle.color,
+            hoverColor: refreshStyle.hoverColor,
           });
         }
       } catch (e) {
@@ -3898,13 +4764,18 @@ async function init() {
       }
     });
 
-    // Chỉ highlight origin và destination
+    // Chỉ highlight origin, destination và stopovers
     if (wayfindingOrigin) {
       highlightObject(wayfindingOrigin);
     }
     if (wayfindingDestination && wayfindingDestination.id !== wayfindingOrigin?.id) {
       highlightObject(wayfindingDestination);
     }
+    wayfindingStopovers.forEach(stop => {
+      if (stop && stop.id !== wayfindingOrigin?.id && stop.id !== wayfindingDestination?.id) {
+        highlightObject(stop);
+      }
+    });
 
     // Highlight selectedSpace if exists
     if (selectedSpace && !currentSearchResults.some(r => r.id === selectedSpace.id)) {
@@ -3944,29 +4815,73 @@ async function init() {
         distance = (Math.abs(latDiff) + Math.abs(lngDiff)) * 111000;
       }
 
-      // Chọn phương pháp smoothing: Ưu tiên tốc độ
-      // Ngưỡng giảm xuống 50m: Chỉ dùng dp-optimal cho đường rất gần, còn lại dùng greedy-los (nhanh nhất)
-      const useOptimal = distance !== null && distance <= 50;
+      const smoothingConfig = {
+        enabled: true,
+        __EXPERIMENTAL_METHOD: 'dp-optimal' as const,
+        radius: 1.2, // Tăng radius lên để nắn thẳng hoàn toàn các đoạn zic-zac (noise) dọc hành lang, tạo đường thẳng mượt hơn
+        __EXPERIMENTAL_INCLUDE_DOOR_BUFFER_NODES: true,
+      };
 
-      const smoothingConfig = useOptimal
-        ? {
-          // dp-optimal: Chỉ dùng cho đường rất gần (≤50m) để đảm bảo chính xác
-          enabled: true,
-          __EXPERIMENTAL_METHOD: 'dp-optimal' as const,
-          radius: 3.0, // Tăng radius lên 6.0 để đường đi cực kỳ mượt, xóa bỏ zic-zac địa hình
-          __EXPERIMENTAL_INCLUDE_DOOR_BUFFER_NODES: true,
+      const waypoints = [wayfindingOrigin, ...wayfindingStopovers, wayfindingDestination].filter(Boolean);
+      if (waypoints.length < 2) return;
+
+      let allCoordinates: any[] = [];
+      let allInstructions: any[] = [];
+      let totalDistance = 0;
+      let allPaths: any[] = [];
+
+      for (let i = 0; i < waypoints.length - 1; i++) {
+        const origin = waypoints[i];
+        const dest = waypoints[i + 1];
+
+        const dir = await mapData.getDirections(origin, dest, {
+          smoothing: smoothingConfig,
+          accessible: true,
+        });
+
+        if (dir && dir.coordinates && dir.coordinates.length > 0) {
+          if (i > 0 && allCoordinates.length > 0) {
+            allCoordinates.push(...dir.coordinates.slice(1));
+          } else {
+            allCoordinates.push(...dir.coordinates);
+          }
+
+          if (dir.instructions) {
+            let insts = JSON.parse(JSON.stringify(dir.instructions));
+            if (i < waypoints.length - 2) {
+              const lastInst = insts[insts.length - 1];
+              if (lastInst && lastInst.action) {
+                lastInst.action.type = 'stopover';
+                lastInst.instruction = `Điểm dừng: ${TranslationManager.getName(dest)}`;
+              }
+            }
+            if (i > 0 && insts.length > 0) {
+              if (insts[0].action?.type === 'departure' || insts[0].action?.type === 'start') {
+                insts.splice(0, 1);
+              }
+            }
+            allInstructions.push(...insts);
+          }
+
+          if (dir.path) {
+            allPaths.push(dir.path);
+          } else if (dir.paths) {
+            allPaths.push(...dir.paths);
+          }
+
+          totalDistance += dir.distance || 0;
         }
-        : {
-          // greedy-los: Mặc định cho tất cả trường hợp (nhanh nhất, O(n))
-          enabled: true,
-          __EXPERIMENTAL_METHOD: 'greedy-los' as const,
-          radius: 3.0, // Tăng radius lên 6.0 để siết chặt các đoạn rẽ không cần thiết
-        };
+      }
 
-      const directions = await mapData.getDirections(wayfindingOrigin, wayfindingDestination, {
-        smoothing: smoothingConfig,
-        accessible: true, // Ưu tiên thang máy và các lộ trình dễ tiếp cận
-      });
+      const combinedDirections = {
+        coordinates: allCoordinates,
+        instructions: allInstructions,
+        distance: totalDistance,
+        path: allPaths.length > 0 ? allPaths[0] : null,
+        paths: allPaths
+      };
+
+      const directions = combinedDirections;
       if (directions && directions.coordinates && directions.coordinates.length > 0) {
         wayfindingDirections = directions;
         syncURL(false); // Push state for navigation start
@@ -4165,12 +5080,12 @@ async function init() {
           pathOptions: {
             displayArrowsOnPath: true,
             animateArrowsOnPath: true,
-            accentColor: '#2196F3', // Xanh nước biển
-            width: 1.2, // Tăng độ rộng đường đi để dễ nhìn hơn và đảm bảo điểm đến dễ thấy khi chạm vào
+            accentColor: '#214ca6', // Navy Blue chuẩn
+            width: 2.0, // Đường kẻ đậm nét, chuyên nghiệp hơn
           },
           markerOptions: {
-            departureColor: '#2196F3', // Xanh nước biển giống đường đi
-            destinationColor: '#f44336',
+            departureColor: '#214ca6',
+            destinationColor: '#f59e0b',
           },
         };
         currentNavigation = mapView.Navigation.draw(directions, navigationOptions);
@@ -4336,9 +5251,12 @@ async function init() {
             'arrival': t('action_arrival', 'Kết thúc'),
             'continue': t('action_continue', 'Tiếp tục'),
             'arrive': t('action_arrive', 'Đến nơi'),
-            // 'takeconnection': t('action_take', 'Đi'), // Đã xử lý riêng
+            'stopover': mappedinText || 'Điểm dừng',
             'enter': t('action_enter', 'Vào'),
             'exit': t('action_exit', 'Ra'),
+            'takeconnection': t('action_take_connection', 'Sử dụng liên kết'),
+            'exitconnection': t('action_exit_connection', 'Rời khỏi liên kết'),
+            'departure': t('action_departure', 'Khởi hành'),
           };
 
           return actionMap[actionType] || mappedinText || actionType;
@@ -4383,125 +5301,103 @@ async function init() {
           if (!directions.instructions || directions.instructions.length === 0) {
             instructionsHtml = `<div style="padding:10px; color:#666; font-style:italic;">${TranslationManager.t('not_found', "Không tìm thấy đường đi")}</div>`;
           } else {
-            instructionsHtml = `<div style="font-weight:700; font-size:14px; margin-bottom:10px; color:#333; padding:0 4px;">${TranslationManager.t('step_by_step', "Hướng dẫn từng bước:")}</div>`;
-            instructionsHtml += '<div style="display:flex; flex-direction:column; gap:8px;">';
+            instructionsHtml = `
+              <div id="instructions-raw-list" style="padding-top: 10px; padding-bottom: 30px;">
+            `;
 
             const mentionedLandmarks: string[] = [];
-            const originName = TranslationManager.getName(wayfindingOrigin) || wayfindingOrigin?.name || '';
-            const destName = TranslationManager.getName(wayfindingDestination) || wayfindingDestination?.name || '';
-            if (originName) mentionedLandmarks.push(originName);
-            if (destName) mentionedLandmarks.push(destName);
-
             simplifiedInstructions.forEach((instruction: any, index: number) => {
               const isFirstStep = index === 0;
               const isLastStep = index === simplifiedInstructions.length - 1;
-
-              // 1. Xác định actionText với nhiều fallback để tránh "undefined"
-              let actionText = translateActionType(instruction, simplifiedInstructions, index);
-
-              const rawInstruction = instruction.instruction;
-              const actionInstruction = instruction.action?.instruction;
               const actionType = (instruction.action?.type || '').toLowerCase();
+              const isConnection = actionType.includes('connection') || actionType.includes('elevator') || actionType.includes('stair') || actionType.includes('escalator');
 
+              let actionText = translateActionType(instruction, simplifiedInstructions, index);
               if (!actionText || actionText === 'undefined') {
-                actionText = actionInstruction || rawInstruction || actionType || TranslationManager.t('action_continue', 'Tiếp tục');
+                actionText = instruction.action?.instruction || instruction.instruction || actionType || TranslationManager.t('action_continue', 'Tiếp tục');
               }
+              actionText = actionText.replace('Toà nhà T2:', '').trim();
 
-              // Xử lý landmark cho bước 1 hoặc nếu chưa có landmark
-              if (isFirstStep) {
-                let foundLandmark: string | null = null;
-                if (directions.coordinates && directions.coordinates.length > 0) {
-                  const searchEnd = Math.max(Math.floor(directions.coordinates.length * 0.8), Math.min(directions.coordinates.length, 10));
-                  foundLandmark = findLandmarkAlongPath(directions.coordinates, 0, searchEnd, instruction.coordinate?.floorId, mentionedLandmarks);
-                }
-                if (foundLandmark) {
-                  actionText += ` (${TranslationManager.t('towards', 'về hướng')} ${foundLandmark})`;
-                  mentionedLandmarks.push(foundLandmark);
-                }
-              } else if (!actionText.includes('(')) {
-                const landmark = findNearbyLandmark(instruction.coordinate, instruction.coordinate?.floorId, 10, mentionedLandmarks);
-                if (landmark) {
-                  let prefix = TranslationManager.t('near', 'gần');
-                  if (actionType === 'continue' || actionType.includes('arrive') || actionType.includes('arrival')) prefix = TranslationManager.t('past', 'qua');
-                  actionText = `${actionText} (${prefix} ${landmark})`;
-                  mentionedLandmarks.push(landmark);
-                }
-              }
-
-              // 2. Logic hiển thị khoảng cách & thời gian
               let distanceText = '';
               let timeText = '';
               let currentDist = Math.round(instruction.distance || 0);
-              const nextStep = simplifiedInstructions[index + 1];
-
-              const isArrival = actionType.includes('arrive') || actionType.includes('arrival');
-              const isConnection = (instruction.action?.type || '').toLowerCase().includes('connection') ||
-                (instruction.action?.type || '').toLowerCase().includes('elevator') ||
-                (instruction.action?.type || '').toLowerCase().includes('stair') ||
-                (instruction.action?.type || '').toLowerCase().includes('escalator');
 
               if (isConnection) {
                 const isEnter = actionType === 'takeconnection' || actionType === 'enter';
                 if (isEnter) {
-                  // Kiểm tra loại kết nối: thang máy vs thang cuốn/bộ
                   const connType = (instruction.action?.connection?.type || '').toLowerCase();
                   const isElevator = connType.includes('elevator') || (instruction.action?.connection?.name || '').toLowerCase().includes('thang máy');
-
-                  // Mặc định: Thang máy 3m, Thang cuốn/bộ 6m
                   currentDist = isElevator ? 3 : 6;
                 } else {
                   currentDist = 0;
                 }
               }
 
-              // Logic Shift đã được loại bỏ để trở về nguyên bản
-
-
-              if (currentDist > 0 && !isArrival) {
+              if (currentDist > 0 && actionType !== 'arrive' && actionType !== 'arrival') {
                 distanceText = `${currentDist}m`;
-
-                let stepSeconds = 0;
-                if (isConnection || actionText.toLowerCase().includes('thang')) {
-                  stepSeconds = Math.round(currentDist / 0.6) + 20;
-                } else {
-                  stepSeconds = Math.round(currentDist / 1.4);
-                }
+                let stepSeconds = (isConnection || actionText.toLowerCase().includes('thang')) ? Math.round(currentDist / 0.6) + 20 : Math.round(currentDist / 1.4);
                 routeTotalSeconds += stepSeconds;
-
-                let timeString = '';
-                const minLabel = TranslationManager.t('minute_label', 'phút');
-                const secLabel = TranslationManager.t('second_label', 'giây');
-                if (stepSeconds < 60) {
-                  timeString = `${stepSeconds}s`;
-                } else {
-                  const m = Math.floor(stepSeconds / 60);
-                  const s = stepSeconds % 60;
-                  timeString = s > 0 ? `${m} ${minLabel} ${s} ${secLabel}` : `${m} ${minLabel}`;
-                }
-
-                const hourglassIcon = `<svg viewBox="0 0 24 24" style="width:10px;height:10px;vertical-align:middle;fill:#666;margin-right:2px;"><path d="M6 2v6h.01L6 8.01 10 12l-4 4 .01.01H6V22h12v-5.99h-.01L18 16l-4-4 4-3.99-.01-.01H18V2H6z"/></svg>`;
-                timeText = `${hourglassIcon}${timeString}`;
+                timeText = stepSeconds < 60 ? `${stepSeconds}s` : `${Math.floor(stepSeconds / 60)}${TranslationManager.t('minute_label_short', 'm')}`;
               }
 
               const floorName = TranslationManager.getFloorName(instruction.coordinate?.floorId || "");
-              let stepInfo = floorName;
-              if (distanceText && timeText) {
-                stepInfo = `${distanceText} • ${timeText} • ${floorName}`;
-              } else if (distanceText) {
-                stepInfo = `${distanceText} • ${floorName}`;
+
+              // Step icon (Circle with number or icon)
+              let stepIcon = (index + 1).toString();
+              if (isFirstStep) {
+                stepIcon = `<svg width="12" height="12" viewBox="0 0 24 24" fill="white" stroke="none"><circle cx="12" cy="12" r="8"/></svg>`;
+              } else if (isLastStep) {
+                stepIcon = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>`;
               }
 
+              // Badges
+              let metaBadges = '';
+              if (distanceText) {
+                metaBadges += `<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;background:#f8f9fa;border:1px solid #edf2f7;border-radius:6px;font-size:11px;color:#4a5568;font-weight:700;">${distanceText}</span>`;
+              }
+              if (timeText) {
+                metaBadges += `<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;background:#f8f9fa;border:1px solid #edf2f7;border-radius:6px;font-size:11px;color:#4a5568;font-weight:700;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>${timeText}</span>`;
+              }
+              if (floorName) {
+                metaBadges += `<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;background:#eef2ff;border:1px solid #d0dfff;border-radius:6px;font-size:11px;color:#214ca6;font-weight:700;">${floorName}</span>`;
+              }
+
+              // Row background
+              let rowBg = 'white';
+              if (isFirstStep) rowBg = 'linear-gradient(90deg, #f0f7ff 0%, #ffffff 100%)';
+              else if (isLastStep) rowBg = 'linear-gradient(90deg, #fffcf5 0%, #ffffff 100%)';
+
               instructionsHtml += `
-                <div class="instruction-step" style="display:flex; gap:10px; padding:10px; background:white; border-radius:4px; box-shadow:0 1px 3px rgba(0,0,0,0.1); cursor:pointer;" onclick="window.selectStep(${index})">
-                    <div style="width:24px; height:24px; min-width:24px; background:#085ebb; color:white; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700;">${index + 1}</div>
-                    <div style="flex:1;">
-                        <div style="font-size:13px; font-weight:500; color:#333;">${TranslationManager.t('step_label', 'Bước')} ${index + 1}: ${actionText}</div>
-                        <div style="font-size:11px; color:#666; margin-top:2px;">${stepInfo}</div>
+                <div class="instruction-step" style="
+                  position:relative; display:flex; align-items:center; gap:16px;
+                  padding:18px 20px; cursor:pointer; width: 100%; box-sizing: border-box;
+                  background: ${rowBg}; border-bottom: 1px solid #f8f9fb;
+                  transition: all 0.2s;
+                " onclick="window.selectStep(${index})"
+                onmouseenter="this.style.background='rgba(33, 76, 166, 0.03)'"
+                onmouseleave="this.style.background='${rowBg}'">
+                    
+                    <!-- Vertical Timeline Line -->
+                    ${!isLastStep ? `<div style="position:absolute; left:33px; top:40px; bottom:-18px; width:2px; background:#dfe6f0; z-index:1;"></div>` : ''}
+                    
+                    <div style="
+                      position:relative; z-index:2;
+                      width:26px; height:26px; min-width:26px;
+                      background: ${isFirstStep ? '#214ca6' : isLastStep ? '#ffa500' : '#214ca6'};
+                      border-radius:50%;
+                      display:flex; align-items:center; justify-content:center;
+                      color: white; font-size: 13px; font-weight: 800;
+                    ">${stepIcon}</div>
+                    
+                    <div style="flex:1; display: flex; flex-direction: column; gap: 6px;">
+                        <div style="font-size:15px; font-weight:700; color:#1a1a2e; line-height:1.3;">${actionText}</div>
+                        <div style="display:flex; align-items:center; gap:6px; flex-wrap: wrap;">
+                          ${metaBadges}
+                        </div>
                     </div>
                 </div>
               `;
             });
-
             instructionsHtml += '</div>';
           }
 
@@ -4567,14 +5463,52 @@ async function init() {
             const secs = routeTotalSeconds % 60;
             totalTimeString = secs > 0 ? `${mins} ${mLabel} ${secs} ${sLabel}` : `${mins} ${mLabel}`;
           }
-          const hourglassIcon = `<svg viewBox="0 0 24 24" style="width:14px;height:14px;vertical-align:text-bottom;fill:#555;margin-right:4px;"><path d="M6 2v6h.01L6 8.01 10 12l-4 4 .01.01H6V22h12v-5.99h-.01L18 16l-4-4 4-3.99-.01-.01H18V2H6z"/></svg>`;
-          const foundText = TranslationManager.t('route_found', 'Đã tìm thấy đường đi');
-          statusEl.innerHTML = `
-            ${foundText} <span style="font-weight:600;">(${Math.round(totalDisplayDist)}m)</span>
-            <span style="margin-left:10px; font-weight:normal; color:#555;">
-              ${hourglassIcon}${totalTimeString}
-            </span>
-          `;
+
+          // ============================================
+          // INCHEON STYLE SUMMARY & PREVIEW
+          // ============================================
+          // Hide info and show summary
+          const popup = document.getElementById("sidebar-info-panel");
+          if (popup) popup.style.display = "none";
+          const categorySection = document.getElementById("category-section");
+          if (categorySection) categorySection.style.display = "none";
+          const sidebarActions = document.querySelector(".sidebar-actions") as HTMLElement;
+          if (sidebarActions) sidebarActions.style.display = "none";
+
+          const summaryContainer = document.getElementById("wayfinding-summary-container");
+          const previewBar = document.getElementById("route-preview-bar");
+
+          if (summaryContainer) {
+            summaryContainer.style.display = "block";
+
+            const mLabelShort = TranslationManager.t('minute_label_short', 'm'); // e.g. 2m
+            const largeTime = routeTotalSeconds < 60 ? `${routeTotalSeconds}s` : `${Math.floor(routeTotalSeconds / 60)}${mLabelShort}`;
+
+            summaryContainer.innerHTML = `
+              <div style="padding: 24px 20px 15px; background: white; border-top: 1.5px solid #f0f4f8;">
+                <div style="display: flex; align-items: flex-end; justify-content: space-between;">
+                  <div style="display: flex; align-items: baseline; gap: 10px;">
+                    <span style="font-size: 38px; font-weight: 900; color: #1a1a2e; letter-spacing: -1.5px; line-height:1;">${largeTime}</span>
+                    <span style="font-size: 18px; font-weight: 600; color: #64748b;">${Math.round(totalDisplayDist)}m</span>
+                  </div>
+                  <div style="margin-bottom: 4px;">
+                    <span style="display:inline-flex; align-items:center; gap:4px; padding:4px 12px; background:#f0f6ff; border-radius:12px; color:#214ca6; font-size:11px; font-weight:500; border:1px solid #d0dfff;">
+                        <svg viewBox="0 0 24 24" style="width:12px;height:12px;fill:#214ca6;"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                        ${TranslationManager.t('route_found', 'Đã tìm thấy đường đi')}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            `;
+          }
+
+          if (previewBar) {
+            previewBar.style.display = "block";
+          }
+
+          (window as any).isNavigationActive = true;
+
+          if (statusEl) statusEl.textContent = "";
         }
 
         // Cập nhật trạng thái Map Objects
@@ -4625,40 +5559,267 @@ async function init() {
     }
   };
 
+  (window as any).drawNavigation = drawNavigation;
+
 
   /**
    * Update wayfinding UI
    */
+  (window as any).startSelectingNode = (type: 'origin' | 'destination' | 'stopover', index: number = -1) => {
+    // If we're already selecting this node, do not re-render and lose focus
+    if (type === 'origin' && isSelectingOrigin) return;
+    if (type === 'destination' && isSelectingDestination) return;
+    if (type === 'stopover' && isSelectingStopoverIndex === index) return;
+
+    isSelectingOrigin = type === 'origin';
+    isSelectingDestination = type === 'destination';
+    isSelectingStopoverIndex = type === 'stopover' ? index : -1;
+    // Show instruction prompt
+    const statusEl = document.getElementById("wayfinding-status");
+    if (statusEl) {
+      statusEl.innerHTML = `<span style="color:#085ebb">${TranslationManager.t('select_on_map', 'Vui lòng chọn trên bản đồ...')}</span>`;
+    }
+    updateWayfindingUI();
+
+    // Restore focus to the input because innerHTML re-render destroys it
+    setTimeout(() => {
+      let idToFocus = '';
+      if (type === 'origin') idToFocus = 'wayfinding-input-origin';
+      else if (type === 'destination') idToFocus = 'wayfinding-input-destination';
+      else if (type === 'stopover') idToFocus = 'wayfinding-input-stopover-' + index;
+
+      if (idToFocus) {
+        const input = document.getElementById(idToFocus) as HTMLInputElement;
+        if (input) {
+          input.focus();
+          const valLen = input.value.length;
+          input.setSelectionRange(valLen, valLen);
+        }
+      }
+    }, 10);
+  };
+
+  (window as any).addStopover = (e: Event) => {
+    e.stopPropagation();
+    if (wayfindingStopovers.length >= 5) {
+      alert("Tối đa 5 điểm dừng!");
+      return;
+    }
+    wayfindingStopovers.push(null);
+    (window as any).startSelectingNode('stopover', wayfindingStopovers.length - 1);
+  };
+
+  (window as any).removeStopover = (e: Event, index: number) => {
+    e.stopPropagation();
+    wayfindingStopovers.splice(index, 1);
+    // Reset selection if it was deleted
+    if (isSelectingStopoverIndex === index) {
+      isSelectingStopoverIndex = -1;
+    } else if (isSelectingStopoverIndex > index) {
+      isSelectingStopoverIndex--;
+    }
+    updateWayfindingUI();
+    if (wayfindingOrigin && wayfindingDestination) drawNavigation(); else clearNavigation();
+  };
+
+  (window as any).swapNodes = (index1: number, index2: number) => {
+    const nodes = [wayfindingOrigin, ...wayfindingStopovers, wayfindingDestination];
+    const temp = nodes[index1];
+    nodes[index1] = nodes[index2];
+    nodes[index2] = temp;
+    wayfindingOrigin = nodes[0];
+    wayfindingDestination = nodes[nodes.length - 1];
+    wayfindingStopovers = nodes.slice(1, nodes.length - 1);
+    updateWayfindingUI();
+    if (wayfindingOrigin && wayfindingDestination) drawNavigation(); else clearNavigation();
+  };
+
   /**
-   * Update wayfinding UI
+   * Update wayfinding UI (Dynamic Nodes)
    */
   const updateWayfindingUI = () => {
-    const originEl = document.getElementById("wayfinding-origin");
-    const destEl = document.getElementById("wayfinding-destination");
+    const nodesContainer = document.getElementById("wayfinding-nodes-container");
+    const swapContainer = document.getElementById("wayfinding-swap-container");
     const panelEl = document.getElementById("wayfinding-panel");
 
-    if (originEl) {
-      if (wayfindingOrigin) {
-        originEl.textContent = TranslationManager.getName(wayfindingOrigin);
-        originEl.style.color = "#085ebb";
-      } else {
-        originEl.textContent = TranslationManager.t('select_origin_placeholder', "Chưa chọn điểm đi");
-        originEl.style.color = "#999";
+    if (nodesContainer && swapContainer) {
+      let nodesHtml = '';
+      let swapHtml = '';
+
+      const totalNodes = wayfindingStopovers.length + 2;
+
+      // ===================================
+      // 1. ORIGIN ROW
+      // ===================================
+      const originName = wayfindingOrigin ? TranslationManager.getName(wayfindingOrigin) : '';
+      const originColor = wayfindingOrigin ? '#1a1a2e' : '#999';
+      const originBg = 'white';
+      const originBorder = 'border:1px solid transparent; border-bottom:1px solid #e0e4ef;';
+      nodesHtml += `<div style="
+        display:flex; align-items:center; gap:10px;
+        padding:12px 14px; background:${originBg};
+        ${originBorder}
+        cursor:pointer; transition: background 0.2s;" 
+        onclick="window.startSelectingNode('origin')"
+        onmouseenter="if(!${isSelectingOrigin}) this.style.background='#fafcff'" onmouseleave="if(!${isSelectingOrigin}) this.style.background='${originBg}'">
+        <div style="width:24px;height:24px;border-radius:50%;background:white; display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#214ca6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+        </div>
+        <div style="flex:1;overflow:hidden; display:flex; flex-direction:column; justify-content:center;">
+          <div style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px;line-height:1;">${TranslationManager.t('from_label', 'Đi từ')}</div>
+          <input type="text" id="wayfinding-input-origin"
+            placeholder="${TranslationManager.t('search_departure_placeholder', 'Search Departure')}" 
+            value="${originName}" 
+            oninput="window.performWayfindingSearch(this.value, 'origin')" 
+            onfocus="window.startSelectingNode('origin'); window.performWayfindingSearch(this.value, 'origin');" 
+            style="width:100%; border:none; outline:none; background:transparent; font-size:16px; color:${originColor}; padding:0; margin:0; font-weight:500;" 
+          />
+        </div>
+      </div>`;
+
+      // ===================================
+      // 2. STOPOVER ROWS
+      // ===================================
+      wayfindingStopovers.forEach((stop, i) => {
+        const stopName = stop ? TranslationManager.getName(stop) : '';
+        const stopColor = stop ? '#1a1a2e' : '#999';
+        const isSelecting = (isSelectingStopoverIndex === i);
+        const stopBg = 'white';
+        const stopBorder = 'border:1px solid transparent; border-bottom:1px solid #e0e4ef;';
+
+        nodesHtml += `<div style="
+          display:flex; align-items:center; gap:10px;
+          padding:12px 14px; background:${stopBg};
+          ${stopBorder}
+          cursor:pointer; transition: background 0.2s;"
+          onclick="window.startSelectingNode('stopover', ${i})"
+          onmouseenter="if(!${isSelecting}) this.style.background='#fafcff'" onmouseleave="if(!${isSelecting}) this.style.background='${stopBg}'">
+          <div style="width:24px;height:24px;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#64748b;font-size:14px;font-weight:bold;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          </div>
+          <div style="flex:1;overflow:hidden; display:flex; flex-direction:column; justify-content:center;">
+            <div style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px;line-height:1;">${TranslationManager.t('stopover_label', 'Điểm dừng')}</div>
+            <input type="text" id="wayfinding-input-stopover-${i}"
+              placeholder="${TranslationManager.t('stopover_placeholder', 'Chọn điểm dừng')}" 
+              value="${stopName}" 
+              oninput="window.performWayfindingSearch(this.value, 'stopover', ${i})" 
+              onfocus="window.startSelectingNode('stopover', ${i}); window.performWayfindingSearch(this.value, 'stopover', ${i});" 
+              style="width:100%; border:none; outline:none; background:transparent; font-size:16px; color:${stopColor}; padding:0; margin:0; font-weight:500;" 
+            />
+          </div>
+          <button onclick="window.removeStopover(event, ${i})" style="background:none;border:none;cursor:pointer;color:#94a3b8;display:flex;align-items:center;justify-content:center;padding:4px;" title="Xóa">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="#cbd5e1" stroke="white" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="8" y1="12" x2="16" y2="12"></line></svg>
+          </button>
+        </div>`;
+      });
+
+      // ===================================
+      // 3. DESTINATION ROW
+      // ===================================
+      const destName = wayfindingDestination ? TranslationManager.getName(wayfindingDestination) : '';
+      const destColor = wayfindingDestination ? '#1a1a2e' : '#999';
+      const destBg = 'white';
+      const destBorder = 'border:1px solid transparent;';
+      nodesHtml += `<div style="
+        display:flex; align-items:center; gap:10px;
+        padding:12px 14px; background:${destBg};
+        ${destBorder}
+        border-radius: 0 0 0 8px;
+        cursor:pointer; transition: background 0.2s;"
+        onclick="window.startSelectingNode('destination')"
+        onmouseenter="if(!${isSelectingDestination}) this.style.background='#fafcff'" onmouseleave="if(!${isSelectingDestination}) this.style.background='${destBg}'">
+        <div style="width:24px;height:24px;border-radius:50%;background:white;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3" fill="#f59e0b"></circle></svg>
+        </div>
+        <div style="flex:1;overflow:hidden; display:flex; flex-direction:column; justify-content:center;">
+          <div style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px;line-height:1;">${TranslationManager.t('to_label', 'Đi đến')}</div>
+          <input type="text" id="wayfinding-input-destination"
+            placeholder="${TranslationManager.t('search_destination_placeholder', 'Search Destination')}" 
+            value="${destName}" 
+            oninput="window.performWayfindingSearch(this.value, 'destination')" 
+            onfocus="window.startSelectingNode('destination'); window.performWayfindingSearch(this.value, 'destination');" 
+            style="width:100%; border:none; outline:none; background:transparent; font-size:16px; color:${destColor}; padding:0; margin:0; font-weight:500;" 
+          />
+        </div>
+        <button onclick="window.addStopover(event)" style="background:none;border:none;cursor:pointer;color:#94a3b8;display:flex;align-items:center;justify-content:center;padding:4px;" title="Thêm điểm dừng">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6c757d" stroke-width="2"><circle cx="12" cy="12" r="10" fill="#f0f4f8"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
+        </button>
+      </div>`;
+
+      nodesContainer.innerHTML = nodesHtml;
+
+      // ===================================
+      // 4. RESET & SWAP BUTTONS (Right Column)
+      // ===================================
+      // Reset Button (Circular Refresh Icon at the top)
+      swapHtml += `<button id="wayfinding-reset-btn" title="Xóa tất cả" style="
+        background:none; border:none;
+        cursor:pointer; padding:6px;
+        color: #94a3b8; transition:all 0.2s;
+        display:flex; align-items:center; justify-content:center;
+        margin-bottom: 4px;
+      " onmouseenter="this.style.color='#214ca6'; this.style.transform='rotate(45deg)'" onmouseleave="this.style.color='#94a3b8'; this.style.transform='rotate(0)'">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+      </button>`;
+
+      for (let i = 0; i < totalNodes - 1; i++) {
+        swapHtml += `<button onclick="window.swapNodes(${i}, ${i + 1})" title="Hoán đổi" style="
+          background:none; border:none;
+          cursor:pointer; padding:4px;
+          color:#214ca6; transition:all 0.2s;
+          display:flex; align-items:center; justify-content:center;
+          opacity: 0.6;
+        " onmouseenter="this.style.opacity='1'; this.style.color='#f59e0b'" onmouseleave="this.style.opacity='0.6'; this.style.color='#214ca6'">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4"/></svg>
+        </button>`;
       }
+      swapContainer.innerHTML = swapHtml;
+
+      // Bind Reset Button - cần dùng ID vì render dynamic
+      const resBtn = document.getElementById("wayfinding-reset-btn");
+      if (resBtn) {
+        resBtn.onclick = (e) => {
+          e.preventDefault();
+          resetWayfinding();
+        };
+      }
+
+      const isAnyActive = isSelectingOrigin || isSelectingDestination || isSelectingStopoverIndex >= 0;
+      const borderColor = isAnyActive ? '#214ca6' : '#e0e4ef';
+      nodesContainer.style.border = `1px solid ${borderColor}`;
     }
 
-    if (destEl) {
-      if (wayfindingDestination) {
-        destEl.textContent = TranslationManager.getName(wayfindingDestination);
-        destEl.style.color = "#085ebb";
+    // Toggle Empty State in Directions Tab
+    const emptyStateEl = document.getElementById("directions-empty-state");
+    const instructionsContainer = document.getElementById("directions-instructions-container");
+    const instructionsList = document.getElementById("instructions-list");
+
+    if (emptyStateEl && instructionsContainer) {
+      const isAnyActive = isSelectingOrigin || isSelectingDestination || isSelectingStopoverIndex >= 0;
+      if (isAnyActive) {
+        emptyStateEl.style.display = "none";
+        instructionsContainer.style.display = "none";
       } else {
-        destEl.textContent = TranslationManager.t('select_destination_placeholder', "Chưa chọn điểm đến");
-        destEl.style.color = "#999";
+        if (wayfindingOrigin || wayfindingDestination || wayfindingStopovers.length > 0) {
+          emptyStateEl.style.display = "none";
+          if (instructionsList) instructionsContainer.appendChild(instructionsList);
+          instructionsContainer.style.display = "block";
+        } else {
+          emptyStateEl.style.display = "flex";
+          instructionsContainer.style.display = "none";
+
+          // NẾU HIỂN THỊ EMPTY STATE THÌ ẨN PANEL INFORMATION ĐI
+          const popupInfo = document.getElementById("sidebar-info-panel");
+          if (popupInfo) popupInfo.style.display = "none";
+        }
       }
     }
 
     if (panelEl) {
-      if (wayfindingOrigin || wayfindingDestination) {
+      const tabDirections = document.getElementById("tab-directions");
+      const isDirectionsTabActive = tabDirections && tabDirections.classList.contains("active");
+
+      if (wayfindingOrigin || wayfindingDestination || wayfindingStopovers.length > 0 || isDirectionsTabActive) {
         panelEl.classList.add("active");
       } else {
         panelEl.classList.remove("active");
@@ -4666,15 +5827,135 @@ async function init() {
     }
   };
 
-  /**
-   * Reset wayfinding
-   */
+  (window as any).performWayfindingSearch = (query: string, nodeType: 'origin' | 'destination' | 'stopover', index: number = -1) => {
+    const resultsContainer = document.getElementById("wayfinding-search-results");
+    if (!resultsContainer) return;
+
+    let isSuggested = false;
+    const allMatchedObjects: any[] = [];
+    const safeQuery = query ? query.trim() : "";
+
+    const smartMatch = (query: string, target: string): boolean => {
+      if (!query || !target) return false;
+      const q = query.toLowerCase().trim();
+      const t = target.toLowerCase().trim();
+      if (t.includes(q)) return true;
+      const qTokens = q.split(/[\s\-\,]+/).filter(tk => tk.length > 0);
+      const tTokens = t.split(/[\s\-\,]+/).filter(tk => tk.length > 0);
+      if (qTokens.length === 0 || tTokens.length === 0) return false;
+      const allQueryInTarget = qTokens.every(qt => tTokens.some(tt => tt.includes(qt)));
+      if (allQueryInTarget) return true;
+      if (tTokens.length >= 2) {
+        const allTargetInQuery = tTokens.every(tt => qTokens.some(qt => qt.includes(tt)));
+        if (allTargetInQuery) return true;
+      }
+      return false;
+    };
+
+    if (!safeQuery) {
+      isSuggested = true;
+      // Show default list (Suggested/Frequent)
+      // Pick objects that have POI or have a valid name.
+      allMapObjects.forEach((obj: any) => {
+        const localizedName = TranslationManager.getName(obj);
+        if (localizedName && localizedName.trim().length > 0 && !localizedName.toLowerCase().includes("khu vực không tên")) {
+          // Avoid pushing same names or irrelevant spaces to keep it clean.
+          // Prioritize POI or Point types if possible, but any named area is fine.
+          allMatchedObjects.push({ name: localizedName, primaryObject: obj });
+        }
+      });
+      // Sort alphabetically for consistency, or just keep as is
+      allMatchedObjects.sort((a, b) => a.name.localeCompare(b.name));
+    } else {
+      allMapObjects.forEach((obj: any) => {
+        const localizedName = TranslationManager.getName(obj);
+        if (localizedName && smartMatch(safeQuery, localizedName)) {
+          allMatchedObjects.push({ name: localizedName, primaryObject: obj });
+        }
+      });
+    }
+
+    // Lọc trùng lặp name để list suggested nhìn sạch hơn
+    const filteredResults = [];
+    const seenNames = new Set();
+    for (const item of allMatchedObjects) {
+      if (!seenNames.has(item.name)) {
+        seenNames.add(item.name);
+        filteredResults.push(item);
+      }
+      if (filteredResults.length >= 15) break; // Limit to 15 items maximum
+    }
+
+    const uniqueResults = filteredResults;
+
+    if (uniqueResults.length === 0) {
+      resultsContainer.innerHTML = `<div style="padding: 15px; color: #999; text-align: center; font-size:13px;">${TranslationManager.t('no_results_found', 'Không tìm thấy kết quả')}</div>`;
+      resultsContainer.style.display = "block";
+      return;
+    }
+
+    resultsContainer.innerHTML = "";
+
+    // Header for suggested
+    if (isSuggested) {
+      const header = document.createElement("div");
+      header.style.cssText = "padding: 20px 15px 12px; font-size: 16px; font-weight: 700; color: #1a1a2e; background: white;";
+      header.innerText = TranslationManager.t('frequent_locations', 'Frequent Locations');
+      resultsContainer.appendChild(header);
+    }
+
+    uniqueResults.forEach((result) => {
+      const item = document.createElement("div");
+      item.style.cssText = "display: flex; align-items: center; padding: 14px 15px; cursor: pointer; background: white; transition: all 0.2s ease;";
+      item.onmouseenter = () => item.style.backgroundColor = "#f0f4ff";
+      item.onmouseleave = () => item.style.backgroundColor = "white";
+
+      const cleanName = result.name.replace(/room|door|gate/gi, '').trim();
+      const floorObj = result.primaryObject.floor;
+
+      item.innerHTML = `
+        <div style="flex: 1; overflow: hidden;">
+          <div style="font-size: 15px; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500;">${cleanName}</div>
+        </div>
+      `;
+
+      item.addEventListener("click", () => {
+        resultsContainer.style.display = "none";
+        isSelectingOrigin = false;
+        isSelectingDestination = false;
+        isSelectingStopoverIndex = -1;
+
+        if (nodeType === 'origin') {
+          wayfindingOrigin = result.primaryObject;
+        } else if (nodeType === 'destination') {
+          wayfindingDestination = result.primaryObject;
+        } else if (nodeType === 'stopover' && index >= 0) {
+          wayfindingStopovers[index] = result.primaryObject;
+        }
+
+        updateWayfindingUI();
+        if (wayfindingOrigin && wayfindingDestination) drawNavigation();
+      });
+
+      resultsContainer.appendChild(item);
+    });
+
+    resultsContainer.style.display = "block";
+  };
+
   const resetWayfinding = () => {
+    (window as any).isNavigationActive = false;
     wayfindingOrigin = null;
     wayfindingDestination = null;
+    wayfindingStopovers = [];
     wayfindingDirections = null;
     isSelectingOrigin = false;
     isSelectingDestination = false;
+    isSelectingStopoverIndex = -1;
+
+    // Clear detail info panel if open
+    if (typeof hideInfo === 'function') hideInfo();
+
     clearNavigation();
     updateWayfindingUI();
     syncURL(true); // Update URL to remove directions
@@ -4683,10 +5964,18 @@ async function init() {
     const directionsBtn = document.getElementById("directions-btn");
     if (directionsBtn) directionsBtn.classList.remove("active");
 
-    const previewBtn = document.getElementById("wayfinding-preview-btn");
-    if (previewBtn) {
-      previewBtn.textContent = TranslationManager.t('start_preview', "Bắt đầu");
+    const rwPreviewBtn = document.getElementById("wayfinding-preview-btn");
+    const rwPreviewBtnMain = document.getElementById("wayfinding-preview-btn-main");
+    if (rwPreviewBtn) rwPreviewBtn.textContent = TranslationManager.t('start_preview', "Bắt đầu");
+    if (rwPreviewBtnMain) {
+      const span = rwPreviewBtnMain.querySelector('span');
+      if (span) span.textContent = TranslationManager.t('route_preview', "Route Preview");
     }
+
+    const previewBar = document.getElementById("route-preview-bar");
+    if (previewBar) previewBar.style.display = "none";
+    const summaryContainer = document.getElementById("wayfinding-summary-container");
+    if (summaryContainer) summaryContainer.style.display = "none";
     // Re-highlight selection
     updateHighlights();
 
@@ -4758,6 +6047,10 @@ async function init() {
       popup.style.display = "flex";
       // Ensure vertical layout as per fix
       popup.style.flexDirection = "column";
+
+      // ĐẢM BẢO KHÔNG HIỂN THỊ CÙNG LÚC VỚI EMPTY STATE CỦA ĐIỀU HƯỚNG
+      const emptyStateEl = document.getElementById("directions-empty-state");
+      if (emptyStateEl) emptyStateEl.style.display = "none";
     }
 
     // Build display name
@@ -4800,21 +6093,22 @@ async function init() {
     }
 
     // Lookup Rich Data (Image / Desc) from TranslationManager
-    const locData = TranslationManager.getLocationContent(space.id);
+    const locData = TranslationManager.getLocationContent(space.id, space);
     console.log('Clicked Space:', space);
 
     // Build description - Prioritize Database (Manual Overrides/Translations)
-    let descriptionText = TranslationManager.getLocationDescription(space.id);
+    // Truyền space object để hỗ trợ cross-reference tra cứu bản dịch
+    let descriptionText = TranslationManager.getLocationDescription(space.id, space);
 
-    // Only fallback to Mappedin SDK data if DB is empty
-    if (!descriptionText) {
-      descriptionText = space.description || "";
-    }
-
-    // Nếu là Connection, thêm "Tầng liên kết" với format xuống hàng
+    // Nếu là Connection, thêm "Tầng liên kết" với format xuống hàng (đã dịch đa ngôn ngữ)
     if (space && Array.isArray((space as any).floors) && (space as any).floors.length > 0) {
-      const floorNames = (space as any).floors.map((f: any) => f?.name || f?.id).filter(Boolean);
-      const linkedFloorsText = "Tầng liên kết:\n" + floorNames.map((n: string) => `• ${n}`).join("\n");
+      const floorNames = (space as any).floors.map((f: any) => {
+        const fId = f?.mappedinId || f?.id || f?.code || '';
+        const rawName = f?.name || f?.id || '';
+        return TranslationManager.getFloorName(fId, rawName);
+      }).filter(Boolean);
+      const linkedLabel = TranslationManager.t('linked_floors', 'Tầng liên kết');
+      const linkedFloorsText = `${linkedLabel}:\n` + floorNames.map((n: string) => `• ${n}`).join("\n");
       if (descriptionText) {
         descriptionText += "\n\n" + linkedFloorsText;
       } else {
@@ -4902,8 +6196,13 @@ async function init() {
       }
     }
 
-    // Directions button
-    if (directionsBtn) {
+    // Routing Buttons logic
+    const routingActions = document.getElementById("routing-actions");
+    const btnStart = document.getElementById("btn-route-start");
+    const btnVia = document.getElementById("btn-route-via");
+    const btnEnd = document.getElementById("btn-route-end");
+
+    if (routingActions && btnStart && btnVia && btnEnd) {
       const nameAny = (displayName || "").toLowerCase();
       const isSpecialArea = nameAny.includes("công cộng") || nameAny.includes("public") ||
         nameAny.includes("hạn chế") || nameAny.includes("nhân viên") ||
@@ -4913,25 +6212,55 @@ async function init() {
         nameAny.includes("立ち入り禁止") || nameAny.includes("公共") || nameAny.includes("공공");
 
       if (isSpecialArea) {
-        directionsBtn.style.display = "none";
+        routingActions.style.display = "none";
       } else {
-        directionsBtn.style.display = "block";
-        directionsBtn.onclick = () => {
-          wayfindingDestination = space;
-          (window as any).wayfindingDestination = space;
-          isSelectingOrigin = true;
-          const panelEl = document.getElementById("wayfinding-panel");
-          if (panelEl) panelEl.classList.add("active");
+        routingActions.style.display = "flex";
+
+        // Update labels based on current language
+        btnStart.textContent = TranslationManager.t('route_start', 'Start');
+        btnVia.textContent = TranslationManager.t('route_via', 'Via');
+        btnEnd.textContent = TranslationManager.t('route_end', 'End');
+
+        const handleRoutingAction = () => {
+          const tabDirections = document.getElementById("tab-directions");
+          if (tabDirections) (tabDirections as any).click();
+
           updateWayfindingUI();
-          updateHighlights();
 
-          // USER REQUEST: Khi bấm dẫn đường thì thu bản đồ về 19x
-          focusOnObject(space, 19.0);
+          if (wayfindingOrigin && wayfindingDestination) {
+            drawNavigation();
+          } else {
+            updateHighlights();
+            focusOnObject(space, 19.0);
 
-          const statusEl = document.getElementById("wayfinding-status");
-          if (statusEl) {
-            statusEl.textContent = TranslationManager.t('select_origin', "Vui lòng chọn điểm đi trên bản đồ");
+            const statusEl = document.getElementById("wayfinding-status");
+            if (statusEl) {
+              statusEl.textContent = "";
+            }
           }
+        };
+
+        btnStart.onclick = () => {
+          wayfindingOrigin = space;
+          isSelectingOrigin = false;
+          if (!wayfindingDestination) isSelectingDestination = true;
+          handleRoutingAction();
+        };
+
+        btnVia.onclick = () => {
+          if (wayfindingStopovers.length >= 5) {
+            alert("Tối đa 5 điểm dừng!");
+            return;
+          }
+          wayfindingStopovers.push(space);
+          handleRoutingAction();
+        };
+
+        btnEnd.onclick = () => {
+          wayfindingDestination = space;
+          isSelectingDestination = false;
+          if (!wayfindingOrigin) isSelectingOrigin = true;
+          handleRoutingAction();
         };
       }
     }
@@ -5004,6 +6333,8 @@ async function init() {
     }
   });
 
+  // INITIALIZE UI state for Wayfinding inputs (From / To empty states)
+  updateWayfindingUI();
 
   // ============================================
   // 13. CLICK HANDLER
@@ -5534,12 +6865,14 @@ async function init() {
         // ============================================
         // WAYFINDING: Xử lý chọn điểm đi/đến
         // ============================================
-        if (isSelectingOrigin || isSelectingDestination) {
+        if (isSelectingOrigin || isSelectingDestination || isSelectingStopoverIndex >= 0) {
           // Bỏ highlight điểm cũ trước khi set điểm mới
           if (isSelectingOrigin && wayfindingOrigin) {
             resetObjectHighlight(wayfindingOrigin);
           } else if (isSelectingDestination && wayfindingDestination) {
             resetObjectHighlight(wayfindingDestination);
+          } else if (isSelectingStopoverIndex >= 0 && wayfindingStopovers[isSelectingStopoverIndex]) {
+            resetObjectHighlight(wayfindingStopovers[isSelectingStopoverIndex]);
           }
 
           // Set điểm mới
@@ -5553,9 +6886,12 @@ async function init() {
             isSelectingDestination = false;
             // Cập nhật info box với điểm đến mới
             updateInfo(clickedObject);
+          } else if (isSelectingStopoverIndex >= 0) {
+            wayfindingStopovers[isSelectingStopoverIndex] = clickedObject;
+            isSelectingStopoverIndex = -1;
           }
 
-          // Cập nhật highlights: chỉ highlight origin và destination (tối đa 2)
+          // Cập nhật highlights bổ sung
           updateHighlights();
 
           // Update UI và vẽ navigation
@@ -5566,13 +6902,7 @@ async function init() {
 
           const statusEl = document.getElementById("wayfinding-status");
           if (statusEl) {
-            if (wayfindingOrigin && wayfindingDestination) {
-              statusEl.textContent = "";
-            } else if (isSelectingOrigin) {
-              statusEl.textContent = TranslationManager.t('select_origin', "Vui lòng chọn điểm đi trên bản đồ");
-            } else if (isSelectingDestination) {
-              statusEl.textContent = TranslationManager.t('select_destination', "Vui lòng chọn điểm đến trên bản đồ");
-            }
+            statusEl.textContent = "";
           }
 
           // USER REQUEST: Click khu vực dẫn đường thì cần focus vào khu vực đó lên 19x
@@ -5716,6 +7046,78 @@ async function init() {
   // ============================================
   // 14. CLOSE BUTTON HANDLER
   // ============================================
+  // ===================================
+  // TAB SWITCHING LOGIC (Incheon Style)
+  // ===================================
+  const tabSearch = document.getElementById("tab-search");
+  const tabDirections = document.getElementById("tab-directions");
+  const searchTabHeader = document.getElementById("search-tab-header");
+  const directionsTabHeader = document.getElementById("directions-tab-header");
+  const searchTabContent = document.getElementById("search-tab-content");
+  const directionsTabContent = document.getElementById("directions-tab-content");
+  const wayfindingPanel = document.getElementById("wayfinding-panel");
+  const wayfindingHeaderTarget = document.getElementById("wayfinding-header-target");
+  const wayfindingTabAnchor = document.getElementById("wayfinding-tab-anchor");
+
+  const switchTab = (tab: 'search' | 'directions') => {
+    if (tab === 'search') {
+      // Active styles
+      tabSearch?.classList.add("active");
+      tabSearch!.style.background = "#214ca6";
+      tabSearch!.style.color = "white";
+      tabDirections?.classList.remove("active");
+      tabDirections!.style.background = "white";
+      tabDirections!.style.color = "#555";
+
+      // Show/Hide
+      if (searchTabHeader) searchTabHeader.style.display = "block";
+      if (directionsTabHeader) directionsTabHeader.style.display = "none";
+      if (searchTabContent) searchTabContent.style.display = "block";
+      if (directionsTabContent) directionsTabContent.style.display = "none";
+
+      const adminActions = document.getElementById("sidebar-admin-actions");
+      if (adminActions) adminActions.style.display = "flex";
+
+      // Move wayfinding panel back to anchor in search/info tab
+      if (wayfindingPanel && wayfindingTabAnchor) {
+        wayfindingTabAnchor.appendChild(wayfindingPanel);
+        // Only keep it visible in search info popup if active routing exists
+        if (!wayfindingOrigin && !wayfindingDestination && wayfindingStopovers.length === 0) {
+          wayfindingPanel.classList.remove("active");
+        }
+      }
+    } else {
+      // Active styles
+      tabDirections?.classList.add("active");
+      tabDirections!.style.background = "#214ca6";
+      tabDirections!.style.color = "white";
+      tabSearch?.classList.remove("active");
+      tabSearch!.style.background = "white";
+      tabSearch!.style.color = "#555";
+
+      // Show/Hide
+      if (searchTabHeader) searchTabHeader.style.display = "none";
+      if (directionsTabHeader) directionsTabHeader.style.display = "block";
+      if (searchTabContent) searchTabContent.style.display = "none";
+      if (directionsTabContent) directionsTabContent.style.display = "block";
+
+      const adminActions = document.getElementById("sidebar-admin-actions");
+      if (adminActions) adminActions.style.display = "none";
+
+      // Move wayfinding panel to header in directions tab
+      if (wayfindingPanel && wayfindingHeaderTarget) {
+        wayfindingHeaderTarget.appendChild(wayfindingPanel);
+        // ALWAYS show input boxes in the Directions tab
+        wayfindingPanel.classList.add("active");
+      }
+
+      // Also hide info panel when switching to directions tab manually
+      // hideInfo();
+    }
+  };
+
+  if (tabSearch) tabSearch.onclick = () => switchTab('search');
+  if (tabDirections) tabDirections.onclick = () => switchTab('directions');
   const closeBtn = document.querySelector(".close-btn") as HTMLButtonElement;
   if (closeBtn) {
     closeBtn.addEventListener("click", (e) => {
@@ -5743,7 +7145,7 @@ async function init() {
       isSelectingDestination = false;
       const statusEl = document.getElementById("wayfinding-status");
       if (statusEl) {
-        statusEl.textContent = TranslationManager.t('select_origin', "Vui lòng chọn điểm đi trên bản đồ");
+        statusEl.textContent = "";
       }
     });
   }
@@ -5756,48 +7158,23 @@ async function init() {
       isSelectingOrigin = false;
       const statusEl = document.getElementById("wayfinding-status");
       if (statusEl) {
-        statusEl.textContent = TranslationManager.t('select_destination', "Vui lòng chọn điểm đến trên bản đồ");
+        statusEl.textContent = "";
       }
     });
   }
 
   // Nút đảo ngược
 
-  // Nút xóa
-  const clearBtn = document.getElementById("wayfinding-clear-btn");
-  if (clearBtn) {
-    clearBtn.addEventListener("click", () => {
-      // Custom Clear Logic: Chỉ xóa dẫn đường, giữ lại selection
-      wayfindingOrigin = null;
-      wayfindingDestination = null;
-      (window as any).wayfindingOrigin = null;
-      (window as any).wayfindingDestination = null;
-      wayfindingDirections = null;
-      isSelectingOrigin = false;
-      isSelectingDestination = false;
+  // Nút xóa (Đã chuyển sang icon reset ở cột bên phải)
+  // Reset nút Bắt đầu
+  const prBtn = document.getElementById("wayfinding-preview-btn");
+  if (prBtn) prBtn.textContent = TranslationManager.t('start_preview', "Bắt đầu");
 
-      clearNavigation();
-      updateWayfindingUI();
+  // Re-highlight selection (selectedSpace vẫn còn giá trị)
+  updateHighlights();
 
-      // Ẩn panel dẫn đường
-      const panelEl = document.getElementById("wayfinding-panel");
-      if (panelEl) panelEl.classList.remove("active");
-
-      // Reset nút Dẫn đường
-      const directionsBtn = document.getElementById("directions-btn");
-      if (directionsBtn) directionsBtn.classList.remove("active");
-
-      // Reset nút Bắt đầu
-      const previewBtn = document.getElementById("wayfinding-preview-btn");
-      if (previewBtn) previewBtn.textContent = TranslationManager.t('start_preview', "Bắt đầu");
-
-      // Re-highlight selection (selectedSpace vẫn còn giá trị)
-      updateHighlights();
-
-      const statusEl = document.getElementById("wayfinding-status");
-      if (statusEl) statusEl.textContent = "";
-    });
-  }
+  const statusEl = document.getElementById("wayfinding-status");
+  if (statusEl) statusEl.textContent = "";
 
   // ============================================
   // DESELECT HELPER & LISTENERS
@@ -5807,28 +7184,27 @@ async function init() {
     if (!instructionsListEl) return;
     const allSteps = instructionsListEl.querySelectorAll('.instruction-step');
     allSteps.forEach((step: any) => {
-      step.style.background = '#fff';
+      step.style.background = 'white';
+      step.style.borderLeft = 'none';
       const firstDiv = step.querySelector('div:first-child') as HTMLElement;
       const lastDiv = step.querySelector('div:last-child') as HTMLElement;
 
       if (firstDiv) {
-        firstDiv.style.background = '#085ebb';
+        firstDiv.style.background = '#214ca6';
         firstDiv.style.color = 'white';
       }
 
       if (lastDiv) {
         const subDivs = lastDiv.querySelectorAll('div');
-        if (subDivs.length > 0) subDivs[0].style.color = '#333';
+        if (subDivs.length > 0) subDivs[0].style.color = '#1a1a2e';
         if (subDivs.length > 1) subDivs[1].style.color = '#666';
 
-        // Reset hourglass icon color
         const svgs = lastDiv.querySelectorAll('svg');
         svgs.forEach((svg: any) => svg.style.fill = '#666');
       }
     });
 
     currentSelectedStepIndex = -1;
-    // Ở đây ta gọi updateHighlights để đảm bảo trạng thái đúng
     updateHighlights();
   };
 
@@ -6123,20 +7499,18 @@ async function init() {
 
     // Reset all
     allSteps.forEach((step: any, i: number) => {
-      if (i === index) return; // Skip the current step
-      step.style.background = '#fff';
+      if (i === index) return;
+      step.style.background = 'white';
+      step.style.borderLeft = 'none';
       const firstDiv = step.querySelector('div:first-child') as HTMLElement;
       const lastDiv = step.querySelector('div:last-child') as HTMLElement;
       if (firstDiv) {
-        firstDiv.style.background = '#085ebb';
+        firstDiv.style.background = '#214ca6';
         firstDiv.style.color = 'white';
       }
       if (lastDiv) {
-        const subDivs = lastDiv.querySelectorAll('div');
-        if (subDivs.length > 0) subDivs[0].style.color = '#333';
-        if (subDivs.length > 1) subDivs[1].style.color = '#666';
-
-        // Reset hourglass icon color
+        const textDiv = lastDiv.querySelector('div');
+        if (textDiv) textDiv.style.color = '#1a1a2e';
         const svgs = lastDiv.querySelectorAll('svg');
         svgs.forEach((svg: any) => svg.style.fill = '#666');
       }
@@ -6144,20 +7518,18 @@ async function init() {
 
     const step = allSteps[index] as HTMLElement;
     if (step) {
-      step.style.background = '#085ebb';
+      step.style.background = '#f0f6ff'; // Lighter blue focus
       const firstDiv = step.querySelector('div:first-child') as HTMLElement;
       const lastDiv = step.querySelector('div:last-child') as HTMLElement;
       if (firstDiv) {
-        firstDiv.style.background = 'white';
-        firstDiv.style.color = '#085ebb';
+        firstDiv.style.background = '#214ca6';
+        firstDiv.style.color = 'white';
       }
       if (lastDiv) {
-        const subDivs = lastDiv.querySelectorAll('div');
-        subDivs.forEach((d: any) => d.style.color = 'white');
-
-        // Hourglass icon to white
+        const textDiv = lastDiv.querySelector('div');
+        if (textDiv) textDiv.style.color = '#214ca6'; // Primary color for focused text
         const svgs = lastDiv.querySelectorAll('svg');
-        svgs.forEach((svg: any) => svg.style.fill = 'white');
+        svgs.forEach((svg: any) => svg.style.fill = '#214ca6');
       }
       step.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
@@ -6233,9 +7605,19 @@ async function init() {
     if (!isAnimating) return;
 
     isPaused = !isPaused;
-    const playPauseBtn = document.getElementById("video-play-pause");
+    const playPauseBtn = document.getElementById("video-play") || document.getElementById("video-play-pause");
     if (playPauseBtn) {
-      playPauseBtn.textContent = isPaused ? "▶" : "⏸";
+      const iconEl = document.getElementById("play-pause-icon");
+      if (iconEl) {
+        // SVG cho Play (Tam giác) và Pause (2 vạch)
+        if (isPaused) {
+          iconEl.innerHTML = '<path d="M5 3l14 9-14 9V3z" />'; // Play
+        } else {
+          iconEl.innerHTML = '<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />'; // Pause
+        }
+      } else {
+        playPauseBtn.textContent = isPaused ? "▶" : "⏸";
+      }
     }
 
     if (isPaused) {
@@ -6493,16 +7875,22 @@ async function init() {
       return;
     }
 
+    // Ẩn preview bar cố định ở dưới và hiển thị control bar mới
+    const previewBar = document.getElementById("route-preview-bar");
+    if (previewBar) previewBar.style.display = "none";
+
     // Hiển thị video control bar
     const videoControlBar = document.getElementById("video-control-bar");
     if (videoControlBar) {
       videoControlBar.style.display = "block";
     }
 
-    // Reset play/pause button
-    const playPauseBtn = document.getElementById("video-play-pause");
+    // Reset play/pause button icon to Pause (vì đang bắt đầu chạy)
+    const playPauseBtn = document.getElementById("video-play") || document.getElementById("video-play-pause");
     if (playPauseBtn) {
-      playPauseBtn.textContent = "⏸";
+      const iconEl = document.getElementById("play-pause-icon");
+      if (iconEl) iconEl.innerHTML = '<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />';
+      else playPauseBtn.textContent = "⏸";
     }
 
     // Đảm bảo blue dot được enable
@@ -6541,64 +7929,30 @@ async function init() {
   }
 
   // Nút preview (Bắt đầu)
-  const previewBtn = document.getElementById("wayfinding-preview-btn");
-  if (previewBtn) {
-    previewBtn.addEventListener("click", () => {
-      // VALIDATION: Kiểm tra điểm xuất phát
-      if (!wayfindingOrigin) {
-        alert(TranslationManager.t('select_origin_alert', "Chưa có điểm xuất phát. Vui lòng chọn điểm xuất phát trên bản đồ."));
-        return;
-      }
-      // VALIDATION: Kiểm tra điểm đích
-      if (!wayfindingDestination) {
-        alert(TranslationManager.t('select_destination_alert', "Chưa có điểm đích đến. Vui lòng chọn điểm đích đến trên bản đồ."));
-        return;
-      }
+  const mainPreviewBtn = document.getElementById("wayfinding-preview-btn");
+  const mainPreviewBtnLarge = document.getElementById("wayfinding-preview-btn-main");
 
-      deselectAllSteps(); // Deselect khi click preview
-      previewBtn.textContent = "Demo"; // Change text to Demo
-      deselectAllSteps(); // Deselect khi click preview
+  const startPreviewHandler = () => {
+    // VALIDATION: Kiểm tra điểm xuất phát
+    if (!wayfindingOrigin) {
+      alert(TranslationManager.t('select_origin_alert', "Chưa có điểm xuất phát. Vui lòng chọn điểm xuất phát trên bản đồ."));
+      return;
+    }
+    // VALIDATION: Kiểm tra điểm đích
+    if (!wayfindingDestination) {
+      alert(TranslationManager.t('select_destination_alert', "Chưa có điểm đích. Vui lòng chọn điểm đích trên bản đồ."));
+      return;
+    }
+    animateBlueDotFullPath();
+  };
 
-      // Đảm bảo xóa mọi highlight xanh lá bằng cách redraw navigation
-      if (currentNavigation && wayfindingDirections) {
-        try {
-          if (mapView.Navigation && typeof (mapView.Navigation as any).clear === 'function') {
-            (mapView.Navigation as any).clear();
-          }
-
-          const navigationOptions: any = {
-            pathOptions: {
-              displayArrowsOnPath: true,
-              animateArrowsOnPath: true,
-              accentColor: '#2196F3',
-              width: 1.2,
-            },
-            markerOptions: {
-              departureColor: '#2196F3',
-              destinationColor: '#f44336',
-            },
-          };
-          currentNavigation = mapView.Navigation.draw(wayfindingDirections, navigationOptions);
-        } catch (e) {
-          console.warn("Error clearing highlights before preview:", e);
-        }
-      }
-
-      if (wayfindingDirections && wayfindingDirections.coordinates && wayfindingDirections.coordinates.length > 0) {
-        // Hiển thị video control bar
-        const videoControlBar = document.getElementById("video-control-bar");
-        if (videoControlBar) {
-          videoControlBar.style.display = "block";
-        }
-        animateBlueDotFullPath();
-      }
-    });
-  }
+  if (mainPreviewBtn) mainPreviewBtn.addEventListener("click", startPreviewHandler);
+  if (mainPreviewBtnLarge) mainPreviewBtnLarge.addEventListener("click", startPreviewHandler);
 
   // Video control handlers
-  const playPauseBtn = document.getElementById("video-play-pause");
-  if (playPauseBtn) {
-    playPauseBtn.addEventListener("click", () => {
+  const videoPlayBtn = document.getElementById("video-play") || document.getElementById("video-play-pause");
+  if (videoPlayBtn) {
+    videoPlayBtn.addEventListener("click", () => {
       pauseResumeAnimation();
     });
   }
@@ -6622,10 +7976,14 @@ async function init() {
       blueDot.disable();
     }
 
-    // Ẩn video control bar
+    // Ẩn video control bar và hiện lại preview bar
     const vBar = document.getElementById("video-control-bar");
     if (vBar) {
       vBar.style.display = "none";
+    }
+    const previewBar = document.getElementById("route-preview-bar");
+    if (previewBar) {
+      previewBar.style.display = "block";
     }
 
     // Reset camera về trạng thái trước preview (hoặc về start point với zoom 19x như yêu cầu)
@@ -6667,9 +8025,14 @@ async function init() {
     updateVideoProgress(0, 0);
 
     // Reset preview button text
-    const previewBtn = document.getElementById("wayfinding-preview-btn");
-    if (previewBtn) {
-      previewBtn.textContent = TranslationManager.t('start_preview', 'Bắt đầu');
+    const exitPreviewBtn = document.getElementById("wayfinding-preview-btn");
+    const exitPreviewBtnMain = document.getElementById("wayfinding-preview-btn-main");
+    if (exitPreviewBtn) {
+      exitPreviewBtn.textContent = TranslationManager.t('start_preview', 'Bắt đầu');
+    }
+    if (exitPreviewBtnMain) {
+      const span = exitPreviewBtnMain.querySelector('span');
+      if (span) span.textContent = TranslationManager.t('route_preview', 'Route Preview');
     }
 
     // Reset steps styling
@@ -7796,7 +9159,7 @@ async function init() {
       }
 
       btnAddModel.classList.add("active");
-      
+
       const searchInput = document.getElementById("model-search-input") as HTMLInputElement;
       const searchClear = document.getElementById("model-search-clear") as HTMLButtonElement;
       if (searchInput) searchInput.value = "";
@@ -8795,7 +10158,7 @@ async function init() {
     (window as any).globalMapData = mapData;
     initAdminUI(allMapObjects);
     initAreaColorUI(allMapObjects, mapView, mapData);
-    
+
     // Apply custom area colors immediately on load
     if (typeof (window as any).refreshMapColors === 'function') {
       (window as any).refreshMapColors();
@@ -9371,13 +10734,13 @@ export function initAreaColorUI(allMapObjects: any[], mapView: any, mapData: any
   const colorHex = document.getElementById("area-color-hex") as HTMLInputElement;
 
   let selectedAreaIds = new Set<string>();
-  
+
   if (!modal || !btnOpen || !listContainer) return;
 
   // Render checkbox list
   const renderList = (filter = "") => {
     let spaces = mapData.getByType('space');
-    
+
     // Filter out unnamed spaces
     spaces = spaces.filter((s: any) => s.name && s.name.trim() !== '' && !s.name.toLowerCase().includes("khu vực không tên"));
 
@@ -9401,12 +10764,12 @@ export function initAreaColorUI(allMapObjects: any[], mapView: any, mapData: any
       }
       return { id: s.id, name, floor: floorName || '' };
     });
-    
+
     items.sort((a: any, b: any) => a.name.localeCompare(b.name));
-    
+
     const term = filter.toLowerCase();
     const visibleItems = items.filter((i: any) => i.name.toLowerCase().includes(term));
-    
+
     const allChecked = visibleItems.length > 0 && visibleItems.every((i: any) => selectedAreaIds.has(i.id));
 
     listContainer.innerHTML = `
@@ -9415,8 +10778,8 @@ export function initAreaColorUI(allMapObjects: any[], mapView: any, mapData: any
         <label for="color-chk-all" style="cursor:pointer;">Chọn tất cả khu vực hiển thị</label>
       </div>
       ${visibleItems.map((item: any) => {
-        const checked = selectedAreaIds.has(item.id) ? 'checked' : '';
-        return `
+      const checked = selectedAreaIds.has(item.id) ? 'checked' : '';
+      return `
           <div style="display:flex; align-items:flex-start; margin-bottom:6px;">
             <input type="checkbox" class="color-area-checkbox" id="color-chk-${item.id}" value="${item.id}" ${checked} style="margin-top:3px;">
             <label for="color-chk-${item.id}" style="cursor:pointer; line-height:1.2; font-size:13px; color:#333; flex:1; margin-left:8px;">
@@ -9425,7 +10788,7 @@ export function initAreaColorUI(allMapObjects: any[], mapView: any, mapData: any
             </label>
           </div>
         `;
-      }).join('')}
+    }).join('')}
     `;
 
     // Attach events
@@ -9446,21 +10809,21 @@ export function initAreaColorUI(allMapObjects: any[], mapView: any, mapData: any
       (chk as HTMLInputElement).onchange = (e: any) => {
         if (e.target.checked) selectedAreaIds.add(e.target.value);
         else selectedAreaIds.delete(e.target.value);
-        
+
         // Recheck 'select all'
         const allVisibleChecked = visibleItems.every((i: any) => selectedAreaIds.has(i.id));
         if (chkAll) chkAll.checked = allVisibleChecked;
-        
+
         // If exactly 1 item is selected, display its current color
         if (selectedAreaIds.size === 1) {
           try {
             const customColors = JSON.parse(localStorage.getItem('customAreaColors') || '{}');
             const singleId = Array.from(selectedAreaIds)[0];
-            const singleObj = spaces.find((s:any) => s.id === singleId);
+            const singleObj = spaces.find((s: any) => s.id === singleId);
             const currentColor = customColors[singleId] || (singleObj?.name ? "#FFFFFF" : "#eeece7");
             colorPicker.value = currentColor;
             colorHex.value = currentColor;
-          } catch(e) {}
+          } catch (e) { }
         }
       };
     });
@@ -9488,7 +10851,7 @@ export function initAreaColorUI(allMapObjects: any[], mapView: any, mapData: any
     searchInput.value = "";
     renderList();
   });
-  
+
   btnClose?.addEventListener("click", () => {
     modal.classList.add("hidden");
   });
@@ -9502,16 +10865,16 @@ export function initAreaColorUI(allMapObjects: any[], mapView: any, mapData: any
     const color = colorHex.value;
     const spaces = mapData.getByType('space');
     let count = 0;
-    
+
     const customColors = JSON.parse(localStorage.getItem('customAreaColors') || '{}');
-    
+
     for (const space of spaces) {
       if (selectedAreaIds.has(space.id)) {
         customColors[space.id] = color;
         try {
           mapView.updateState(space, { color: color });
           count++;
-        } catch(e) { console.error("Error setting color", e); }
+        } catch (e) { console.error("Error setting color", e); }
       }
     }
     localStorage.setItem('customAreaColors', JSON.stringify(customColors));
@@ -9521,12 +10884,12 @@ export function initAreaColorUI(allMapObjects: any[], mapView: any, mapData: any
     const successPopup = document.getElementById("success-popup");
     const okBtn = document.getElementById("btn-success-ok");
     if (successPopup && okBtn) {
-       const msgEl = successPopup.querySelector('p');
-       if (msgEl) msgEl.textContent = `Đã đổi màu nền thành công cho ${count} khu vực!`;
-       successPopup.style.display = "flex";
-       okBtn.onclick = () => successPopup.style.display = "none";
+      const msgEl = successPopup.querySelector('p');
+      if (msgEl) msgEl.textContent = `Đã đổi màu nền thành công cho ${count} khu vực!`;
+      successPopup.style.display = "flex";
+      okBtn.onclick = () => successPopup.style.display = "none";
     } else {
-       alert(`Đã đổi màu nền thành công cho ${count} khu vực!`);
+      alert(`Đã đổi màu nền thành công cho ${count} khu vực!`);
     }
     modal.classList.add("hidden");
   });
@@ -9539,9 +10902,9 @@ export function initAreaColorUI(allMapObjects: any[], mapView: any, mapData: any
     }
     const spaces = mapData.getByType('space');
     let count = 0;
-    
+
     const customColors = JSON.parse(localStorage.getItem('customAreaColors') || '{}');
-    
+
     for (const space of spaces) {
       if (selectedAreaIds.has(space.id)) {
         delete customColors[space.id];
@@ -9549,7 +10912,7 @@ export function initAreaColorUI(allMapObjects: any[], mapView: any, mapData: any
           const defaultColor = space.name ? "#FFFFFF" : "#eeece7";
           mapView.updateState(space, { color: defaultColor });
           count++;
-        } catch(e) { }
+        } catch (e) { }
       }
     }
     localStorage.setItem('customAreaColors', JSON.stringify(customColors));
@@ -9559,12 +10922,12 @@ export function initAreaColorUI(allMapObjects: any[], mapView: any, mapData: any
     const successPopup = document.getElementById("success-popup");
     const okBtn = document.getElementById("btn-success-ok");
     if (successPopup && okBtn) {
-       const msgEl = successPopup.querySelector('p');
-       if (msgEl) msgEl.textContent = `Đã xóa màu nền thành công cho ${count} khu vực!`;
-       successPopup.style.display = "flex";
-       okBtn.onclick = () => successPopup.style.display = "none";
+      const msgEl = successPopup.querySelector('p');
+      if (msgEl) msgEl.textContent = `Đã xóa màu nền thành công cho ${count} khu vực!`;
+      successPopup.style.display = "flex";
+      okBtn.onclick = () => successPopup.style.display = "none";
     } else {
-       alert(`Đã xóa màu nền thành công cho ${count} khu vực!`);
+      alert(`Đã xóa màu nền thành công cho ${count} khu vực!`);
     }
     modal.classList.add("hidden");
   });
@@ -9575,15 +10938,54 @@ export function initAreaColorUI(allMapObjects: any[], mapView: any, mapData: any
     selectedAreaIds.clear();
     selectedAreaIds.add(space.id);
     searchInput.value = TranslationManager.getName(space) || space.name || space.id;
-    
+
     // Set the color picker to the current space's color
     try {
       const customColors = JSON.parse(localStorage.getItem('customAreaColors') || '{}');
       const currentColor = customColors[space.id] || (space.name ? "#FFFFFF" : "#eeece7");
       colorPicker.value = currentColor;
       colorHex.value = currentColor;
-    } catch(e) {}
-    
+    } catch (e) { }
+
     renderList(searchInput.value);
   };
+}
+
+// Custom Speed Dropdown logic
+const speedDisplay = document.getElementById("speed-selected-display");
+const speedMenu = document.getElementById("speed-options-menu");
+const speedValueText = document.getElementById("speed-value-text");
+const speedItems = document.querySelectorAll(".speed-item");
+
+if (speedDisplay && speedMenu) {
+  speedDisplay.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const isOpen = speedMenu.style.display === "block";
+    speedMenu.style.display = isOpen ? "none" : "block";
+    speedDisplay.style.borderColor = isOpen ? "#e9ecef" : "#214ca6";
+  });
+
+  document.addEventListener("click", () => {
+    speedMenu.style.display = "none";
+    if (speedDisplay) speedDisplay.style.borderColor = "#e9ecef";
+  });
+
+  speedItems.forEach(item => {
+    item.addEventListener("click", () => {
+      const value = (item as HTMLElement).dataset.value;
+      const text = (item as HTMLElement).textContent;
+      if (value && speedValueText) {
+        (window as any).speedMultiplier = parseFloat(value);
+        speedValueText.textContent = text;
+
+        // Cập nhật UI menu
+        speedItems.forEach(i => {
+          (i as HTMLElement).style.background = 'transparent';
+          (i as HTMLElement).style.color = '#4a5568';
+        });
+        (item as HTMLElement).style.background = '#f0f6ff';
+        (item as HTMLElement).style.color = '#214ca6';
+      }
+    });
+  });
 }

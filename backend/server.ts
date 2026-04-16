@@ -397,142 +397,143 @@ const KNOWN_DEFAULTS: Record<string, any> = {
 // CATEGORY & AREA CLASSIFICATION SYNC
 // =============================================
 
-const UI_CATEGORY_MAP: Record<string, string> = {
-    "Accessible": "Hỗ trợ người khuyết tật",
-    "Beauty": "Làm đẹp",
-    "Connection": "Kết nối",
-    "Electronic": "Điện tử",
-    "Entertainment": "Thư giãn",
-    "Fashion": "Thời trang",
-    "Fitness": "Thể thao",
-    "Food&Drink": "Ăn uống",
-    "Lounge": "Phòng chờ",
-    "Pharmacy": "Nhà thuốc",
-    "AirportService": "Dịch vụ sân bay",
-    "Store": "Cửa hàng",
-    "DepartureFlightProcedures": "Thủ tục chuyến bay đi",
-    "ArrivalFlightProcedures": "Thủ tục chuyến bay đến",
-    "TransitProcedures": "Thủ tục nối chuyến"
+const UI_CATEGORY_MAP: Record<string, any> = {
+    "Accessible": { vn: "Hỗ trợ người khuyết tật", en: "Accessible", zh: "无障碍设施", ja: "バリアフリー", ko: "장애인 지원" },
+    "Beauty": { vn: "Làm đẹp", en: "Beauty", zh: "美容", ja: "美容", ko: "미용" },
+    "Connection": { vn: "Kết nối", en: "Connection", zh: "连接", ja: "接続", ko: "연결" },
+    "Electronic": { vn: "Điện tử", en: "Electronic", zh: "电子", ja: "電子", ko: "전자" },
+    "Entertainment": { vn: "Thư giãn", en: "Entertainment", zh: "娱乐", ja: "エンターテインメント", ko: "엔터테인먼트" },
+    "Fashion": { vn: "Thời trang", en: "Fashion", zh: "时尚", ja: "ファッション", ko: "패션" },
+    "Fitness": { vn: "Thể thao", en: "Fitness", zh: "健身", ja: "フィットネス", ko: "피트니스" },
+    "Food&Drink": { vn: "Ăn uống", en: "Food & Drink", zh: "餐饮", ja: "飲食店", ko: "식음료" },
+    "Lounge": { vn: "Phòng chờ", en: "Lounge", zh: "休息室", ja: "ラウンジ", ko: "라운지" },
+    "Pharmacy": { vn: "Nhà thuốc", en: "Pharmacy", zh: "药房", ja: "薬局", ko: "약국" },
+    "AirportService": { vn: "Dịch vụ sân bay", en: "Airport Service", zh: "机场服务", ja: "空港サービス", ko: "공항 서비스" },
+    "Store": { vn: "Cửa hàng", en: "Store", zh: "商店", ja: "店舗", ko: "상점" },
+    "DepartureFlightProcedures": { vn: "Thủ tục chuyến bay đi", en: "Departure Procedures", zh: "出港程序", ja: "出発手続き", ko: "출국 절차" },
+    "ArrivalFlightProcedures": { vn: "Thủ tục chuyến bay đến", en: "Arrival Procedures", zh: "入港程序", ja: "到着手続き", ko: "입국 절차" },
+    "TransitProcedures": { vn: "Thủ tục nối chuyến", en: "Transit Procedures", zh: "中转程序", ja: "乗り継ぎ手続き", ko: "환승 절차" }
 };
 
-const SUB_CATEGORY_MAP: Record<string, string> = {
+const SUB_CATEGORY_MAP: Record<string, any> = {
     // Accessible
-    "accessible": "Hỗ trợ người khuyết tật",
+    "accessible": { vn: "Hỗ trợ người khuyết tật", en: "Accessible", zh: "无障碍设施", ja: "バリアフリー", ko: "장애인 지원" },
 
     // Beauty
-    "cosmetic": "Mỹ phẩm",
-    "spa-massage": "Spa & Massage",
+    "cosmetic": { vn: "Mỹ phẩm", en: "Cosmetics", zh: "化妆品", ja: "化粧品", ko: "화장품" },
+    "spa-massage": { vn: "Spa & Massage", en: "Spa & Massage", zh: "SP & 按摩", ja: "スパ＆マッサージ", ko: "스파 & 마사지" },
 
     // Connection
-    "elevator": "Thang máy",
-    "entrance": "Lối vào",
-    "escalator": "Thang cuốn",
-    "gate": "Cửa khởi hành",
+    "elevator": { vn: "Thang máy", en: "Elevator", zh: "电梯", ja: "エレベーター", ko: "엘리베이터" },
+    "entrance": { vn: "Lối vào", en: "Entrance", zh: "入口", ja: "入口", ko: "입구" },
+    "escalator": { vn: "Thang cuốn", en: "Escalator", zh: "自动扶梯", ja: "エスカレーター", ko: "에스컬레이터" },
+    "gate": { vn: "Cửa khởi hành", en: "Departure Gate", zh: "登机口", ja: "搭乗口", ko: "탑승구" },
 
     // Electronic
-    "electronic": "Thiết bị điện tử",
+    "electronic": { vn: "Thiết bị điện tử", en: "Electronics", zh: "电子产品", ja: "電子機器", ko: "전자 기기" },
 
     // Entertainment / Relax
-    "casino": "Casino",
-    "gaming": "Khu trò chơi",
-    "movie-theater": "Rạp chiếu phim",
-    "massage-chair": "Ghế massage",
-    "sleep-box": "Khu vực nghỉ ngơi",
-    "pray-area": "Phòng cầu nguyện",
+    "casino": { vn: "Casino", en: "Casino", zh: "赌场", ja: "カジノ", ko: "카지노" },
+    "gaming": { vn: "Khu trò chơi", en: "Gaming Zone", zh: "游戏区", ja: "ゲームゾーン", ko: "게임 존" },
+    "movie-theater": { vn: "Rạp chiếu phim", en: "Movie Theater", zh: "电影院", ja: "映画館", ko: "영화관" },
+    "massage-chair": { vn: "Ghế massage", en: "Massage Chair", zh: "按摩椅", ja: "マッサージチェア", ko: "안마 의자" },
+    "sleep-box": { vn: "Khu vực nghỉ ngơi", en: "Rest Area", zh: "休息区", ja: "休憩エリア", ko: "휴게실" },
+    "pray-area": { vn: "Phòng cầu nguyện", en: "Prayer Room", zh: "祈祷室", ja: "祈祷室", ko: "기도실" },
 
     // Fashion
-    "accessories": "Phụ kiện",
-    "eyewear": "Mắt kính",
-    "footwear": "Giày dép",
-    "handbag": "Túi xách",
-    "jewelry": "Trang sức",
-    "luxury-fashion": "Thời trang cao cấp",
-    "sleepwear": "Đồ ngủ",
+    "accessories": { vn: "Phụ kiện", en: "Accessories", zh: "配饰", ja: "アクセサリー", ko: "액세서리" },
+    "eyewear": { vn: "Mắt kính", en: "Eyewear", zh: "眼镜", ja: "アイウェア", ko: "안경" },
+    "footwear": { vn: "Giày dép", en: "Footwear", zh: "鞋子", ja: "フットウェア", ko: "신발" },
+    "handbag": { vn: "Túi xách", en: "Handbags", zh: "手提包", ja: "ハンドバッグ", ko: "핸드백" },
+    "jewelry": { vn: "Trang sức", en: "Jewelry", zh: "珠宝", ja: "ジュエリー", ko: "보석" },
+    "luxury-fashion": { vn: "Thời trang cao cấp", en: "Luxury Fashion", zh: "奢华时尚", ja: "ラグジュアリーファッション", ko: "명품 패션" },
+    "sleepwear": { vn: "Đồ ngủ", en: "Sleepwear", zh: "睡衣", ja: "スリープウェア", ko: "잠옷" },
 
     // Fitness
-    "gym": "Phòng tập Gym",
+    "gym": { vn: "Phòng tập Gym", en: "Gym", zh: "健身房", ja: "ジム", ko: "체육관" },
 
     // Food&Drink
-    "alcohol": "Rượu & Đồ uống có cồn",
-    "bakery": "Tiệm bánh",
-    "bar": "Quầy Bar",
-    "coffee": "Cà phê",
-    "fast-food": "Thức ăn nhanh",
-    "food-court": "Khu ẩm thực",
-    "ice-cream": "Kem",
-    "pizza": "Pizza",
-    "restaurant": "Nhà hàng",
+    "alcohol": { vn: "Rượu & Đồ uống có cồn", en: "Alcohol", zh: "酒精饮料", ja: "アルコール", ko: "주류" },
+    "bakery": { vn: "Tiệm bánh", en: "Bakery", zh: "面包店", ja: "ベーカリー", ko: "베이커리" },
+    "bar": { vn: "Quầy Bar", en: "Bar", zh: "酒吧", ja: "バー", ko: "바" },
+    "coffee": { vn: "Cà phê", en: "Coffee Shop", zh: "咖啡店", ja: "カフェ", ko: "커피숍" },
+    "fast-food": { vn: "Thức ăn nhanh", en: "Fast Food", zh: "快餐", ja: "ファストフード", ko: "패스트푸드" },
+    "food-court": { vn: "Khu ẩm thực", en: "Food Court", zh: "美食广场", ja: "フードコート", ko: "푸드 코트" },
+    "ice-cream": { vn: "Kem", en: "Ice Cream", zh: "冰淇淋", ja: "アイスクリーム", ko: "아이스크림" },
+    "pizza": { vn: "Pizza", en: "Pizza", zh: "比萨", ja: "ピザ", ko: "피자" },
+    "restaurant": { vn: "Nhà hàng", en: "Restaurant", zh: "餐厅", ja: "レストラン", ko: "레스토랑" },
 
     // Pharmacy
-    "pharmacy": "Nhà thuốc",
+    "pharmacy": { vn: "Nhà thuốc", en: "Pharmacy", zh: "药房", ja: "薬局", ko: "약국" },
 
     // Service
-    "atm": "Máy ATM",
-    "car-parking": "Bãi đỗ xe ô tô",
-    "currency-exchange": "Đổi ngoại tệ",
-    "drinking-water-area": "Nước uống miễn phí",
-    "exhibit": "Khu triển lãm",
-    "family-restroom": "Nhà vệ sinh gia đình",
-    "free-charging-station": "Trạm sạc miễn phí",
-    "kid-area": "Khu vui chơi trẻ em",
-    "lost-and-found": "Hành lý thất lạc",
-    "motorbike-parking": "Bãi đỗ xe máy",
-    "nursing-room": "Phòng mẹ và bé",
-    "parking": "Bãi đỗ xe",
-    "phone": "Điện thoại công cộng",
-    "photography": "Khu chụp ảnh",
-    "restroom": "Nhà vệ sinh",
-    "shopping-cart": "Xe đẩy hành lý",
-    "shower-room": "Phòng tắm",
-    "smoking-room": "Phòng hút thuốc",
-    "taxi-pickup-area": "Điểm đón Taxi",
-    "tourist-information": "Thông tin du lịch",
-    "wrapping-baggage-area": "Đóng gói hành lý",
-    "yoga": "Phòng tập Yoga",
+    "atm": { vn: "Máy ATM", en: "ATM", zh: "自动提款机", ja: "ATM", ko: "ATM" },
+    "car-parking": { vn: "Bãi đỗ xe ô tô", en: "Car Parking", zh: "停车场", ja: "駐車場", ko: "주차장" },
+    "currency-exchange": { vn: "Đổi ngoại tệ", en: "Currency Exchange", zh: "外币兑换", ja: "外貨両替", ko: "환전" },
+    "drinking-water-area": { vn: "Nước uống miễn phí", en: "Drinking Water", zh: "饮用水", ja: "飲料水", ko: "음용수" },
+    "exhibit": { vn: "Khu triển lãm", en: "Exhibit Area", zh: "展览区", ja: "展示エリア", ko: "전시 구역" },
+    "family-restroom": { vn: "Nhà vệ sinh gia đình", en: "Family Restroom", zh: "家庭卫生间", ja: "ファミリー用トイレ", ko: "가족 화장실" },
+    "free-charging-station": { vn: "Trạm sạc miễn phí", en: "Charging Station", zh: "充电站", ja: "充電スタンド", ko: "충전소" },
+    "kid-area": { vn: "Khu vui chơi trẻ em", en: "Kid Area", zh: "儿童游乐区", ja: "キッズエリア", ko: "키즈 존" },
+    "lost-and-found": { vn: "Hành lý thất lạc", en: "Lost & Found", zh: "失物招领", ja: "遺失物取扱所", ko: "분실물 센터" },
+    "motorbike-parking": { vn: "Bãi đỗ xe máy", en: "Motorbike Parking", zh: "摩托车停车场", ja: "バイク駐車場", ko: "오토바이 주차장" },
+    "nursing-room": { vn: "Phòng mẹ và bé", en: "Nursing Room", zh: "母婴室", ja: "授乳室", ko: "수유실" },
+    "parking": { vn: "Bãi đỗ xe", en: "Parking", zh: "停车场", ja: "駐車場", ko: "주차장" },
+    "phone": { vn: "Điện thoại công cộng", en: "Public Phone", zh: "公用电话", ja: "公衆電話", ko: "공중전화" },
+    "photography": { vn: "Khu chụp ảnh", en: "Photo Zone", zh: "拍照区", ja: "フォトゾーン", ko: "포토 존" },
+    "restroom": { vn: "Nhà vệ sinh", en: "Restroom", zh: "卫生间", ja: "トイレ", ko: "화장실" },
+    "shopping-cart": { vn: "Xe đẩy hành lý", en: "Baggage Cart", zh: "行李车", ja: "手荷物カート", ko: "수하물 카트" },
+    "shower-room": { vn: "Phòng tắm", en: "Shower Room", zh: "淋浴室", ja: "シャワールーム", ko: "샤워실" },
+    "smoking-room": { vn: "Phòng hút thuốc", en: "Smoking Room", zh: "吸烟室", ja: "喫煙所", ko: "흡연실" },
+    "taxi-pickup-area": { vn: "Điểm đón Taxi", en: "Taxi Stand", zh: "出租车站", ja: "タクシー乗り場", ko: "택시 승강장" },
+    "tourist-information": { vn: "Thông tin du lịch", en: "Tourist Information", zh: "旅游信息", ja: "観光案内所", ko: "관광 안내소" },
+    "wrapping-baggage-area": { vn: "Đóng gói hành lý", en: "Baggage Wrapping", zh: "行李打包", ja: "手荷物ラッピング", ko: "수하물 래핑" },
+    "yoga": { vn: "Phòng tập Yoga", en: "Yoga Room", zh: "瑜伽室", ja: "ヨガコーナー", ko: "요가 룸" },
 
     // Store
-    "book-shop": "Hiệu sách",
-    "convenience-store": "Cửa hàng tiện lợi",
-    "duty-free": "Cửa hàng miễn thuế",
-    "souvenir-shop": "Cửa hàng lưu niệm",
-    "flower-store": "Cửa hàng hoa",
+    "book-shop": { vn: "Hiệu sách", en: "Bookstore", zh: "书店", ja: "書店", ko: "서점" },
+    "convenience-store": { vn: "Cửa hàng tiện lợi", en: "Convenience Store", zh: "便利店", ja: "コンビニ", ko: "편의점" },
+    "duty-free": { vn: "Cửa hàng miễn thuế", en: "Duty Free", zh: "免税店", ja: "免税店", ko: "면세점" },
+    "souvenir-shop": { vn: "Cửa hàng lưu niệm", en: "Souvenir Shop", zh: "礼品店", ja: "お土産店", ko: "기념품점" },
+    "flower-store": { vn: "Cửa hàng hoa", en: "Flower Shop", zh: "花店", ja: "フラワーショップ", ko: "꽃집" },
 
     // Lounge
-    "cip-lounge": "Phòng chờ thương gia",
-    "dom-lounge": "Phòng chờ ga đi quốc nội",
-    "int-lounge": "Phòng chờ ga đi quốc tế",
-    "visa-lounge": "Phòng chờ visa",
+    "cip-lounge": { vn: "Phòng chờ thương gia", en: "CIP Lounge", zh: "商务休息室", ja: "ビジネスラウンジ", ko: "비즈니스 라운지" },
+    "dom-lounge": { vn: "Phòng chờ ga đi quốc nội", en: "Domestic Lounge", zh: "国内出发休息室", ja: "国内線出発ラウンジ", ko: "국내선 출발 라운지" },
+    "int-lounge": { vn: "Phòng chờ ga đi quốc tế", en: "International Lounge", zh: "国际出发休息室", ja: "国際線出発ラウンジ", ko: "국제선 출발 라운지" },
+    "visa-lounge": { vn: "Phòng chờ visa", en: "Visa Lounge", zh: "签证休息室", ja: "ビザラウンジ", ko: "비자 라운지" },
 
     // ArrivalFlightProcedures
-    "biomectric-regis": "Đăng ký sinh trắc học",
-    "custom": "Hải quan",
-    "oversize-luggage": "Hành lý quá khổ",
-    "immigration": "Nhập cảnh",
-    "int-arrival": "Khu ga đến quốc tế",
-    "dom-arrival": "Khu ga đến quốc nội",
-    "baggage-claim-area": "Khu vực nhận hành lý",
+    "biomectric-regis": { vn: "Đăng ký sinh trắc học", en: "Biometric Registration", zh: "生物识别登记", ja: "バイオメトリック登録", ko: "생체 인식 등록" },
+    "custom": { vn: "Hải quan", en: "Customs", zh: "海关", ja: "税関", ko: "세관" },
+    "oversize-luggage": { vn: "Hành lý quá khổ", en: "Oversize Baggage", zh: "超大行李", ja: "大型手荷物", ko: "대형 수하물" },
+    "immigration": { vn: "Nhập cảnh", en: "Immigration", zh: "入境", ja: "入国審査", ko: "출입국 관리" },
+    "int-arrival": { vn: "Khu ga đến quốc tế", en: "International Arrival", zh: "国际到达", ja: "国際線到着", ko: "국제선 도착" },
+    "dom-arrival": { vn: "Khu ga đến quốc nội", en: "Domestic Arrival", zh: "国内到达", ja: "国内線到着", ko: "국내선 도착" },
+    "baggage-claim-area": { vn: "Khu vực nhận hành lý", en: "Baggage Claim", zh: "行李提取", ja: "手荷物受取所", ko: "수하물 수취 지역" },
 
     // DepartureFlightProcedures
-    "luggage-storage": "Lưu trữ hành lý",
-    "fast-track": "Làn làm thủ tục ưu tiên",
-    "emigration": "Xuất cảnh",
-    "int-screening-security": "An ninh soi chiếu quốc tế",
-    "dom-screening-security": "An ninh soi chiếu nội địa",
-    "int-departure": "Khu ga đi quốc tế",
-    "dom-departure": "Khu ga đi quốc nội",
-    "checkin-area": "Khu vực làm thủ tục",
+    "luggage-storage": { vn: "Lưu trữ hành lý", en: "Baggage Storage", zh: "行李寄存", ja: "手荷物預かり所", ko: "수하물 보관소" },
+    "fast-track": { vn: "Làn làm thủ tục ưu tiên", en: "Fast Track", zh: "快速通道", ja: "ファストトラック", ko: "패스트 트랙" },
+    "emigration": { vn: "Xuất cảnh", en: "Emigration", zh: "出境", ja: "出国審査", ko: "출국 심사" },
+    "int-screening-security": { vn: "An ninh soi chiếu quốc tế", en: "International Security", zh: "国际安检", ja: "国際線保安検査", ko: "국제선 보안 검색" },
+    "dom-screening-security": { vn: "An ninh soi chiếu nội địa", en: "Domestic Security", zh: "国内安检", ja: "国内線保安検査", ko: "국내선 보안 검색" },
+    "int-departure": { vn: "Khu ga đi quốc tế", en: "International Departure", zh: "国际出发", ja: "国際線出発", ko: "국제선 출발" },
+    "dom-departure": { vn: "Khu ga đi quốc nội", en: "Domestic Departure", zh: "国内出发", ja: "国内線出発", ko: "국내선 출발" },
+    "checkin-area": { vn: "Khu vực làm thủ tục", en: "Check-in Area", zh: "值机区", ja: "チェックインエリア", ko: "체크인 구역" },
 
     // TransitProcedures
-    "int-int-transit": "Nối chuyến Quốc tế - Quốc tế",
-    "dom-dom-transit": "Nối chuyến Nội địa - Nội địa",
-    "dom-int-transit": "Nối chuyến Nội địa - Quốc tế",
+    "int-int-transit": { vn: "Nối chuyến Quốc tế - Quốc tế", en: "Int-Int Transit", zh: "国际-国际中转", ja: "国際線-国際線乗り継ぎ", ko: "국제선-국제선 환승" },
+    "dom-dom-transit": { vn: "Nối chuyến Nội địa - Nội địa", en: "Dom-Dom Transit", zh: "国内-国内中转", ja: "国内線-国内線乗り継ぎ", ko: "국내선-국내선 환승" },
+    "dom-int-transit": { vn: "Nối chuyến Nội địa - Quốc tế", en: "Dom-Int Transit", zh: "国内-国际中转", ja: "国内線-国際線乗り継ぎ", ko: "국내선-국제선 환승" },
 
     // AirportService (Additions)
-    "traditional-center": "Trung tâm văn hóa truyền thống",
-    "landscape": "Cảnh quan",
-    "post-service": "Dịch vụ bưu điện",
-    "welcome-service": "Dịch vụ đón tiễn khách",
-    "hotel-waiting-area": "Khu vực chờ xe khách sạn"
+    "traditional-center": { vn: "Trung tâm văn hóa truyền thống", en: "Traditional Culture Center", zh: "传统文化中心", ja: "伝統文化センター", ko: "전통문화센터" },
+    "landscape": { vn: "Cảnh quan", en: "Landscape", zh: "景观", ja: "景観", ko: "조경" },
+    "post-service": { vn: "Dịch vụ bưu điện", en: "Post Service", zh: "邮政服务", ja: "郵便サービス", ko: "우편 서비스" },
+    "welcome-service": { vn: "Dịch vụ đón tiễn khách", en: "Welcome Service", zh: "迎接服务", ja: "ウェルカムサービス", ko: "환영 서비스" },
+    "hotel-waiting-area": { vn: "Khu vực chờ xe khách sạn", en: "Hotel Waiting Area", zh: "酒店等待区", ja: "ホテル待機エリア", ko: "호텔 대기 구역" },
+    "internet-lounge": { vn: "Phòng Internet", en: "Internet Lounge", zh: "互联网休息室", ja: "インターネットラウンジ", ko: "인터넷 라운지" }
 };
 
 async function syncCategories() {
@@ -555,35 +556,42 @@ async function syncCategories() {
         console.log(`🔍 Found ${rootFolders.length} category folders`);
 
         for (const folder of rootFolders) {
-            const vietnameseName = UI_CATEGORY_MAP[folder] || folder;
+            const categoryInfo = UI_CATEGORY_MAP[folder] || { vn: folder, en: folder, zh: folder, ja: folder, ko: folder };
             const iconFile = `${folder.toLowerCase().replace(/&/g, '-and-')}.png`;
             const iconPath = fs.existsSync(path.join(categoryBaseDir, iconFile)) ? iconFile : null;
 
             // 1. Upsert Category
             const db = await getDbConnection();
             const catResult = await db.request()
-                .input('Name', sql.NVarChar(200), vietnameseName)
+                .input('Name', sql.NVarChar(200), categoryInfo.vn)
+                .input('EN', sql.NVarChar(200), categoryInfo.en || categoryInfo.vn)
+                .input('ZH', sql.NVarChar(200), categoryInfo.zh || categoryInfo.vn)
+                .input('JA', sql.NVarChar(200), categoryInfo.ja || categoryInfo.vn)
+                .input('KO', sql.NVarChar(200), categoryInfo.ko || categoryInfo.vn)
                 .input('Icon', sql.NVarChar(500), iconPath)
                 .query(`
                     DECLARE @CID INT;
-                    -- 1. Look up by IconPath first (Stable ID based on folder name)
                     SELECT @CID = CategoryID FROM Categories WHERE IconPath = @Icon;
-
-                    -- 2. Fallback to Name if Icon not found (e.g. icon changed or new)
                     IF @CID IS NULL
                         SELECT @CID = CategoryID FROM Categories WHERE CategoryName = @Name;
                     
                     IF @CID IS NOT NULL
                     BEGIN
-                        -- Update Name (and Icon just in case)
-                        UPDATE Categories SET CategoryName = @Name, IconPath = @Icon WHERE CategoryID = @CID;
+                        -- CHỈ CẬP NHẬT: Nếu tên trong DB đang trống thì mới nạp tên từ code, còn không thì giữ nguyên bản trong DB
+                        UPDATE Categories SET 
+                            CategoryName = ISNULL(NULLIF(CategoryName, ''), @Name),
+                            EN = ISNULL(NULLIF(EN, ''), @EN),
+                            ZH = ISNULL(NULLIF(ZH, ''), @ZH),
+                            JA = ISNULL(NULLIF(JA, ''), @JA),
+                            KO = ISNULL(NULLIF(KO, ''), @KO),
+                            IconPath = @Icon 
+                        WHERE CategoryID = @CID;
                     END
                     ELSE
                     BEGIN
-                        INSERT INTO Categories (CategoryName, IconPath, DisplayOrder) VALUES (@Name, @Icon, 0);
+                        INSERT INTO Categories (CategoryName, EN, ZH, JA, KO, IconPath, DisplayOrder) VALUES (@Name, @EN, @ZH, @JA, @KO, @Icon, 0);
                         SELECT @CID = SCOPE_IDENTITY();
                     END
-                    
                     SELECT @CID as CategoryID;
                 `);
 
@@ -598,8 +606,11 @@ async function syncCategories() {
                 if (path.extname(subFile).toLowerCase() !== '.png') continue;
 
                 const baseFileName = path.basename(subFile, '.png').toLowerCase().trim();
-                const vnsName = SUB_CATEGORY_MAP[baseFileName] ||
-                    baseFileName.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                const subInfo = (SUB_CATEGORY_MAP[baseFileName] || {
+                    vn: baseFileName.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
+                    en: baseFileName.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
+                    zh: baseFileName, ja: baseFileName, ko: baseFileName
+                });
 
                 // Tên tiếng Anh mặc định (dùng để tìm và xóa các bản ghi cũ)
                 const englishNameFallback = baseFileName.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
@@ -609,7 +620,11 @@ async function syncCategories() {
                 const db = await getDbConnection();
                 await db.request()
                     .input('CatID', sql.Int, categoryId)
-                    .input('VNSName', sql.NVarChar(200), vnsName)
+                    .input('VN', sql.NVarChar(200), subInfo.vn)
+                    .input('EN', sql.NVarChar(200), subInfo.en || subInfo.vn)
+                    .input('ZH', sql.NVarChar(200), subInfo.zh || subInfo.vn)
+                    .input('JA', sql.NVarChar(200), subInfo.ja || subInfo.vn)
+                    .input('KO', sql.NVarChar(200), subInfo.ko || subInfo.vn)
                     .input('EngName', sql.NVarChar(200), englishNameFallback)
                     .input('Icon', sql.NVarChar(500), subIconPath)
                     .query(`
@@ -619,8 +634,15 @@ async function syncCategories() {
 
                         IF @SID IS NOT NULL
                         BEGIN
-                            -- PHẢI CẬP NHẬT: Luôn cập nhật tên mới nhất từ server.ts vào Database dựa trên ID tìm được
-                            UPDATE SubCategories SET SubCategoryName = @VNSName WHERE SubCategoryID = @SID;
+                            -- CHỈ CẬP NHẬT: Ưu tiên dữ liệu trong DB. Nếu cột nào NULL/Trống thì mới lấy từ server.ts bù vào.
+                            UPDATE SubCategories SET 
+                                SubCategoryName = ISNULL(NULLIF(SubCategoryName, ''), @VN),
+                                EN = ISNULL(NULLIF(EN, ''), @EN),
+                                ZH = ISNULL(NULLIF(ZH, ''), @ZH),
+                                JA = ISNULL(NULLIF(JA, ''), @JA),
+                                KO = ISNULL(NULLIF(KO, ''), @KO),
+                                IconPath = @Icon 
+                            WHERE SubCategoryID = @SID;
                         END
                         ELSE
                         BEGIN
@@ -629,15 +651,21 @@ async function syncCategories() {
                             
                             IF @SID IS NOT NULL
                             BEGIN
-                                -- Cập nhật cả Tên và Icon mới
-                                UPDATE SubCategories SET SubCategoryName = @VNSName, IconPath = @Icon WHERE SubCategoryID = @SID;
+                                UPDATE SubCategories SET 
+                                    SubCategoryName = ISNULL(NULLIF(SubCategoryName, ''), @VN),
+                                    EN = ISNULL(NULLIF(EN, ''), @EN),
+                                    ZH = ISNULL(NULLIF(ZH, ''), @ZH),
+                                    JA = ISNULL(NULLIF(JA, ''), @JA),
+                                    KO = ISNULL(NULLIF(KO, ''), @KO),
+                                    IconPath = @Icon 
+                                WHERE SubCategoryID = @SID;
                             END
                             ELSE
                             BEGIN
                                 -- 3. Nếu hoàn toàn không có gì thì mới chèn mới
-                                INSERT INTO SubCategories (CategoryID, SubCategoryName, IconPath, DisplayOrder) 
-                                VALUES (@CatID, @VNSName, @Icon, 0);
-                                SELECT @SID = SCOPE_IDENTITY();
+                                INSERT INTO SubCategories (CategoryID, SubCategoryName, EN, ZH, JA, KO, IconPath, DisplayOrder) 
+                                VALUES (@CatID, @VN, @EN, @ZH, @JA, @KO, @Icon, 0);
+
                             END
                         END
 
@@ -650,7 +678,7 @@ async function syncCategories() {
                     `);
                 subCount++;
             }
-            console.log(`   ✅ Synced ${vietnameseName}: ${subCount} subcategories`);
+            console.log(`   ✅ Synced ${categoryInfo.vn}: ${subCount} subcategories`);
         }
         console.log("🚀 Database Cleanup & Sync Complete");
     } catch (err: any) {
@@ -667,7 +695,7 @@ app.get('/api/categories', async (req, res) => {
     try {
         const db = await getDbConnection();
         const result = await db.request().execute('SP_GetCategoryTree');
-        
+
         const cats = result.recordsets[0];
         const subs = result.recordsets[1];
 
@@ -1037,7 +1065,7 @@ async function start() {
         try {
             const { mappedinId, categoryId, slug, logo, image, phone, website, socials, hours, translations } = req.body;
             const db = await getDbConnection();
-            
+
             const vn = translations['vn']?.name || null;
             const en = translations['en']?.name || null;
             const zh = translations['zh']?.name || null;
@@ -1097,7 +1125,7 @@ async function start() {
                         .input('Description', sql.NVarChar(sql.MAX), description)
                         .input('ImageUrl', sql.NVarChar(500), incomingImg)
                         .execute('SP_SyncMappedinLocation');
-                    
+
                     updated++; // SP handles insert or update logic
                 } catch (e) {
                     console.error(`Error syncing location ${mappedinId}:`, e);
