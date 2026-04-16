@@ -600,6 +600,30 @@ async function init() {
     console.log("🚀 Mappedin: View-Only mode detected in init()");
   }
 
+  // SHOW LOADING SCREEN AND SIMULATE PROGRESS
+  const loadingScreen = document.getElementById("global-loading-screen");
+  const loadingText = document.getElementById("loading-text");
+  const loadingBar = document.getElementById("loading-progress-bar");
+
+  let simProgress = 0;
+  let progressInterval: any = null;
+
+  if (loadingScreen && loadingText && loadingBar) {
+    loadingScreen.style.display = "flex";
+    loadingScreen.classList.remove("hidden");
+
+    // Giả lập thanh tiến trình chạy mượt lên 90% (vì show3dMap ko có callback %)
+    progressInterval = setInterval(() => {
+      if (simProgress < 90) {
+        simProgress += Math.random() * 4 + 1; // Nhảy random 1-5%
+        if (simProgress > 90) simProgress = 90;
+        const displayPercent = Math.floor(simProgress);
+        loadingText.textContent = `Đang khởi tạo bản đồ 3D Cảng Hàng không Quốc tế Long Thành... ${displayPercent}%`;
+        loadingBar.style.width = `${displayPercent}%`;
+      }
+    }, 150);
+  }
+
   // Init Translations
   await TranslationManager.init();
   // ============================================
@@ -626,6 +650,7 @@ async function init() {
   let isProgrammaticZoom: boolean = false; // Cờ đánh dấu đang zoom từ category (vô hiệu hóa AUTO-SWITCH)
   let isInOverview: boolean = true; // Cờ đánh dấu đang ở Overview mode (CRITICAL for floor sync)
   let lastActiveFloorId: string | null = null; // Lưu floor ID cuối cùng trước khi về Overview
+  let isGlobalSwitchingFloor: boolean = false; // Khóa ngăn chặn spam chuyển tầng gây sập GPU
 
   // Declarations for hoisting/scope visibility
   let categoryTree: any[] = [];
@@ -702,29 +727,46 @@ async function init() {
         floorGap: "auto", // Tự động tính khoảng cách tầng
         updateCameraElevationOnFloorChange: true,
       },
-      // CRITICAL: Preload ALL floors so see-through/atrium areas work immediately
-      // Without this, floors only load geometry when visited - causing missing see-through
-      preloadFloors: allFloors,
+      // BƯỚC 4: Comment out native preloadFloors
+      // preloadFloors: allFloors,
     }
   );
 
   // Expose mapView globally for easier debugging and access from console
   (window as any).mapView = mapView;
 
-  // ============================================
-  // PRELOAD ALL FLOORS: Force SDK to load geometry for see-through/atrium
-  // Uses updateState to load geometry WITHOUT switching floors (invisible to user)
-  // ============================================
-  try {
-    for (const floor of allFloors) {
-      try {
-        mapView.updateState(floor, { geometry: { visible: true } } as any);
-      } catch (e) { /* some floors may not support this */ }
-    }
-    console.log(`✅ All ${allFloors.length} floors geometry set to visible for see-through support.`);
-  } catch (e) {
-    console.warn("Could not preload floor geometry:", e);
+  // LƯU Ý: XÓA LOADING SCREEN KHI HOÀN TẤT
+  if (progressInterval) clearInterval(progressInterval);
+
+  if (loadingScreen && loadingText && loadingBar) {
+    // Đẩy vọt lên 100% để user thấy đã chạy xong
+    loadingText.textContent = `Hoàn tất! 100%`;
+    loadingBar.style.width = `100%`;
+
+    // Đợi 400ms để hiệu ứng animation % chạy tới đích, rồi mới ẩn Overlay
+    setTimeout(() => {
+      loadingScreen.classList.add("hidden");
+      setTimeout(() => loadingScreen.style.display = "none", 500);
+    }, 400);
   }
+
+  // Tải ngầm cực chậm trong Background (Không block UI/Lag máy)
+  setTimeout(async () => {
+    try {
+      for (const floor of allFloors) {
+        // Bỏ qua tầng đang hiển thị
+        if (floor.id === mapView.currentFloor?.id) continue;
+
+        try {
+          mapView.updateState(floor, { geometry: { visible: true } } as any);
+        } catch (e) { }
+
+        // Delay khoảng 500ms mỗi tầng để thả lỏng hoàn toàn Thread chính
+        await new Promise(r => setTimeout(r, 500));
+      }
+      console.log(`✅ Background geometric cache completed.`);
+    } catch (e) { }
+  }, 2000); // Đợi 2 giây sau khi app hoàn toàn trơn tru mới bắt đầu tải ngầm
 
   // ASSIGN UI ELEMENTS
   controlsPanel = document.getElementById("model-controls-panel");
@@ -751,11 +793,13 @@ async function init() {
 
 
   // HIDE DEFAULT LABELS: Use our custom markers instead (with square avatar style)
+  /* BƯỚC 3: COMMENT OUT LABEL HIDING
   try {
     (mapView.Labels as any).all.forEach((l: any) => l.hide());
   } catch (e) {
     console.warn("Could not hide default labels", e);
   }
+  */
 
   // Lưu tọa độ trung tâm khởi tạo để dùng cho việc căn giữa sau này
   initialVenueCenter = { ...mapView.Camera.center };
@@ -1278,7 +1322,7 @@ async function init() {
             try {
               const selector = document.getElementById("floor-selector") as HTMLSelectElement;
               if (selector) selector.value = floorId;
-              await mapView.setFloor(floorId);
+              // await mapView.setFloor(floorId); // TEST: disable direct floor switch from search result
             } catch (e) {
               console.warn("Error switching floor:", e);
             }
@@ -2062,7 +2106,7 @@ async function init() {
       if (customColors[obj.id]) {
         bgColor = customColors[obj.id];
       }
-    } catch(e) {}
+    } catch (e) { }
 
     return {
       color: obj.name ? bgColor : "#eeece7", // Non-named areas stay gray
@@ -2074,7 +2118,12 @@ async function init() {
    * 8. SETUP INTERACTIVE STATES & AREA COLORING
    */
   const applyAreaColors = () => {
+    const currentFloorId = mapView.currentFloor?.id;
     allMapObjects.forEach((obj) => {
+      // Filter: Only update objects on the current floor to avoid performance issues
+      const objFloorId = obj.floor?.id || obj.floorId;
+      if (objFloorId && objFloorId !== currentFloorId) return;
+
       // Logic for interactive spaces
       const isSpaceWithoutLocation =
         (obj.type?.toLowerCase() === "space" || obj.type?.toLowerCase() === "room") &&
@@ -2135,6 +2184,10 @@ async function init() {
     const mapDataAny = mapData as any;
     if (mapDataAny.locations && Array.isArray(mapDataAny.locations)) {
       mapDataAny.locations.forEach((location: any) => {
+        // Filter: Only update locations on the current floor
+        const locFloorId = location.floorId || location.floor?.id;
+        if (locFloorId && locFloorId !== mapView.currentFloor?.id) return;
+
         if (location.name) {
           try {
             // Locations có name → màu trắng
@@ -2771,6 +2824,7 @@ async function init() {
 
     try {
       if ((window as any).syncURL) (window as any).syncURL(true);
+
       if (connectionMarkersVisible) renderConnectionOverlaysForCurrentFloor();
       // Re-render object markers cho floor mới
       renderObjectMarkersForCurrentFloor();
@@ -2779,13 +2833,15 @@ async function init() {
       // Cập nhật visibility của UI controls (ví hạn ẩn nút thêm model/phân loại khi ở overview)
       updateUIVisibility();
 
-      // NEW: Create shadow copies of Overview models on this floor
-      // Small delay to ensure floor render completes before adding shadows
+      // BƯỚC 5: Comment vô hiệu hóa hàm tạo Clone Model 3D (Shadow copies)
+      // Hàm này đang gây bão Error 404 do file GLB không tồn tại làm đứt mạng & kẹt GPU!
+      /*
       if (typeof (window as any).syncModelInstancesVisibility === 'function') {
         setTimeout(() => {
           (window as any).syncModelInstancesVisibility();
         }, 300);
       }
+      */
 
       // AUTO-REHIGHLIGHT: If a subcategory is active, re-pin locations on this floor
       if (activeSubCategoryId) {
@@ -2797,8 +2853,17 @@ async function init() {
   floorSelector.value = mapView.currentFloor.id;
 
   floorSelector.addEventListener("change", async (e) => {
+    if (isGlobalSwitchingFloor) {
+      // Đang kẹt chuyển tầng, khôi phục lại giá trị dropdown cũ
+      (e.target as HTMLSelectElement).value = mapView.currentFloor.id;
+      return;
+    }
+
     const floorId = (e.target as HTMLSelectElement)?.value;
-    if (!floorId) return;
+    if (!floorId || floorId === mapView.currentFloor.id) return;
+
+    // Khoá chuyển tầng
+    isGlobalSwitchingFloor = true;
 
     // Blur để dropdown đóng lại và bo tròn góc ngay lập tức
     (e.target as HTMLSelectElement).blur();
@@ -2829,20 +2894,12 @@ async function init() {
       }
 
       await mapView.setFloor(floorId);
-      // Cập nhật dropdown thủ công để đảm bảo đồng bộ
-      floorSelector.value = floorId;
-
-      // CRITICAL: Sync state variables
-      if (isOverview) {
-        isInOverview = true;
-        // Don't update lastActiveFloorId when going to Overview
-      } else {
-        isInOverview = false;
-        lastActiveFloorId = floorId; // Save as last active floor
-      }
     } catch (err) {
       _isWarmupSwitch = false; // Safety reset
       console.warn("Error setting floor:", err);
+    } finally {
+      // Nhả khoá sau khi chuyển tầng hoàn tất
+      setTimeout(() => { isGlobalSwitchingFloor = false; }, 400);
     }
 
     // Sau khi floor đã được set, animate camera
@@ -3294,7 +3351,8 @@ async function init() {
                       setTimeout(() => { if (!executed) { console.warn("Fallback Item Zoom"); handler(); } }, 1000);
 
                       try {
-                        mapView.setFloor(floorId);
+                        // mapView.setFloor(floorId); // TEST: disable item click floor switch
+                        handler();
                       } catch (e) { handler(); }
                     } else {
                       // Same ID, but maybe stuck in Overview visual state?
@@ -3306,10 +3364,10 @@ async function init() {
                         if (tempFloor) {
                           try {
                             console.log("⚡ Switching to temp floor:", tempFloor.id);
-                            mapView.setFloor(tempFloor.id);
+                            // mapView.setFloor(tempFloor.id); // TEST: disable temp floor toggle
                             setTimeout(() => {
                               console.log("⚡ Switching back to target floor:", floorId);
-                              mapView.setFloor(floorId);
+                              // mapView.setFloor(floorId); // TEST: disable temp floor toggle
                               setTimeout(executeZoom, 500);
                             }, 250);
                           } catch (e) { executeZoom(); }
@@ -3476,8 +3534,8 @@ async function init() {
     const isZoomingOut = zoom < lastZoomLevel;
     lastZoomLevel = zoom;
 
-    // Bỏ qua nếu đang chuyển tầng thủ công hoặc zoom do code (category)
-    if (isManualFloorSwitch || isProgrammaticZoom || isFloorSwitching) return;
+    // Bỏ qua nếu đang chuyển tầng (chặn spam) hoặc zoom do code (category)
+    if (isGlobalSwitchingFloor || isManualFloorSwitch || isProgrammaticZoom || isFloorSwitching) return;
 
     const currentFloor = mapView.currentFloor;
     const type = getFloorType(currentFloor);
@@ -3489,7 +3547,9 @@ async function init() {
       // 1. Overview -> GF Transit (Chạm 16.5x)
       if (type === "overview" && zoom >= 16.5) {
         const targetId = findFloorIdByKeywords(["GF", "Transit"]);
-        if (targetId) performFloorSwitch(targetId, "Zoom IN Overview -> Transit");
+        if (targetId) {
+          // performFloorSwitch(targetId, "Zoom IN Overview -> Transit"); // TEST: disable auto floor switch from zoom
+        }
       }
       // 2. Transit -> Detail tương ứng (Chạm 17.0x)
       else if (type === "transit" && zoom >= 17.0) {
@@ -3501,7 +3561,9 @@ async function init() {
         // Fallback cho GF nếu Trệt không khớp
         if (!targetId && prefix === "GF") targetId = findFloorIdByKeywords(["Ground"]);
 
-        if (targetId) performFloorSwitch(targetId, `Zoom IN Transit -> Detail (${prefix})`);
+        if (targetId) {
+          performFloorSwitch(targetId, `Zoom IN Transit -> Detail (${prefix})`);
+        }
       }
     }
 
@@ -3518,11 +3580,15 @@ async function init() {
         else if (floorName.includes("3") || floorName.includes("L3")) prefix = "3F";
 
         const targetId = findFloorIdByKeywords([prefix, "Transit"]);
-        if (targetId) performFloorSwitch(targetId, `Zoom OUT Detail -> Transit (${prefix})`);
+        if (targetId) {
+          performFloorSwitch(targetId, `Zoom OUT Detail -> Transit (${prefix})`);
+        }
       }
       // 2. Transit -> Overview (Chạm 15.0x)
       else if (type === "transit" && zoom <= 15.0) {
-        if (overviewFloor) performFloorSwitch(overviewFloor.id, "Zoom OUT Transit -> Overview");
+        if (overviewFloor) {
+          performFloorSwitch(overviewFloor.id, "Zoom OUT Transit -> Overview");
+        }
       }
     }
 
@@ -3836,7 +3902,7 @@ async function init() {
           if (customColors[objectToReset.id]) {
             defaultColor = customColors[objectToReset.id];
           }
-        } catch(e) {}
+        } catch (e) { }
         mapView.updateState(objectToReset, {
           interactive: true,
           color: defaultColor,
@@ -3889,8 +3955,8 @@ async function init() {
             if (customColors[obj.id]) {
               defaultColor = customColors[obj.id];
             }
-          } catch(e) {}
-          
+          } catch (e) { }
+
           mapView.updateState(obj, {
             interactive: true,
             color: defaultColor,
@@ -7504,7 +7570,7 @@ async function init() {
     const angleY = parseFloat(inputRotY?.value || "0") || 0;
     const angleZ = parseFloat(inputRotZ?.value || "0") || 0;
     const newRot: [number, number, number] = [angleX, angleY, angleZ];
-    
+
     const elevationVal = parseFloat(inputElevation?.value || "0") || 0;
 
     const newScale: [number, number, number] = [
@@ -7820,7 +7886,7 @@ async function init() {
       }
 
       btnAddModel.classList.add("active");
-      
+
       const searchInput = document.getElementById("model-search-input") as HTMLInputElement;
       const searchClear = document.getElementById("model-search-clear") as HTMLButtonElement;
       if (searchInput) searchInput.value = "";
@@ -8820,7 +8886,7 @@ async function init() {
     (window as any).globalMapData = mapData;
     initAdminUI(allMapObjects);
     initAreaColorUI(allMapObjects, mapView, mapData);
-    
+
     // Apply custom area colors immediately on load
     if (typeof (window as any).refreshMapColors === 'function') {
       (window as any).refreshMapColors();
@@ -9396,13 +9462,13 @@ export function initAreaColorUI(allMapObjects: any[], mapView: any, mapData: any
   const colorHex = document.getElementById("area-color-hex") as HTMLInputElement;
 
   let selectedAreaIds = new Set<string>();
-  
+
   if (!modal || !btnOpen || !listContainer) return;
 
   // Render checkbox list
   const renderList = (filter = "") => {
     let spaces = mapData.getByType('space');
-    
+
     // Filter out unnamed spaces
     spaces = spaces.filter((s: any) => s.name && s.name.trim() !== '' && !s.name.toLowerCase().includes("khu vực không tên"));
 
@@ -9426,12 +9492,12 @@ export function initAreaColorUI(allMapObjects: any[], mapView: any, mapData: any
       }
       return { id: s.id, name, floor: floorName || '' };
     });
-    
+
     items.sort((a: any, b: any) => a.name.localeCompare(b.name));
-    
+
     const term = filter.toLowerCase();
     const visibleItems = items.filter((i: any) => i.name.toLowerCase().includes(term));
-    
+
     const allChecked = visibleItems.length > 0 && visibleItems.every((i: any) => selectedAreaIds.has(i.id));
 
     listContainer.innerHTML = `
@@ -9440,8 +9506,8 @@ export function initAreaColorUI(allMapObjects: any[], mapView: any, mapData: any
         <label for="color-chk-all" style="cursor:pointer;">Chọn tất cả khu vực hiển thị</label>
       </div>
       ${visibleItems.map((item: any) => {
-        const checked = selectedAreaIds.has(item.id) ? 'checked' : '';
-        return `
+      const checked = selectedAreaIds.has(item.id) ? 'checked' : '';
+      return `
           <div style="display:flex; align-items:flex-start; margin-bottom:6px;">
             <input type="checkbox" class="color-area-checkbox" id="color-chk-${item.id}" value="${item.id}" ${checked} style="margin-top:3px;">
             <label for="color-chk-${item.id}" style="cursor:pointer; line-height:1.2; font-size:13px; color:#333; flex:1; margin-left:8px;">
@@ -9450,7 +9516,7 @@ export function initAreaColorUI(allMapObjects: any[], mapView: any, mapData: any
             </label>
           </div>
         `;
-      }).join('')}
+    }).join('')}
     `;
 
     // Attach events
@@ -9471,21 +9537,21 @@ export function initAreaColorUI(allMapObjects: any[], mapView: any, mapData: any
       (chk as HTMLInputElement).onchange = (e: any) => {
         if (e.target.checked) selectedAreaIds.add(e.target.value);
         else selectedAreaIds.delete(e.target.value);
-        
+
         // Recheck 'select all'
         const allVisibleChecked = visibleItems.every((i: any) => selectedAreaIds.has(i.id));
         if (chkAll) chkAll.checked = allVisibleChecked;
-        
+
         // If exactly 1 item is selected, display its current color
         if (selectedAreaIds.size === 1) {
           try {
             const customColors = JSON.parse(localStorage.getItem('customAreaColors') || '{}');
             const singleId = Array.from(selectedAreaIds)[0];
-            const singleObj = spaces.find((s:any) => s.id === singleId);
+            const singleObj = spaces.find((s: any) => s.id === singleId);
             const currentColor = customColors[singleId] || (singleObj?.name ? "#FFFFFF" : "#eeece7");
             colorPicker.value = currentColor;
             colorHex.value = currentColor;
-          } catch(e) {}
+          } catch (e) { }
         }
       };
     });
@@ -9513,7 +9579,7 @@ export function initAreaColorUI(allMapObjects: any[], mapView: any, mapData: any
     searchInput.value = "";
     renderList();
   });
-  
+
   btnClose?.addEventListener("click", () => {
     modal.classList.add("hidden");
   });
@@ -9527,16 +9593,16 @@ export function initAreaColorUI(allMapObjects: any[], mapView: any, mapData: any
     const color = colorHex.value;
     const spaces = mapData.getByType('space');
     let count = 0;
-    
+
     const customColors = JSON.parse(localStorage.getItem('customAreaColors') || '{}');
-    
+
     for (const space of spaces) {
       if (selectedAreaIds.has(space.id)) {
         customColors[space.id] = color;
         try {
           mapView.updateState(space, { color: color });
           count++;
-        } catch(e) { console.error("Error setting color", e); }
+        } catch (e) { console.error("Error setting color", e); }
       }
     }
     localStorage.setItem('customAreaColors', JSON.stringify(customColors));
@@ -9546,12 +9612,12 @@ export function initAreaColorUI(allMapObjects: any[], mapView: any, mapData: any
     const successPopup = document.getElementById("success-popup");
     const okBtn = document.getElementById("btn-success-ok");
     if (successPopup && okBtn) {
-       const msgEl = successPopup.querySelector('p');
-       if (msgEl) msgEl.textContent = `Đã đổi màu nền thành công cho ${count} khu vực!`;
-       successPopup.style.display = "flex";
-       okBtn.onclick = () => successPopup.style.display = "none";
+      const msgEl = successPopup.querySelector('p');
+      if (msgEl) msgEl.textContent = `Đã đổi màu nền thành công cho ${count} khu vực!`;
+      successPopup.style.display = "flex";
+      okBtn.onclick = () => successPopup.style.display = "none";
     } else {
-       alert(`Đã đổi màu nền thành công cho ${count} khu vực!`);
+      alert(`Đã đổi màu nền thành công cho ${count} khu vực!`);
     }
     modal.classList.add("hidden");
   });
@@ -9564,9 +9630,9 @@ export function initAreaColorUI(allMapObjects: any[], mapView: any, mapData: any
     }
     const spaces = mapData.getByType('space');
     let count = 0;
-    
+
     const customColors = JSON.parse(localStorage.getItem('customAreaColors') || '{}');
-    
+
     for (const space of spaces) {
       if (selectedAreaIds.has(space.id)) {
         delete customColors[space.id];
@@ -9574,7 +9640,7 @@ export function initAreaColorUI(allMapObjects: any[], mapView: any, mapData: any
           const defaultColor = space.name ? "#FFFFFF" : "#eeece7";
           mapView.updateState(space, { color: defaultColor });
           count++;
-        } catch(e) { }
+        } catch (e) { }
       }
     }
     localStorage.setItem('customAreaColors', JSON.stringify(customColors));
@@ -9584,12 +9650,12 @@ export function initAreaColorUI(allMapObjects: any[], mapView: any, mapData: any
     const successPopup = document.getElementById("success-popup");
     const okBtn = document.getElementById("btn-success-ok");
     if (successPopup && okBtn) {
-       const msgEl = successPopup.querySelector('p');
-       if (msgEl) msgEl.textContent = `Đã xóa màu nền thành công cho ${count} khu vực!`;
-       successPopup.style.display = "flex";
-       okBtn.onclick = () => successPopup.style.display = "none";
+      const msgEl = successPopup.querySelector('p');
+      if (msgEl) msgEl.textContent = `Đã xóa màu nền thành công cho ${count} khu vực!`;
+      successPopup.style.display = "flex";
+      okBtn.onclick = () => successPopup.style.display = "none";
     } else {
-       alert(`Đã xóa màu nền thành công cho ${count} khu vực!`);
+      alert(`Đã xóa màu nền thành công cho ${count} khu vực!`);
     }
     modal.classList.add("hidden");
   });
@@ -9600,15 +9666,15 @@ export function initAreaColorUI(allMapObjects: any[], mapView: any, mapData: any
     selectedAreaIds.clear();
     selectedAreaIds.add(space.id);
     searchInput.value = TranslationManager.getName(space) || space.name || space.id;
-    
+
     // Set the color picker to the current space's color
     try {
       const customColors = JSON.parse(localStorage.getItem('customAreaColors') || '{}');
       const currentColor = customColors[space.id] || (space.name ? "#FFFFFF" : "#eeece7");
       colorPicker.value = currentColor;
       colorHex.value = currentColor;
-    } catch(e) {}
-    
+    } catch (e) { }
+
     renderList(searchInput.value);
   };
 }

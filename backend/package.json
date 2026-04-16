@@ -4,6 +4,7 @@
     "description": "Backend API for Mappedin 3D Models with SQL Server",
     "main": "dist/server.js",
     "scripts": {
+        "predev": "npx -y kill-port 3002",
         "dev": "ts-node-dev --respawn --transpile-only server.ts",
         "server": "ts-node-dev --respawn --transpile-only server.ts",
         "build": "tsc",
