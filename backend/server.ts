@@ -173,7 +173,8 @@ app.get('/api/models', async (req, res) => {
                 rotation: [row.RotationX, row.RotationY, row.RotationZ],
                 scale: [row.ScaleX, row.ScaleY, row.ScaleZ],
                 displayWebsite: row.DisplayWebsite ? 1 : 0,
-                thumb: thumb
+                thumb: thumb,
+                elevation: row.Elevation != null ? parseFloat(row.Elevation) : 0
             };
         });
 
@@ -215,7 +216,8 @@ app.get('/api/models/:uuid', async (req, res) => {
             rotation: [row.RotationX, row.RotationY, row.RotationZ],
             scale: [row.ScaleX, row.ScaleY, row.ScaleZ],
             displayWebsite: row.DisplayWebsite ? 1 : 0,
-            thumb: thumb
+            thumb: thumb,
+            elevation: row.Elevation != null ? parseFloat(row.Elevation) : 0
         };
 
 
@@ -239,7 +241,8 @@ app.post('/api/models', async (req, res) => {
             floorId,
             rotation,
             scale,
-            displayWebsite
+            displayWebsite,
+            elevation
         } = req.body;
 
 
@@ -269,6 +272,7 @@ app.post('/api/models', async (req, res) => {
             .input('ScaleZ', sql.Decimal(18, 6), scale?.[2] ?? 1)
             .input('DisplayWebsite', sql.Bit, displayWebsite ? 1 : 0)
             .input('CreatedBy', sql.NVarChar(100), null)
+            .input('Elevation', sql.Decimal(18, 4), elevation ?? 0)
             .execute('SP_UpsertModel');
 
 

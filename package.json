@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "dev": "vite",
+    "dev": "npx kill-port 3000 && vite",
     "build": "vite build",
     "server": "ts-node backend/server.ts",
     "render-build": "npm install && npm run build && cd backend && npm install && npm run build && cd ..",
@@ -9,7 +9,8 @@
   "devDependencies": {
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
-    "@types/node": "^25.0.9"
+    "@types/node": "^25.0.9",
+    "kill-port": "^2.0.1"
   },
   "dependencies": {
     "@mappedin/3d-assets": "^0.0.10",

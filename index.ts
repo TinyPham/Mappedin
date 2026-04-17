@@ -821,6 +821,30 @@ async function init() {
     console.log("🚀 Mappedin: View-Only mode detected in init()");
   }
 
+  // SHOW LOADING SCREEN AND SIMULATE PROGRESS
+  const loadingScreen = document.getElementById("global-loading-screen");
+  const loadingText = document.getElementById("loading-text");
+  const loadingBar = document.getElementById("loading-progress-bar");
+
+  let simProgress = 0;
+  let progressInterval: any = null;
+
+  if (loadingScreen && loadingText && loadingBar) {
+    loadingScreen.style.display = "flex";
+    loadingScreen.classList.remove("hidden");
+
+    // Giả lập thanh tiến trình chạy mượt lên 90% (vì show3dMap ko có callback %)
+    progressInterval = setInterval(() => {
+      if (simProgress < 90) {
+        simProgress += Math.random() * 4 + 1; // Nhảy random 1-5%
+        if (simProgress > 90) simProgress = 90;
+        const displayPercent = Math.floor(simProgress);
+        loadingText.textContent = `Đang khởi tạo bản đồ 3D Cảng Hàng không Quốc tế Long Thành... ${displayPercent}%`;
+        loadingBar.style.width = `${displayPercent}%`;
+      }
+    }, 150);
+  }
+
   // Init Translations
   await TranslationManager.init();
   // ============================================
@@ -847,6 +871,7 @@ async function init() {
   let isProgrammaticZoom: boolean = false; // Cờ đánh dấu đang zoom từ category (vô hiệu hóa AUTO-SWITCH)
   let isInOverview: boolean = true; // Cờ đánh dấu đang ở Overview mode (CRITICAL for floor sync)
   let lastActiveFloorId: string | null = null; // Lưu floor ID cuối cùng trước khi về Overview
+  let isGlobalSwitchingFloor: boolean = false; // Khóa ngăn chặn spam chuyển tầng gây sập GPU
 
   // Declarations for hoisting/scope visibility
   let categoryTree: any[] = [];
@@ -880,6 +905,8 @@ async function init() {
   let sliderRotY: HTMLInputElement | null = null;
   let inputRotZ: HTMLInputElement | null = null;
   let sliderRotZ: HTMLInputElement | null = null;
+  let inputElevation: HTMLInputElement | null = null;
+  let sliderElevation: HTMLInputElement | null = null;
   let inputScaleX: HTMLInputElement | null = null;
   let inputScaleY: HTMLInputElement | null = null;
   let inputScaleZ: HTMLInputElement | null = null;
@@ -921,29 +948,46 @@ async function init() {
         floorGap: "auto", // Tự động tính khoảng cách tầng
         updateCameraElevationOnFloorChange: true,
       },
-      // CRITICAL: Preload ALL floors so see-through/atrium areas work immediately
-      // Without this, floors only load geometry when visited - causing missing see-through
-      preloadFloors: allFloors,
+      // BƯỚC 4: Comment out native preloadFloors
+      // preloadFloors: allFloors,
     }
   );
 
   // Expose mapView globally for easier debugging and access from console
   (window as any).mapView = mapView;
 
-  // ============================================
-  // PRELOAD ALL FLOORS: Force SDK to load geometry for see-through/atrium
-  // Uses updateState to load geometry WITHOUT switching floors (invisible to user)
-  // ============================================
-  try {
-    for (const floor of allFloors) {
-      try {
-        mapView.updateState(floor, { geometry: { visible: true } } as any);
-      } catch (e) { /* some floors may not support this */ }
-    }
-    console.log(`✅ All ${allFloors.length} floors geometry set to visible for see-through support.`);
-  } catch (e) {
-    console.warn("Could not preload floor geometry:", e);
+  // LƯU Ý: XÓA LOADING SCREEN KHI HOÀN TẤT
+  if (progressInterval) clearInterval(progressInterval);
+
+  if (loadingScreen && loadingText && loadingBar) {
+    // Đẩy vọt lên 100% để user thấy đã chạy xong
+    loadingText.textContent = `Hoàn tất! 100%`;
+    loadingBar.style.width = `100%`;
+
+    // Đợi 400ms để hiệu ứng animation % chạy tới đích, rồi mới ẩn Overlay
+    setTimeout(() => {
+      loadingScreen.classList.add("hidden");
+      setTimeout(() => loadingScreen.style.display = "none", 500);
+    }, 400);
   }
+
+  // Tải ngầm cực chậm trong Background (Không block UI/Lag máy)
+  setTimeout(async () => {
+    try {
+      for (const floor of allFloors) {
+        // Bỏ qua tầng đang hiển thị
+        if (floor.id === mapView.currentFloor?.id) continue;
+
+        try {
+          mapView.updateState(floor, { geometry: { visible: true } } as any);
+        } catch (e) { }
+
+        // Delay khoảng 500ms mỗi tầng để thả lỏng hoàn toàn Thread chính
+        await new Promise(r => setTimeout(r, 500));
+      }
+      console.log(`✅ Background geometric cache completed.`);
+    } catch (e) { }
+  }, 2000); // Đợi 2 giây sau khi app hoàn toàn trơn tru mới bắt đầu tải ngầm
 
   // ASSIGN UI ELEMENTS
   controlsPanel = document.getElementById("model-controls-panel");
@@ -961,6 +1005,8 @@ async function init() {
   sliderRotY = document.getElementById("slider-rot-y") as HTMLInputElement;
   inputRotZ = document.getElementById("inp-rot-z") as HTMLInputElement;
   sliderRotZ = document.getElementById("slider-rot-z") as HTMLInputElement;
+  inputElevation = document.getElementById("inp-elevation") as HTMLInputElement;
+  sliderElevation = document.getElementById("slider-elevation") as HTMLInputElement;
   inputScaleX = document.getElementById("scale-x") as HTMLInputElement;
   inputScaleY = document.getElementById("scale-y") as HTMLInputElement;
   inputScaleZ = document.getElementById("scale-z") as HTMLInputElement;
@@ -968,11 +1014,13 @@ async function init() {
 
 
   // HIDE DEFAULT LABELS: Use our custom markers instead (with square avatar style)
+  /* BƯỚC 3: COMMENT OUT LABEL HIDING
   try {
     (mapView.Labels as any).all.forEach((l: any) => l.hide());
   } catch (e) {
     console.warn("Could not hide default labels", e);
   }
+  */
 
   // Tùy chỉnh FloatingLabels v6
 
@@ -1535,7 +1583,7 @@ async function init() {
             try {
               const selector = document.getElementById("floor-selector") as HTMLSelectElement;
               if (selector) selector.value = floorId;
-              await mapView.setFloor(floorId);
+              // await mapView.setFloor(floorId); // TEST: disable direct floor switch from search result
             } catch (e) {
               console.warn("Error switching floor:", e);
             }
@@ -2866,7 +2914,12 @@ async function init() {
    * 8. SETUP INTERACTIVE STATES & AREA COLORING
    */
   const applyAreaColors = () => {
+    const currentFloorId = mapView.currentFloor?.id;
     allMapObjects.forEach((obj) => {
+      // Filter: Only update objects on the current floor to avoid performance issues
+      const objFloorId = obj.floor?.id || obj.floorId;
+      if (objFloorId && objFloorId !== currentFloorId) return;
+
       // Logic for interactive spaces
       const isSpaceWithoutLocation =
         (obj.type?.toLowerCase() === "space" || obj.type?.toLowerCase() === "room") &&
@@ -2933,6 +2986,10 @@ async function init() {
     const mapDataAny = mapData as any;
     if (mapDataAny.locations && Array.isArray(mapDataAny.locations)) {
       mapDataAny.locations.forEach((location: any) => {
+        // Filter: Only update locations on the current floor
+        const locFloorId = location.floorId || location.floor?.id;
+        if (locFloorId && locFloorId !== mapView.currentFloor?.id) return;
+
         if (location.name) {
           try {
             // Locations có name → màu trắng
@@ -3559,6 +3616,7 @@ async function init() {
 
     try {
       if ((window as any).syncURL) (window as any).syncURL(true);
+
       if (connectionMarkersVisible) renderConnectionOverlaysForCurrentFloor();
       // Re-render object markers cho floor mới
       renderObjectMarkersForCurrentFloor();
@@ -3567,13 +3625,15 @@ async function init() {
       // Cập nhật visibility của UI controls (ví hạn ẩn nút thêm model/phân loại khi ở overview)
       updateUIVisibility();
 
-      // NEW: Create shadow copies of Overview models on this floor
-      // Small delay to ensure floor render completes before adding shadows
+      // BƯỚC 5: Comment vô hiệu hóa hàm tạo Clone Model 3D (Shadow copies)
+      // Hàm này đang gây bão Error 404 do file GLB không tồn tại làm đứt mạng & kẹt GPU!
+      /*
       if (typeof (window as any).syncModelInstancesVisibility === 'function') {
         setTimeout(() => {
           (window as any).syncModelInstancesVisibility();
         }, 300);
       }
+      */
 
       // AUTO-REHIGHLIGHT: If a subcategory is active, re-pin locations on this floor
       if (activeSubCategoryId) {
@@ -3585,8 +3645,17 @@ async function init() {
   floorSelector.value = mapView.currentFloor.id;
 
   floorSelector.addEventListener("change", async (e) => {
+    if (isGlobalSwitchingFloor) {
+      // Đang kẹt chuyển tầng, khôi phục lại giá trị dropdown cũ
+      (e.target as HTMLSelectElement).value = mapView.currentFloor.id;
+      return;
+    }
+
     const floorId = (e.target as HTMLSelectElement)?.value;
-    if (!floorId) return;
+    if (!floorId || floorId === mapView.currentFloor.id) return;
+
+    // Khoá chuyển tầng
+    isGlobalSwitchingFloor = true;
 
     // Blur để dropdown đóng lại và bo tròn góc ngay lập tức
     (e.target as HTMLSelectElement).blur();
@@ -3617,20 +3686,12 @@ async function init() {
       }
 
       await mapView.setFloor(floorId);
-      // Cập nhật dropdown thủ công để đảm bảo đồng bộ
-      floorSelector.value = floorId;
-
-      // CRITICAL: Sync state variables
-      if (isOverview) {
-        isInOverview = true;
-        // Don't update lastActiveFloorId when going to Overview
-      } else {
-        isInOverview = false;
-        lastActiveFloorId = floorId; // Save as last active floor
-      }
     } catch (err) {
       _isWarmupSwitch = false; // Safety reset
       console.warn("Error setting floor:", err);
+    } finally {
+      // Nhả khoá sau khi chuyển tầng hoàn tất
+      setTimeout(() => { isGlobalSwitchingFloor = false; }, 400);
     }
 
     // Sau khi floor đã được set, animate camera
@@ -4165,7 +4226,8 @@ async function init() {
                       setTimeout(() => { if (!executed) { console.warn("Fallback Item Zoom"); handler(); } }, 1000);
 
                       try {
-                        mapView.setFloor(floorId);
+                        // mapView.setFloor(floorId); // TEST: disable item click floor switch
+                        handler();
                       } catch (e) { handler(); }
                     } else {
                       // Same ID, but maybe stuck in Overview visual state?
@@ -4177,10 +4239,10 @@ async function init() {
                         if (tempFloor) {
                           try {
                             console.log("⚡ Switching to temp floor:", tempFloor.id);
-                            mapView.setFloor(tempFloor.id);
+                            // mapView.setFloor(tempFloor.id); // TEST: disable temp floor toggle
                             setTimeout(() => {
                               console.log("⚡ Switching back to target floor:", floorId);
-                              mapView.setFloor(floorId);
+                              // mapView.setFloor(floorId); // TEST: disable temp floor toggle
                               setTimeout(executeZoom, 500);
                             }, 250);
                           } catch (e) { executeZoom(); }
@@ -4345,8 +4407,8 @@ async function init() {
     const isZoomingOut = zoom < lastZoomLevel;
     lastZoomLevel = zoom;
 
-    // Bỏ qua nếu đang chuyển tầng thủ công hoặc zoom do code (category)
-    if (isManualFloorSwitch || isProgrammaticZoom || isFloorSwitching) return;
+    // Bỏ qua nếu đang chuyển tầng (chặn spam) hoặc zoom do code (category)
+    if (isGlobalSwitchingFloor || isManualFloorSwitch || isProgrammaticZoom || isFloorSwitching) return;
 
     const currentFloor = mapView.currentFloor;
     const type = getFloorType(currentFloor);
@@ -4358,7 +4420,9 @@ async function init() {
       // 1. Overview -> GF Transit (Chạm 16.5x)
       if (type === "overview" && zoom >= 16.5) {
         const targetId = findFloorIdByKeywords(["GF", "Transit"]);
-        if (targetId) performFloorSwitch(targetId, "Zoom IN Overview -> Transit");
+        if (targetId) {
+          // performFloorSwitch(targetId, "Zoom IN Overview -> Transit"); // TEST: disable auto floor switch from zoom
+        }
       }
       // 2. Transit -> Detail tương ứng (Chạm 17.0x)
       else if (type === "transit" && zoom >= 17.0) {
@@ -4370,7 +4434,9 @@ async function init() {
         // Fallback cho GF nếu Trệt không khớp
         if (!targetId && prefix === "GF") targetId = findFloorIdByKeywords(["Ground"]);
 
-        if (targetId) performFloorSwitch(targetId, `Zoom IN Transit -> Detail (${prefix})`);
+        if (targetId) {
+          performFloorSwitch(targetId, `Zoom IN Transit -> Detail (${prefix})`);
+        }
       }
     }
 
@@ -4387,11 +4453,15 @@ async function init() {
         else if (floorName.includes("3") || floorName.includes("L3")) prefix = "3F";
 
         const targetId = findFloorIdByKeywords([prefix, "Transit"]);
-        if (targetId) performFloorSwitch(targetId, `Zoom OUT Detail -> Transit (${prefix})`);
+        if (targetId) {
+          performFloorSwitch(targetId, `Zoom OUT Detail -> Transit (${prefix})`);
+        }
       }
       // 2. Transit -> Overview (Chạm 15.0x)
       else if (type === "transit" && zoom <= 15.0) {
-        if (overviewFloor) performFloorSwitch(overviewFloor.id, "Zoom OUT Transit -> Overview");
+        if (overviewFloor) {
+          performFloorSwitch(overviewFloor.id, "Zoom OUT Transit -> Overview");
+        }
       }
     }
 
@@ -6417,10 +6487,13 @@ async function init() {
           placingPreviewModel = null;
         }
 
+        const elevation = (placingMode === 'new') ? (placingModelConfig.elevation || 0) : (sourceModelData?.elevation || 0);
+
         const model = await mapView.Models.add(coord, url, {
           interactive: true,
           scale: scale,
-          rotation: rotation
+          rotation: rotation,
+          verticalOffset: elevation
         });
 
         console.log("✅ Model added immediately to map view");
@@ -6441,7 +6514,8 @@ async function init() {
         const newMeta: ModelMetadata = {
           url, uuid, name, desc: finalDesc, rotation, scale, originalCoordinate: coord, floorId: targetFloor.id,
           thumb: (placingMode === 'new') ? placingModelConfig.thumb : sourceModelData?.thumb,
-          displayWebsite: inpPublic?.checked ? 1 : 0
+          displayWebsite: inpPublic?.checked ? 1 : 0,
+          elevation: elevation
         };
 
 
@@ -8297,6 +8371,8 @@ async function init() {
   inputRotY = document.getElementById("inp-rot-y") as HTMLInputElement;
   sliderRotZ = document.getElementById("slider-rot-z") as HTMLInputElement;
   inputRotZ = document.getElementById("inp-rot-z") as HTMLInputElement;
+  sliderElevation = document.getElementById("slider-elevation") as HTMLInputElement;
+  inputElevation = document.getElementById("inp-elevation") as HTMLInputElement;
   inputScaleX = document.getElementById("scale-x") as HTMLInputElement;
   inputScaleY = document.getElementById("scale-y") as HTMLInputElement;
   inputScaleZ = document.getElementById("scale-z") as HTMLInputElement;
@@ -8314,6 +8390,7 @@ async function init() {
     floorId?: string; // Add floorId explicitly
     thumb?: string; // Add thumb to metadata
     displayWebsite?: number | boolean; // 1/true = visible, 0/false = hidden
+    elevation?: number; // Add vertical height
   }
 
 
@@ -8551,7 +8628,8 @@ async function init() {
       rotation: roundRotation(meta.rotation),
       scale: roundScale(meta.scale),
       displayWebsite: meta.displayWebsite || 0,
-      thumb: meta.thumb // Sync thumbnail to DB
+      thumb: meta.thumb, // Sync thumbnail to DB
+      elevation: meta.elevation || 0
     };
 
 
@@ -8592,6 +8670,9 @@ async function init() {
     if (sliderRotY) sliderRotY.value = (r[1] || 0) + "";
     if (inputRotZ) inputRotZ.value = (r[2] || 0) + "";
     if (sliderRotZ) sliderRotZ.value = (r[2] || 0) + "";
+
+    if (inputElevation) inputElevation.value = (meta.elevation || 0) + "";
+    if (sliderElevation) sliderElevation.value = (meta.elevation || 0) + "";
 
     const s = meta.scale;
     if (inputScaleX) inputScaleX.value = s[0] + "";
@@ -8688,6 +8769,7 @@ async function init() {
             interactive: true,
             scale: m.scale,
             rotation: m.rotation,
+            verticalOffset: m.elevation || 0
           });
 
           // Re-attach Properties
@@ -8706,7 +8788,8 @@ async function init() {
             originalCoordinate: coord,
             floorId: targetFloor?.id || m.floorId,
             displayWebsite: m.displayWebsite,
-            thumb: m.thumb || m.thumbnail
+            thumb: m.thumb || m.thumbnail,
+            elevation: m.elevation || 0
           });
 
           // Register Instance
@@ -8798,6 +8881,7 @@ async function init() {
           interactive: false, // Shadow copies are NOT interactive (prevents click conflicts)
           scale: meta.scale,
           rotation: meta.rotation,
+          verticalOffset: meta.elevation || 0
         });
 
         // Tag it as shadow
@@ -8850,6 +8934,8 @@ async function init() {
     const angleZ = parseFloat(inputRotZ?.value || "0") || 0;
     const newRot: [number, number, number] = [angleX, angleY, angleZ];
 
+    const elevationVal = parseFloat(inputElevation?.value || "0") || 0;
+
     const newScale: [number, number, number] = [
       parseFloat(inputScaleX?.value || "1") || 1,
       parseFloat(inputScaleY?.value || "1") || 1,
@@ -8884,7 +8970,8 @@ async function init() {
       rotation: newRot,
       scale: newScale,
       originalCoordinate: newCoord,
-      floorId: currentFloor.id
+      floorId: currentFloor.id,
+      elevation: elevationVal
     };
 
     // Check if position actually changed (lat/lon)
@@ -8899,7 +8986,8 @@ async function init() {
         try {
           mapView.updateState(activeModelInstance, {
             rotation: newRot,
-            scale: newScale
+            scale: newScale,
+            verticalOffset: elevationVal
           });
         } catch (e) {
           console.warn("updateState failed, falling back to remove+add", e);
@@ -8945,7 +9033,8 @@ async function init() {
     const newInstance = await mapView.Models.add(newCoord, url, {
       interactive: true,
       scale: newScale,
-      rotation: newRot
+      rotation: newRot,
+      verticalOffset: newMeta.elevation || 0
     });
 
     // Attach same properties
@@ -8999,6 +9088,7 @@ async function init() {
   if (sliderRotX && inputRotX) bindSlider(sliderRotX, inputRotX);
   if (sliderRotY && inputRotY) bindSlider(sliderRotY, inputRotY);
   if (sliderRotZ && inputRotZ) bindSlider(sliderRotZ, inputRotZ);
+  if (sliderElevation && inputElevation) bindSlider(sliderElevation, inputElevation);
 
   if (inputScaleX) inputScaleX.addEventListener("input", () => updateModelTransform(true));
   if (inputScaleY) inputScaleY.addEventListener("input", () => updateModelTransform(true));
@@ -9319,7 +9409,8 @@ async function init() {
           const newGhost = await mapView.Models.add(coord, previewUrl, {
             interactive: false,
             scale: placingModelConfig.scale || [1, 1, 1],
-            rotation: placingModelConfig.rotation || [0, 0, 0]
+            rotation: placingModelConfig.rotation || [0, 0, 0],
+            verticalOffset: placingModelConfig.elevation || 0
           });
 
           // SUCCESSFUL ADD: Now we can cleanup and hide 2D
