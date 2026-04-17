@@ -938,6 +938,9 @@ async function init() {
   // Lấy danh sách tất cả các tầng để preload
   const allFloors = mapData.getByType("floor");
 
+  // Đợi DOM render xong để tránh lỗi Container size = 0
+  await new Promise(r => setTimeout(r, 100));
+
   // Hiển thị map 3D
   const mapView = await show3dMap(
     document.getElementById("mappedin-map") as HTMLDivElement,
@@ -2892,7 +2895,11 @@ async function init() {
 
     // localStorage override vẫn hoạt động cho tất cả tầng
     try {
-      const customColors = JSON.parse(localStorage.getItem('customAreaColors') || '{}');
+      const safeJSONParse = (val: any, fallback = {}) => {
+        if (!val || val === "undefined") return fallback;
+        try { return JSON.parse(val); } catch (e) { return fallback; }
+      };
+      const customColors = safeJSONParse(localStorage.getItem('customAreaColors'));
       if (customColors[obj.id]) {
         bgColor = customColors[obj.id];
       }

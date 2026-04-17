@@ -650,8 +650,8 @@ async function syncCategories() {
                         END
                         ELSE
                         BEGIN
-                            -- 2. Nếu không thấy Icon (có thể do folder mới hoặc đường dẫn đổi), thử tìm theo tên English cũ để chuyển đổi
-                            SELECT @SID = SubCategoryID FROM SubCategories WHERE (SubCategoryName = @EngName OR SubCategoryName = @VNSName) AND CategoryID = @CatID;
+                            -- 2. Nếu không thấy Icon (có thể do folder mới hoặc đường dẫn đổi), thử tìm theo tên English cũ hoặc tên tiếng Việt hiện tại để chuyển đổi
+                            SELECT @SID = SubCategoryID FROM SubCategories WHERE (SubCategoryName = @EngName OR SubCategoryName = @VN) AND CategoryID = @CatID;
                             
                             IF @SID IS NOT NULL
                             BEGIN
@@ -677,7 +677,7 @@ async function syncCategories() {
                         -- Bước này loại bỏ tình trạng song ngữ và trùng lặp
                         DELETE FROM SubCategories 
                         WHERE CategoryID = @CatID 
-                        AND (IconPath = @Icon OR SubCategoryName = @EngName OR (SubCategoryName = @VNSName AND SubCategoryID != @SID))
+                        AND (IconPath = @Icon OR SubCategoryName = @EngName OR (SubCategoryName = @VN AND SubCategoryID != @SID))
                         AND SubCategoryID != @SID;
                     `);
                 subCount++;

@@ -805,7 +805,27 @@
 
     /* Layout & Sidebar */
     #layout {
+      display: flex;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
       background: #f8f9fa;
+    }
+
+    #main-content {
+      flex: 1;
+      position: relative;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #mappedin-map {
+      flex: 1;
+      width: 100%;
+      height: 100%;
+      position: relative;
+      background: #eef2f7;
     }
 
     #main-sidebar-left.modern-sidebar {
@@ -1014,88 +1034,65 @@
 
   <div id="layout">
     <!-- Left Sidebar -->
-    <div id="main-sidebar-left">
-      <div id="sidebar-header">
-        <div id="search-section" style="margin-bottom: 20px; position: relative;">
-          <input type="text" id="location-search" placeholder="Tìm kiếm khu vực, điểm đến..."
-            data-i18n-placeholder="search_placeholder">
-          <button id="search-clear-btn" style="
-          display: none;
-          position: absolute;
-          right: 10px;
-          top: 50%;
-          transform: translateY(-50%);
-          background: none;
-          border: none;
-          font-size: 18px;
-          color: #999;
-          cursor: pointer;
-          padding: 5px;
-        ">&times;</button>
-          <div id="search-results"></div>
-        </div>
-      </div>
-<div id="layout">
-  <!-- Left Sidebar -->
-  <div id="main-sidebar-left" class="modern-sidebar">
-    <div id="sidebar-header" style="padding: 24px 24px 12px 24px; display: flex; flex-direction: column; gap: 16px;">
-      <!-- Sidebar Tabs (Incheon style) -->
-      <div class="sidebar-tabs" style="display: flex; gap: 8px;">
-        <button id="tab-search" class="modern-tab-btn active" style="
+    <div id="main-sidebar-left" class="modern-sidebar">
+      <div id="sidebar-header" style="padding: 24px 24px 12px 24px; display: flex; flex-direction: column; gap: 16px;">
+        <!-- Sidebar Tabs (Incheon style) -->
+        <div class="sidebar-tabs" style="display: flex; gap: 8px;">
+          <button id="tab-search" class="modern-tab-btn active" style="
           flex: 1; padding: 10px; border-radius: 20px; border: 1px solid #e0e0e0; 
           background: #214ca6; color: white; font-weight: 600; cursor: pointer; transition: all 0.2s;
           display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 14px;
         ">
-          <span data-i18n="tab_search">Search</span>
-        </button>
-        <button id="tab-directions" class="modern-tab-btn" style="
+            <span data-i18n="tab_search">Search</span>
+          </button>
+          <button id="tab-directions" class="modern-tab-btn" style="
           flex: 1; padding: 10px; border-radius: 20px; border: 1px solid #e0e0e0; 
           background: white; color: #555; font-weight: 600; cursor: pointer; transition: all 0.2s;
           display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 14px;
         ">
-          <span data-i18n="tab_directions">Directions</span>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M7 17L17 7M17 7H7M17 7V17" />
-          </svg>
-        </button>
-      </div>
+            <span data-i18n="tab_directions">Directions</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M7 17L17 7M17 7H7M17 7V17" />
+            </svg>
+          </button>
+        </div>
 
-      <!-- Search Tab Header -->
-      <div id="search-tab-header" style="display: block;">
-        <div class="modern-search-wrapper"
-          style="box-shadow: 0 4px 15px rgba(0,0,0,0.04); border-radius: 12px; background: #f8f9fa; border: 1px solid #e0e0e0; display: flex; align-items: center; padding: 2px; position: relative;">
-          <svg style="margin-left: 14px; color: #214ca6;" width="18" height="18" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="11" cy="11" r="8"></circle>
-            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-          </svg>
-          <input type="text" id="location-search" placeholder="Tìm kiếm khu vực, điểm đến..."
-            data-i18n-placeholder="search_placeholder"
-            style="width: 100%; border: none !important; box-shadow: none !important; outline: none !important; padding: 12px 10px !important; font-size: 14px !important; background: transparent !important; color: #333 !important; font-weight: 500 !important; height: auto !important;">
-          <button id="search-clear-btn"
-            style="display: none; background: none; border: none; font-size: 20px; color: #999; cursor: pointer; padding: 0 14px; transition: color 0.2s;">&times;</button>
-          <div id="search-results"
-            style="margin-top: 8px; background: white; border-radius: 12px; box-shadow: 0 8px 25px rgba(0,0,0,0.1); max-height: 40vh; overflow-y: auto; display: none; border: 1px solid #f0f0f0; z-index: 2000; position: absolute; width: 100%; left: 0; top: 100%;">
+        <!-- Search Tab Header -->
+        <div id="search-tab-header" style="display: block;">
+          <div class="modern-search-wrapper"
+            style="box-shadow: 0 4px 15px rgba(0,0,0,0.04); border-radius: 12px; background: #f8f9fa; border: 1px solid #e0e0e0; display: flex; align-items: center; padding: 2px; position: relative;">
+            <svg style="margin-left: 14px; color: #214ca6;" width="18" height="18" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="text" id="location-search" placeholder="Tìm kiếm khu vực, điểm đến..."
+              data-i18n-placeholder="search_placeholder"
+              style="width: 100%; border: none !important; box-shadow: none !important; outline: none !important; padding: 12px 10px !important; font-size: 14px !important; background: transparent !important; color: #333 !important; font-weight: 500 !important; height: auto !important;">
+            <button id="search-clear-btn"
+              style="display: none; background: none; border: none; font-size: 20px; color: #999; cursor: pointer; padding: 0 14px; transition: color 0.2s;">&times;</button>
+            <div id="search-results"
+              style="margin-top: 8px; background: white; border-radius: 12px; box-shadow: 0 8px 25px rgba(0,0,0,0.1); max-height: 40vh; overflow-y: auto; display: none; border: 1px solid #f0f0f0; z-index: 2000; position: absolute; width: 100%; left: 0; top: 100%;">
+            </div>
           </div>
         </div>
+
+        <!-- Directions Tab Header -->
+        <div id="directions-tab-header" style="display: none; width: 100%;">
+          <div id="wayfinding-header-target" style="width: 100%;"></div>
+        </div>
       </div>
+      <div id="sidebar-content" class="modern-sidebar-content">
 
-      <!-- Directions Tab Header -->
-      <div id="directions-tab-header" style="display: none; width: 100%;">
-        <div id="wayfinding-header-target" style="width: 100%;"></div>
-      </div>
-    </div>
-    <div id="sidebar-content" class="modern-sidebar-content">
+        <!-- NEW: Sidebar Info Panel (Replaces Popup) -->
+        <!-- Moved UP as requested: Below Search, Above Categories -->
+        <div id="sidebar-info-panel" class="modern-info-panel"
+          style="display:none; flex-direction: column; flex: 1; margin-bottom: 20px;">
 
-      <!-- NEW: Sidebar Info Panel (Replaces Popup) -->
-      <!-- Moved UP as requested: Below Search, Above Categories -->
-      <div id="sidebar-info-panel" class="modern-info-panel"
-        style="display:none; flex-direction: column; flex: 1; margin-bottom: 20px;">
-
-        <!-- Image Section with Overlay Close Button -->
-        <div class="popup-header" style="position: relative; margin-bottom: 15px; width: 100%;">
-          <img id="area-image" src="" alt=""
-            style="width: 100%; height: 200px; object-fit: cover; border-radius: 0; display: none; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+          <!-- Image Section with Overlay Close Button -->
+          <div class="popup-header" style="position: relative; margin-bottom: 15px; width: 100%;">
+            <img id="area-image" src="" alt=""
+              style="width: 100%; height: 200px; object-fit: cover; border-radius: 0; display: none; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
 
             <button class="close-btn" onclick="hideInfo()" style="
             position: absolute; 
@@ -1120,264 +1117,269 @@
           ">&times;</button>
           </div>
 
-        <div class="popup-content" style="padding: 0;">
-          <div style="padding: 15px;">
-            <div style="display: flex; align-items: flex-start; justify-content: space-between;">
-              <h3 id="area-title"
-                style="margin: 0 0 10px 0; font-size: 22px; font-weight: 700; color: #15306B; line-height: 1.3; padding-right: 10px;">
-                Nhấp vào một khu vực để xem thông tin...</h3>
-              <button id="btn-edit-current-area-color" class="icon-btn"
-                style="display: none; background: #f4f7fa; border: 1px solid #e0e0e0; padding: 6px; border-radius: 8px; cursor: pointer; transition: all 0.2s;"
-                title="Đổi màu nền khu vực">🎨</button>
-            </div>
-            <p id="area-description" style="margin-bottom: 20px; color: #555; line-height: 1.6; font-size: 15px;"></p>
-            <div id="routing-actions" style="display:none; gap: 10px; margin-top: 20px;">
-              <button id="btn-route-start" data-i18n="route_start"
-                style="flex:1; padding: 10px 0; border:none; border-radius:30px; background: #214ca6; color: white; font-weight: 700; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(33,76,166,0.25); transition: all 0.2s;">Start</button>
-              <button id="btn-route-via" data-i18n="route_via"
-                style="flex:1; padding: 10px 0; border:none; border-radius:30px; background: #64748b; color: white; font-weight: 700; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(100,116,139,0.25); transition: all 0.2s;">Via</button>
-              <button id="btn-route-end" data-i18n="route_end"
-                style="flex:1; padding: 10px 0; border:none; border-radius:30px; background: #d97706; color: white; font-weight: 700; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(217,119,6,0.25); transition: all 0.2s;">End</button>
-            </div>
-          </div>
-
-          <!-- Wayfinding Panel (Always available but toggled by tabs) -->
-          <div id="wayfinding-panel" class="modern-wayfinding" style="padding: 0; width: 100%;">
-            <!-- Dynamic Waypoints Container -->
-            <div style="display:flex; gap:0; padding: 0 5px; margin-top: 5px;">
-              <!-- Left: Route rows -->
-              <div id="wayfinding-nodes-container"
-                style="flex:1; display:flex; flex-direction:column; border:1px solid #e0e4ef; border-radius:6px; background:white;">
-                <!-- Will be populated by JS -->
+          <div class="popup-content" style="padding: 0;">
+            <div style="padding: 15px;">
+              <div style="display: flex; align-items: flex-start; justify-content: space-between;">
+                <h3 id="area-title"
+                  style="margin: 0 0 10px 0; font-size: 22px; font-weight: 700; color: #15306B; line-height: 1.3; padding-right: 10px;">
+                  Nhấp vào một khu vực để xem thông tin...</h3>
+                <button id="btn-edit-current-area-color" class="icon-btn"
+                  style="display: none; background: #f4f7fa; border: 1px solid #e0e0e0; padding: 6px; border-radius: 8px; cursor: pointer; transition: all 0.2s;"
+                  title="Đổi màu nền khu vực">🎨</button>
               </div>
-              <!-- Right: Swap Button Area -->
-              <div id="wayfinding-swap-container"
-                style="display:flex; flex-direction:column; align-items:center; justify-content:space-evenly; background:transparent; border:none; padding:10px 0 10px 10px; gap:8px;">
-                <!-- Will be populated by JS -->
+              <p id="area-description" style="margin-bottom: 20px; color: #555; line-height: 1.6; font-size: 15px;"></p>
+              <div id="routing-actions" style="display:none; gap: 10px; margin-top: 20px;">
+                <button id="btn-route-start" data-i18n="route_start"
+                  style="flex:1; padding: 10px 0; border:none; border-radius:30px; background: #214ca6; color: white; font-weight: 700; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(33,76,166,0.25); transition: all 0.2s;">Start</button>
+                <button id="btn-route-via" data-i18n="route_via"
+                  style="flex:1; padding: 10px 0; border:none; border-radius:30px; background: #64748b; color: white; font-weight: 700; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(100,116,139,0.25); transition: all 0.2s;">Via</button>
+                <button id="btn-route-end" data-i18n="route_end"
+                  style="flex:1; padding: 10px 0; border:none; border-radius:30px; background: #d97706; color: white; font-weight: 700; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(217,119,6,0.25); transition: all 0.2s;">End</button>
               </div>
             </div>
 
-            <!-- Wayfinding Inline Search Results -->
-            <div id="wayfinding-search-results"
-              style="display:none; background: white; margin-top: 15px; height: calc(100vh - 220px); overflow-y: auto;">
-              <!-- Populated by JS -->
-            </div>
+            <!-- Wayfinding Panel (Always available but toggled by tabs) -->
+            <div id="wayfinding-panel" class="modern-wayfinding" style="padding: 0; width: 100%;">
+              <!-- Dynamic Waypoints Container -->
+              <div style="display:flex; gap:0; padding: 0 5px; margin-top: 5px;">
+                <!-- Left: Route rows -->
+                <div id="wayfinding-nodes-container"
+                  style="flex:1; display:flex; flex-direction:column; border:1px solid #e0e4ef; border-radius:6px; background:white;">
+                  <!-- Will be populated by JS -->
+                </div>
+                <!-- Right: Swap Button Area -->
+                <div id="wayfinding-swap-container"
+                  style="display:flex; flex-direction:column; align-items:center; justify-content:space-evenly; background:transparent; border:none; padding:10px 0 10px 10px; gap:8px;">
+                  <!-- Will be populated by JS -->
+                </div>
+              </div>
 
-            <!-- Action Buttons -->
-            <div class="wayfinding-actions" style="display:none; gap:10px; margin-top:12px;">
-            </div>
-            <div class="wayfinding-status" id="wayfinding-status"
-              style="margin-top:8px; font-size:12px; color:#666; text-align:center; padding: 0 15px;"></div>
+              <!-- Wayfinding Inline Search Results -->
+              <div id="wayfinding-search-results"
+                style="display:none; background: white; margin-top: 15px; height: calc(100vh - 220px); overflow-y: auto;">
+                <!-- Populated by JS -->
+              </div>
 
-            <!-- Bảng hướng dẫn từng bước -->
-            <div id="instructions-list" style="margin-top:0; padding: 0;">
+              <!-- Action Buttons -->
+              <div class="wayfinding-actions" style="display:none; gap:10px; margin-top:12px;">
+              </div>
+              <div class="wayfinding-status" id="wayfinding-status"
+                style="margin-top:8px; font-size:12px; color:#666; text-align:center; padding: 0 15px;"></div>
+
+              <!-- Bảng hướng dẫn từng bước -->
+              <div id="instructions-list" style="margin-top:0; padding: 0;">
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- Tab Contents -->
-      <div id="tab-content-container">
-        <!-- Search Content -->
-        <div id="search-tab-content">
-          <!-- Dynamic Category Panel -->
-          <div id="category-section" style="margin-bottom: 20px;">
-            <div id="category-panel" class="modern-category-panel">
-              <div id="category-list" class="modern-category-list">
-                <!-- Injected via JS -->
-              </div>
-            </div>
-          </div>
-
-          <div id="active-category-grid" class="category-panel-grid" style="display:none;"></div>
-        </div>
-
-        <!-- Directions Content -->
-        <div id="directions-tab-content" style="display: none;">
-          <div id="directions-empty-state"
-            style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px; text-align: center;">
-            <h2 data-i18n="need_directions"
-              style="font-size: 28px; font-weight: 700; color: #1a1a2e; margin-bottom: 30px;">
-              Need <span style="color: #214ca6;">directions</span>?
-            </h2>
-            <img src="lotus-blue.png" alt="Directions"
-              style="width: 280px; height: auto; object-fit: contain; opacity: 0.4; mix-blend-mode: multiply; pointer-events: none;">
-          </div>
-
-          <!-- Route Summary area (Time/Distance) -->
-          <div id="wayfinding-summary-container" style="display: none; background: white;"></div>
-
-          <!-- Video Control Bar (Redesigned as Card) -->
-          <div id="video-control-bar"
-            style="display: none; background: white; border-radius: 16px; padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.06); margin: 0 20px 25px; border: 1px solid #f0f4f8;">
-            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px;">
-              <button id="video-play"
-                style="width: 44px; height: 44px; background: #214ca6; color: white; border: none; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; box-shadow: 0 4px 10px rgba(33, 76, 166, 0.2);">
-                <svg id="play-pause-icon" width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
-                </svg>
-              </button>
-              <button id="video-stop"
-                style="width: 44px; height: 44px; background: #f44336; color: white; border: none; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; box-shadow: 0 4px 10px rgba(244, 67, 54, 0.2);">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M6 6h12v12H6z" />
-                </svg>
-              </button>
-
-              <div style="display: flex; align-items: center; gap: 8px; margin-left: auto;">
-                <span id="speed-label" style="font-size: 13px; font-weight: 700; color: #666;">Tốc độ:</span>
-                <div id="custom-speed-wrapper" style="position: relative; min-width: 65px;">
-                  <div id="speed-selected-display"
-                    style="background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; padding: 6px 12px; font-size: 13px; font-weight: 800; color: #1a1a2e; cursor: pointer; display: flex; align-items: center; justify-content: space-between; transition: all 0.2s;">
-                    <span id="speed-value-text">1x</span>
-                    <svg style="margin-left: 6px;" width="10" height="10" viewBox="0 0 24 24" fill="none"
-                      stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-                      <polyline points="6 9 12 15 18 9"></polyline>
-                    </svg>
-                  </div>
-                  <div id="speed-options-menu"
-                    style="display: none; position: absolute; top: 100%; right: 0; width: 80px; background: white; border-radius: 10px; box-shadow: 0 8px 25px rgba(0,0,0,0.12); border: 1px solid #f0f4f8; z-index: 100; margin-top: 8px; overflow: hidden; transform-origin: top right;">
-                    <div class="speed-item" data-value="0.5"
-                      style="padding: 10px 15px; font-size: 13px; font-weight: 700; color: #4a5568; cursor: pointer; transition: all 0.2s; border-bottom: 1px solid #f8f9fa;">
-                      0.5x</div>
-                    <div class="speed-item" data-value="1"
-                      style="padding: 10px 15px; font-size: 13px; font-weight: 700; color: #214ca6; background: #f0f6ff; cursor: pointer; transition: all 0.2s; border-bottom: 1px solid #f8f9fa;">
-                      1x</div>
-                    <div class="speed-item" data-value="2"
-                      style="padding: 10px 15px; font-size: 13px; font-weight: 700; color: #4a5568; cursor: pointer; transition: all 0.2s; border-bottom: 1px solid #f8f9fa;">
-                      2x</div>
-                    <div class="speed-item" data-value="4"
-                      style="padding: 10px 15px; font-size: 13px; font-weight: 700; color: #4a5568; cursor: pointer; transition: all 0.2s;">
-                      4x</div>
-                  </div>
+        <!-- Tab Contents -->
+        <div id="tab-content-container">
+          <!-- Search Content -->
+          <div id="search-tab-content">
+            <!-- Dynamic Category Panel -->
+            <div id="category-section" style="margin-bottom: 20px;">
+              <div id="category-panel" class="modern-category-panel">
+                <div id="category-list" class="modern-category-list">
+                  <!-- Injected via JS -->
                 </div>
               </div>
             </div>
 
-            <div style="display: flex; align-items: center; justify-content: flex-end; margin-bottom: 12px;">
-              <div
-                style="font-family: monospace; font-size: 15px; font-weight: 800; color: #1a1a2e; letter-spacing: -0.5px;">
-                <span id="video-time">0:00</span> <span style="color:#adb5bd; font-weight: 400; margin: 0 4px;">/</span>
-                <span id="video-duration" style="color: #6c757d;">0:00</span>
+            <div id="active-category-grid" class="category-panel-grid" style="display:none;"></div>
+          </div>
+
+          <!-- Directions Content -->
+          <div id="directions-tab-content" style="display: none;">
+            <div id="directions-empty-state"
+              style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px; text-align: center;">
+              <h2 data-i18n="need_directions"
+                style="font-size: 28px; font-weight: 700; color: #1a1a2e; margin-bottom: 30px;">
+                Need <span style="color: #214ca6;">directions</span>?
+              </h2>
+              <img src="lotus-blue.png" alt="Directions"
+                style="width: 280px; height: auto; object-fit: contain; opacity: 0.4; mix-blend-mode: multiply; pointer-events: none;">
+            </div>
+
+            <!-- Route Summary area (Time/Distance) -->
+            <div id="wayfinding-summary-container" style="display: none; background: white;"></div>
+
+            <!-- Video Control Bar (Redesigned as Card) -->
+            <div id="video-control-bar"
+              style="display: none; background: white; border-radius: 16px; padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.06); margin: 0 20px 25px; border: 1px solid #f0f4f8;">
+              <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px;">
+                <button id="video-play"
+                  style="width: 44px; height: 44px; background: #214ca6; color: white; border: none; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; box-shadow: 0 4px 10px rgba(33, 76, 166, 0.2);">
+                  <svg id="play-pause-icon" width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+                  </svg>
+                </button>
+                <button id="video-stop"
+                  style="width: 44px; height: 44px; background: #f44336; color: white; border: none; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; box-shadow: 0 4px 10px rgba(244, 67, 54, 0.2);">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M6 6h12v12H6z" />
+                  </svg>
+                </button>
+
+                <div style="display: flex; align-items: center; gap: 8px; margin-left: auto;">
+                  <span id="speed-label" style="font-size: 13px; font-weight: 700; color: #666;">Tốc độ:</span>
+                  <div id="custom-speed-wrapper" style="position: relative; min-width: 65px;">
+                    <div id="speed-selected-display"
+                      style="background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; padding: 6px 12px; font-size: 13px; font-weight: 800; color: #1a1a2e; cursor: pointer; display: flex; align-items: center; justify-content: space-between; transition: all 0.2s;">
+                      <span id="speed-value-text">1x</span>
+                      <svg style="margin-left: 6px;" width="10" height="10" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="6 9 12 15 18 9"></polyline>
+                      </svg>
+                    </div>
+                    <div id="speed-options-menu"
+                      style="display: none; position: absolute; top: 100%; right: 0; width: 80px; background: white; border-radius: 10px; box-shadow: 0 8px 25px rgba(0,0,0,0.12); border: 1px solid #f0f4f8; z-index: 100; margin-top: 8px; overflow: hidden; transform-origin: top right;">
+                      <div class="speed-item" data-value="0.5"
+                        style="padding: 10px 15px; font-size: 13px; font-weight: 700; color: #4a5568; cursor: pointer; transition: all 0.2s; border-bottom: 1px solid #f8f9fa;">
+                        0.5x</div>
+                      <div class="speed-item" data-value="1"
+                        style="padding: 10px 15px; font-size: 13px; font-weight: 700; color: #214ca6; background: #f0f6ff; cursor: pointer; transition: all 0.2s; border-bottom: 1px solid #f8f9fa;">
+                        1x</div>
+                      <div class="speed-item" data-value="2"
+                        style="padding: 10px 15px; font-size: 13px; font-weight: 700; color: #4a5568; cursor: pointer; transition: all 0.2s; border-bottom: 1px solid #f8f9fa;">
+                        2x</div>
+                      <div class="speed-item" data-value="4"
+                        style="padding: 10px 15px; font-size: 13px; font-weight: 700; color: #4a5568; cursor: pointer; transition: all 0.2s;">
+                        4x</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div style="display: flex; align-items: center; justify-content: flex-end; margin-bottom: 12px;">
+                <div
+                  style="font-family: monospace; font-size: 15px; font-weight: 800; color: #1a1a2e; letter-spacing: -0.5px;">
+                  <span id="video-time">0:00</span> <span
+                    style="color:#adb5bd; font-weight: 400; margin: 0 4px;">/</span>
+                  <span id="video-duration" style="color: #6c757d;">0:00</span>
+                </div>
+              </div>
+
+              <div style="position: relative; height: 30px; display: flex; align-items: center;">
+                <input type="range" id="video-progress" min="0" max="100" value="0" step="0.1" disabled
+                  style="width:100%; cursor:pointer; height:6px; background:#e9ecef; border-radius:10px; outline:none; appearance:none; -webkit-appearance:none; accent-color: #214ca6;">
               </div>
             </div>
 
-            <div style="position: relative; height: 30px; display: flex; align-items: center;">
-              <input type="range" id="video-progress" min="0" max="100" value="0" step="0.1" disabled
-                style="width:100%; cursor:pointer; height:6px; background:#e9ecef; border-radius:10px; outline:none; appearance:none; -webkit-appearance:none; accent-color: #214ca6;">
-            </div>
+            <!-- Instructions List will be moved here when active -->
+            <div id="directions-instructions-container" style="overflow: visible; padding-bottom: 20px;"></div>
           </div>
-
-          <!-- Instructions List will be moved here when active -->
-          <div id="directions-instructions-container" style="overflow: visible; padding-bottom: 20px;"></div>
         </div>
+
+        <!-- MỚI: Thanh Quản Trị (Admin Setup) -->
+        <div id="sidebar-admin-actions" class="sidebar-actions"
+          style="margin-top: 30px; display: flex; flex-direction: column; gap: 10px; border-top: 1px solid #f0f0f0; padding-top: 20px;">
+          <button id="btn-add-model" class="modern-btn-primary" data-i18n="add_model">Thêm model 3D</button>
+          <button id="btn-open-classification" class="modern-btn-outline" data-i18n="classification_btn">Phân loại khu
+            vực</button>
+          <button id="btn-open-admin-info" class="modern-btn-outline" data-i18n="sidebar_area_info">Thông tin khu
+            vực</button>
+          <button id="btn-open-area-color" class="modern-btn-outline" data-i18n="area_color_btn">Màu nền khu
+            vực</button>
+        </div>
+
       </div>
 
-      <!-- MỚI: Thanh Quản Trị (Admin Setup) -->
-      <div id="sidebar-admin-actions" class="sidebar-actions"
-        style="margin-top: 30px; display: flex; flex-direction: column; gap: 10px; border-top: 1px solid #f0f0f0; padding-top: 20px;">
-        <button id="btn-add-model" class="modern-btn-primary" data-i18n="add_model">Thêm model 3D</button>
-        <button id="btn-open-classification" class="modern-btn-outline" data-i18n="classification_btn">Phân loại khu
-          vực</button>
-        <button id="btn-open-admin-info" class="modern-btn-outline" data-i18n="sidebar_area_info">Thông tin khu
-          vực</button>
-        <button id="btn-open-area-color" class="modern-btn-outline" data-i18n="area_color_btn">Màu nền khu vực</button>
-      </div>
-
-    </div>
-
-    <!-- Bottom Action Bar (Route Preview) - Fixed at the bottom of sidebar but outside scrollable area -->
-    <div id="route-preview-bar"
-      style="display: none; width: 100%; border-top: 1px solid #eee; background: white; z-index: 1000;">
-      <button id="wayfinding-preview-btn-main"
-        style="width: 100%; background: #214ca6; color: white; border: none; padding: 20px; font-size: 18px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 12px; transition: background 0.2s;">
-        <span data-i18n="route_preview">Route Preview</span>
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"
-          stroke-linecap="round" stroke-linejoin="round">
-          <polygon points="5 3 19 12 5 21 5 3"></polygon>
-        </svg>
-      </button>
-    </div>
-  </div>
-
-  <div id="main-content">
-
-    <!-- HIDE NATIVE SELECTS -->
-    <select id="language-selector" onchange="window.setLanguage(this.value)" style="display:none;">
-      <option value="vn">Tiếng Việt</option>
-      <option value="en">English</option>
-    </select>
-    <select id="floor-selector" style="display:none;"></select>
-
-    <!-- MAP CONTROLS HEADER (TOP RIGHT GÓP CHUNG) -->
-    <div id="map-top-controls"
-      style="position:absolute; top:20px; right:20px; z-index:1000; display:flex; gap:12px; align-items:center;">
-
-      <!-- CUSTOM FLOOR SELECTOR -->
-      <div id="custom-floor-wrapper" class="pro-dropdown-wrapper">
-        <div class="pro-dropdown-toggle primary" onclick="toggleCustomDropdown('floor-options')" id="floor-toggle-btn">
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="2">
-            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-          </svg>
-          <span id="custom-floor-text">Tầng</span>
-          <svg class="arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-            stroke-width="2">
-            <polyline points="6 9 12 15 18 9"></polyline>
-          </svg>
-        </div>
-        <div id="floor-options" class="pro-dropdown-menu">
-          <!-- Tự động Render từ Script -->
-        </div>
-      </div>
-
-      <!-- CUSTOM LANGUAGE DROPDOWN -->
-      <div id="custom-lang-wrapper" class="pro-dropdown-wrapper">
-        <div class="pro-dropdown-toggle" onclick="toggleCustomDropdown('lang-options')" id="lang-toggle-btn">
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10"></circle>
-            <line x1="2" y1="12" x2="22" y2="12"></line>
-            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
-          </svg>
-          <span id="custom-lang-text">Tiếng Việt</span>
-          <svg class="arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-            stroke-width="2">
-            <polyline points="6 9 12 15 18 9"></polyline>
-          </svg>
-        </div>
-        <div id="lang-options" class="pro-dropdown-menu">
-          <div class="pro-dropdown-item custom-active" onclick="selectLangOverlay('vn', 'Tiếng Việt')">Tiếng Việt</div>
-          <div class="pro-dropdown-item" onclick="selectLangOverlay('en', 'English')">English</div>
-          <div class="pro-dropdown-item" onclick="selectLangOverlay('zh', '中文')">中文 (Chinese)</div>
-          <div class="pro-dropdown-item" onclick="selectLangOverlay('ja', '日本語')">日本語 (Japanese)</div>
-          <div class="pro-dropdown-item" onclick="selectLangOverlay('ko', '한국어')">한국어 (Korean)</div>
-        </div>
-      </div>
-
-    </div>
-
-      <div id="mappedin-map"></div>
-
-    <!-- Camera Control Buttons -->
-    <div id="camera-controls">
-      <!-- Position Controls -->
-      <div class="camera-control-group" style="position: relative; width: 108px; height: 108px;">
-        <button class="camera-btn" id="btn-up" title="Lật bản đồ lên (Pitch Up)"
-          style="position: absolute; top: 0; left: 50%; transform: translateX(-50%);">↑</button>
-        <button class="camera-btn" id="btn-down" title="Lật bản đồ xuống (Pitch Down)"
-          style="position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);">↓</button>
-        <button class="camera-btn" id="btn-left" title="Xoay bản đồ sang trái (Rotate Left)"
-          style="position: absolute; left: 0; top: 50%; transform: translateY(-50%);">←</button>
-        <button class="camera-btn" id="btn-right" title="Xoay bản đồ sang phải (Rotate Right)"
-          style="position: absolute; right: 0; top: 50%; transform: translateY(-50%);">→</button>
-        <button class="camera-btn center" id="btn-reset" title="Reset camera">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-            <polyline points="9 22 9 12 15 12 15 22"></polyline>
+      <!-- Bottom Action Bar (Route Preview) - Fixed at the bottom of sidebar but outside scrollable area -->
+      <div id="route-preview-bar"
+        style="display: none; width: 100%; border-top: 1px solid #eee; background: white; z-index: 1000;">
+        <button id="wayfinding-preview-btn-main"
+          style="width: 100%; background: #214ca6; color: white; border: none; padding: 20px; font-size: 18px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 12px; transition: background 0.2s;">
+          <span data-i18n="route_preview">Route Preview</span>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"
+            stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="5 3 19 12 5 21 5 3"></polygon>
           </svg>
         </button>
       </div>
+    </div>
+
+    <div id="main-content">
+
+      <!-- HIDE NATIVE SELECTS -->
+      <select id="language-selector" onchange="window.setLanguage(this.value)" style="display:none;">
+        <option value="vn">Tiếng Việt</option>
+        <option value="en">English</option>
+      </select>
+      <select id="floor-selector" style="display:none;"></select>
+
+      <!-- MAP CONTROLS HEADER (TOP RIGHT GÓP CHUNG) -->
+      <div id="map-top-controls"
+        style="position:absolute; top:20px; right:20px; z-index:1000; display:flex; gap:12px; align-items:center;">
+
+        <!-- CUSTOM FLOOR SELECTOR -->
+        <div id="custom-floor-wrapper" class="pro-dropdown-wrapper">
+          <div class="pro-dropdown-toggle primary" onclick="toggleCustomDropdown('floor-options')"
+            id="floor-toggle-btn">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+            </svg>
+            <span id="custom-floor-text">Tầng</span>
+            <svg class="arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </div>
+          <div id="floor-options" class="pro-dropdown-menu">
+            <!-- Tự động Render từ Script -->
+          </div>
+        </div>
+
+        <!-- CUSTOM LANGUAGE DROPDOWN -->
+        <div id="custom-lang-wrapper" class="pro-dropdown-wrapper">
+          <div class="pro-dropdown-toggle" onclick="toggleCustomDropdown('lang-options')" id="lang-toggle-btn">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="2" y1="12" x2="22" y2="12"></line>
+              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z">
+              </path>
+            </svg>
+            <span id="custom-lang-text">Tiếng Việt</span>
+            <svg class="arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </div>
+          <div id="lang-options" class="pro-dropdown-menu">
+            <div class="pro-dropdown-item custom-active" onclick="selectLangOverlay('vn', 'Tiếng Việt')">Tiếng Việt
+            </div>
+            <div class="pro-dropdown-item" onclick="selectLangOverlay('en', 'English')">English</div>
+            <div class="pro-dropdown-item" onclick="selectLangOverlay('zh', '中文')">中文 (Chinese)</div>
+            <div class="pro-dropdown-item" onclick="selectLangOverlay('ja', '日本語')">日本語 (Japanese)</div>
+            <div class="pro-dropdown-item" onclick="selectLangOverlay('ko', '한국어')">한국어 (Korean)</div>
+          </div>
+        </div>
+
+      </div>
+
+      <div id="mappedin-map"></div>
+
+      <!-- Camera Control Buttons -->
+      <div id="camera-controls">
+        <!-- Position Controls -->
+        <div class="camera-control-group" style="position: relative; width: 108px; height: 108px;">
+          <button class="camera-btn" id="btn-up" title="Lật bản đồ lên (Pitch Up)"
+            style="position: absolute; top: 0; left: 50%; transform: translateX(-50%);">↑</button>
+          <button class="camera-btn" id="btn-down" title="Lật bản đồ xuống (Pitch Down)"
+            style="position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);">↓</button>
+          <button class="camera-btn" id="btn-left" title="Xoay bản đồ sang trái (Rotate Left)"
+            style="position: absolute; left: 0; top: 50%; transform: translateY(-50%);">←</button>
+          <button class="camera-btn" id="btn-right" title="Xoay bản đồ sang phải (Rotate Right)"
+            style="position: absolute; right: 0; top: 50%; transform: translateY(-50%);">→</button>
+          <button class="camera-btn center" id="btn-reset" title="Reset camera">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+              <polyline points="9 22 9 12 15 12 15 22"></polyline>
+            </svg>
+          </button>
+        </div>
 
         <!-- Zoom Controls -->
         <div class="camera-control-group horizontal">
@@ -1473,15 +1475,15 @@
             </div>
           </div>
 
-        <!-- Public visibility -->
-        <div class="control-group"
-          style="display: flex; flex-direction: row; align-items: center; justify-content: space-between; margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee;">
-          <label for="inp-model-public" style="font-weight: 600; color: #085ebb; cursor: pointer; margin: 0;">Hiển thị
-            trên Website</label>
-          <input type="checkbox" id="inp-model-public" style="width: 20px; height: 20px; cursor: pointer;">
+          <!-- Public visibility -->
+          <div class="control-group"
+            style="display: flex; flex-direction: row; align-items: center; justify-content: space-between; margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee;">
+            <label for="inp-model-public" style="font-weight: 600; color: #085ebb; cursor: pointer; margin: 0;">Hiển thị
+              trên Website</label>
+            <input type="checkbox" id="inp-model-public" style="width: 20px; height: 20px; cursor: pointer;">
+          </div>
         </div>
       </div>
-    </div>
 
 
       <!-- NEW: Admin Information Modal -->
@@ -1664,28 +1666,28 @@
       <!-- 3D Model Picker Modal -->
 
 
-    <!-- 3D Model Picker Modal -->
-    <div id="model-picker-modal" class="modal-overlay hidden">
-      <div class="modal-container"
-        style="width: 600px; max-width: 90%; background: white; border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.2);">
-        <div class="modal-header">
-          <h3 data-i18n="select_model_title">Chọn mô hình 3D</h3>
-          <button id="btn-close-picker" class="close-btn">✕</button>
-        </div>
-        <div style="padding: 15px 20px 0 20px; border-bottom: 1px solid #f0f0f0;">
-          <div style="position: relative; display: flex; align-items: center;">
-            <input type="text" id="model-search-input" placeholder="Tìm kiếm mô hình 3D..."
-              style="width: 100%; padding: 10px 35px 10px 15px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; outline: none; box-sizing: border-box;">
-            <button id="model-search-clear"
-              style="position: absolute; right: 10px; background: none; border: none; font-size: 16px; color: #999; cursor: pointer; display: none; padding: 5px;">✕</button>
+      <!-- 3D Model Picker Modal -->
+      <div id="model-picker-modal" class="modal-overlay hidden">
+        <div class="modal-container"
+          style="width: 600px; max-width: 90%; background: white; border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.2);">
+          <div class="modal-header">
+            <h3 data-i18n="select_model_title">Chọn mô hình 3D</h3>
+            <button id="btn-close-picker" class="close-btn">✕</button>
+          </div>
+          <div style="padding: 15px 20px 0 20px; border-bottom: 1px solid #f0f0f0;">
+            <div style="position: relative; display: flex; align-items: center;">
+              <input type="text" id="model-search-input" placeholder="Tìm kiếm mô hình 3D..."
+                style="width: 100%; padding: 10px 35px 10px 15px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; outline: none; box-sizing: border-box;">
+              <button id="model-search-clear"
+                style="position: absolute; right: 10px; background: none; border: none; font-size: 16px; color: #999; cursor: pointer; display: none; padding: 5px;">✕</button>
+            </div>
+          </div>
+          <div id="model-grid"
+            style="padding: 20px; display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 15px; max-height: 55vh; overflow-y: auto;">
+            <!-- Models injected via JS -->
           </div>
         </div>
-        <div id="model-grid"
-          style="padding: 20px; display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 15px; max-height: 55vh; overflow-y: auto;">
-          <!-- Models injected via JS -->
-        </div>
       </div>
-    </div>
 
       <!-- Area Classification Modal -->
       <div id="classification-modal" class="modal-overlay hidden">
@@ -1723,48 +1725,48 @@
         </div>
       </div>
 
-    <!-- Area Color Modal -->
-    <div id="area-color-modal" class="modal-overlay hidden">
-      <div class="modal-container"
-        style="width: 500px; max-width: 90%; background: white; border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.2); margin: auto;">
-        <div class="modal-header" style="border-bottom: 1px solid #eee; padding: 20px;">
-          <h3 style="margin: 0; font-size: 18px; color: #333;">Thay đổi màu nền khu vực</h3>
-          <button id="btn-close-area-color" class="close-btn" style="font-size: 20px;">✕</button>
-        </div>
-        <div class="modal-body" style="padding: 20px;">
-          <div style="margin-bottom: 15px;">
-            <label style="font-weight: 600; display: block; margin-bottom: 5px; color: #555;">Chọn khu vực:</label>
-            <div style="display:flex; flex-direction:column; gap:8px;">
-              <input type="text" id="color-area-search" placeholder="Tìm kiếm khu vực..."
-                style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;">
-              <div id="color-area-list"
-                style="border: 1px solid #ddd; border-radius: 4px; padding: 10px; max-height: 250px; overflow-y: auto; background: #fafafa;">
-                <!-- rendered via JS: checkboxes -->
+      <!-- Area Color Modal -->
+      <div id="area-color-modal" class="modal-overlay hidden">
+        <div class="modal-container"
+          style="width: 500px; max-width: 90%; background: white; border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.2); margin: auto;">
+          <div class="modal-header" style="border-bottom: 1px solid #eee; padding: 20px;">
+            <h3 style="margin: 0; font-size: 18px; color: #333;">Thay đổi màu nền khu vực</h3>
+            <button id="btn-close-area-color" class="close-btn" style="font-size: 20px;">✕</button>
+          </div>
+          <div class="modal-body" style="padding: 20px;">
+            <div style="margin-bottom: 15px;">
+              <label style="font-weight: 600; display: block; margin-bottom: 5px; color: #555;">Chọn khu vực:</label>
+              <div style="display:flex; flex-direction:column; gap:8px;">
+                <input type="text" id="color-area-search" placeholder="Tìm kiếm khu vực..."
+                  style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;">
+                <div id="color-area-list"
+                  style="border: 1px solid #ddd; border-radius: 4px; padding: 10px; max-height: 250px; overflow-y: auto; background: #fafafa;">
+                  <!-- rendered via JS: checkboxes -->
+                </div>
+              </div>
+            </div>
+            <div style="margin-bottom: 15px;">
+              <label style="font-weight: 600; display: block; margin-bottom: 5px; color: #555;">Chọn màu nền:</label>
+              <div style="display:flex; gap:10px; align-items:center;">
+                <input type="color" id="area-color-picker"
+                  style="width:40px; height:40px; padding:0; border:none; cursor:pointer;" value="#4CAF50">
+                <input type="text" id="area-color-hex"
+                  style="flex:1; padding:10px; border:1px solid #ddd; border-radius:4px; font-family: monospace; box-sizing: border-box;"
+                  value="#4CAF50" placeholder="#RRGGBB">
               </div>
             </div>
           </div>
-          <div style="margin-bottom: 15px;">
-            <label style="font-weight: 600; display: block; margin-bottom: 5px; color: #555;">Chọn màu nền:</label>
-            <div style="display:flex; gap:10px; align-items:center;">
-              <input type="color" id="area-color-picker"
-                style="width:40px; height:40px; padding:0; border:none; cursor:pointer;" value="#4CAF50">
-              <input type="text" id="area-color-hex"
-                style="flex:1; padding:10px; border:1px solid #ddd; border-radius:4px; font-family: monospace; box-sizing: border-box;"
-                value="#4CAF50" placeholder="#RRGGBB">
-            </div>
+          <div class="modal-footer"
+            style="padding: 15px 20px; border-top: 1px solid #eee; display: flex; justify-content: flex-end; gap: 10px; background: #fafafa;">
+            <button id="btn-clear-area-color"
+              style="padding: 10px 20px; border: 1px solid #ddd; background: white; border-radius: 6px; cursor: pointer; color: #555;">Xóa
+              màu</button>
+            <button id="btn-apply-area-color"
+              style="padding: 10px 20px; background: #085ebb; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">Áp
+              dụng màu</button>
           </div>
         </div>
-        <div class="modal-footer"
-          style="padding: 15px 20px; border-top: 1px solid #eee; display: flex; justify-content: flex-end; gap: 10px; background: #fafafa;">
-          <button id="btn-clear-area-color"
-            style="padding: 10px 20px; border: 1px solid #ddd; background: white; border-radius: 6px; cursor: pointer; color: #555;">Xóa
-            màu</button>
-          <button id="btn-apply-area-color"
-            style="padding: 10px 20px; background: #085ebb; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">Áp
-            dụng màu</button>
-        </div>
       </div>
-    </div>
 
       <!-- Success Popup (Moved inside main-content for alignment) -->
       <div id="success-popup"
@@ -1788,102 +1790,102 @@
     </div>
   </div>
 
-<!-- Success Popup -->
-<div id="success-popup"
-  style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); z-index: 30000; align-items:center; justify-content:center;">
-  <div
-    style="background:white; padding:30px; border-radius:12px; text-align:center; box-shadow:0 10px 30px rgba(0,0,0,0.2); width: 300px;">
+  <!-- Success Popup -->
+  <div id="success-popup"
+    style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); z-index: 30000; align-items:center; justify-content:center;">
     <div
-      style="width:60px; height:60px; background:#4CAF50; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 20px auto;">
-      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round"
-        stroke-linejoin="round">
-        <polyline points="20 6 9 17 4 12"></polyline>
-      </svg>
+      style="background:white; padding:30px; border-radius:12px; text-align:center; box-shadow:0 10px 30px rgba(0,0,0,0.2); width: 300px;">
+      <div
+        style="width:60px; height:60px; background:#4CAF50; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 20px auto;">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"
+          stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+      </div>
+      <h3 style="margin:0 0 10px 0; color:#333; font-size:18px;">Thành công!</h3>
+      <p style="margin:0 0 25px 0; color:#666; font-size:14px;">Lưu thay đổi phân loại khu vực thành công.</p>
+      <button id="btn-success-ok"
+        style="background:#085ebb; color:white; border:none; padding:10px 30px; border-radius:6px; font-weight:600; cursor:pointer; width:100%;">OK</button>
     </div>
-    <h3 style="margin:0 0 10px 0; color:#333; font-size:18px;">Thành công!</h3>
-    <p style="margin:0 0 25px 0; color:#666; font-size:14px;">Lưu thay đổi phân loại khu vực thành công.</p>
-    <button id="btn-success-ok"
-      style="background:#085ebb; color:white; border:none; padding:10px 30px; border-radius:6px; font-weight:600; cursor:pointer; width:100%;">OK</button>
   </div>
-</div>
-<script>
-  // 1. Toggles
-  function toggleCustomDropdown(menuId) {
-    const wrapper = document.getElementById(menuId).parentElement;
-    if (wrapper.classList.contains('open')) {
-      wrapper.classList.remove('open');
-    } else {
-      document.querySelectorAll('.pro-dropdown-wrapper.open').forEach(w => w.classList.remove('open'));
-      wrapper.classList.add('open');
-    }
-  }
-
-  // Đóng khi click ra ngoài
-  document.addEventListener('click', function (e) {
-    if (!e.target.closest('.pro-dropdown-wrapper')) {
-      document.querySelectorAll('.pro-dropdown-wrapper.open').forEach(w => w.classList.remove('open'));
-    }
-  });
-
-  // 2. Language Sync
-  function selectLangOverlay(val, text) {
-    // UI Update
-    document.getElementById('custom-lang-text').innerText = text;
-    document.querySelectorAll('#lang-options .pro-dropdown-item').forEach(el => el.classList.remove('custom-active'));
-    event.target.classList.add('custom-active');
-    document.getElementById('custom-lang-wrapper').classList.remove('open');
-
-    // Sync to Hidden Select
-    const nativeSelect = document.getElementById('language-selector');
-    nativeSelect.value = val;
-    nativeSelect.dispatchEvent(new Event('change', { bubbles: true }));
-  }
-
-  // 3. Floor Selector Sync
-  // Vì index.ts nhồi data vào floor-selector, ta dùng MutationObserver để "nghiệp vụ hóa" giao diện Custom
-  const nativeFloorSelect = document.getElementById('floor-selector');
-  const floorOptionsContainer = document.getElementById('floor-options');
-
-  function syncFloorSelectToCustom() {
-    floorOptionsContainer.innerHTML = '';
-    const currentVal = nativeFloorSelect.value;
-
-    Array.from(nativeFloorSelect.options).forEach(opt => {
-      if (opt.value === currentVal) {
-        document.getElementById('custom-floor-text').innerText = opt.text;
+  <script>
+    // 1. Toggles
+    function toggleCustomDropdown(menuId) {
+      const wrapper = document.getElementById(menuId).parentElement;
+      if (wrapper.classList.contains('open')) {
+        wrapper.classList.remove('open');
+      } else {
+        document.querySelectorAll('.pro-dropdown-wrapper.open').forEach(w => w.classList.remove('open'));
+        wrapper.classList.add('open');
       }
-      const item = document.createElement('div');
-      item.className = 'pro-dropdown-item' + (opt.value === currentVal ? ' custom-active' : '');
-      item.innerText = opt.text;
-      item.onclick = function () {
-        // Cập nhật giá trị Select Gốc và Trigger
-        nativeFloorSelect.value = opt.value;
-        nativeFloorSelect.dispatchEvent(new Event('change', { bubbles: true }));
-
-        // Đóng menu
-        document.getElementById('custom-floor-wrapper').classList.remove('open');
-      };
-      floorOptionsContainer.appendChild(item);
-    });
-  }
-
-  // Lắng nghe Select gốc thay đổi cấu trúc Option từ index.ts
-  const observer = new MutationObserver(syncFloorSelectToCustom);
-  observer.observe(nativeFloorSelect, { childList: true, subtree: true });
-
-  // Lắng nghe nếu TS cố tình cập nhật value của floor-selector nhưng không phát Event
-  const originalFloorSetter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set;
-  Object.defineProperty(nativeFloorSelect, 'value', {
-    set: function (val) {
-      originalFloorSetter.call(this, val);
-      setTimeout(syncFloorSelectToCustom, 50); // Đợi DOM
-    },
-    get: function () {
-      return Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').get.call(this);
     }
-  });
-</script>
-<script type="module" src="./index.ts"></script>
+
+    // Đóng khi click ra ngoài
+    document.addEventListener('click', function (e) {
+      if (!e.target.closest('.pro-dropdown-wrapper')) {
+        document.querySelectorAll('.pro-dropdown-wrapper.open').forEach(w => w.classList.remove('open'));
+      }
+    });
+
+    // 2. Language Sync
+    function selectLangOverlay(val, text) {
+      // UI Update
+      document.getElementById('custom-lang-text').innerText = text;
+      document.querySelectorAll('#lang-options .pro-dropdown-item').forEach(el => el.classList.remove('custom-active'));
+      event.target.classList.add('custom-active');
+      document.getElementById('custom-lang-wrapper').classList.remove('open');
+
+      // Sync to Hidden Select
+      const nativeSelect = document.getElementById('language-selector');
+      nativeSelect.value = val;
+      nativeSelect.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
+    // 3. Floor Selector Sync
+    // Vì index.ts nhồi data vào floor-selector, ta dùng MutationObserver để "nghiệp vụ hóa" giao diện Custom
+    const nativeFloorSelect = document.getElementById('floor-selector');
+    const floorOptionsContainer = document.getElementById('floor-options');
+
+    function syncFloorSelectToCustom() {
+      floorOptionsContainer.innerHTML = '';
+      const currentVal = nativeFloorSelect.value;
+
+      Array.from(nativeFloorSelect.options).forEach(opt => {
+        if (opt.value === currentVal) {
+          document.getElementById('custom-floor-text').innerText = opt.text;
+        }
+        const item = document.createElement('div');
+        item.className = 'pro-dropdown-item' + (opt.value === currentVal ? ' custom-active' : '');
+        item.innerText = opt.text;
+        item.onclick = function () {
+          // Cập nhật giá trị Select Gốc và Trigger
+          nativeFloorSelect.value = opt.value;
+          nativeFloorSelect.dispatchEvent(new Event('change', { bubbles: true }));
+
+          // Đóng menu
+          document.getElementById('custom-floor-wrapper').classList.remove('open');
+        };
+        floorOptionsContainer.appendChild(item);
+      });
+    }
+
+    // Lắng nghe Select gốc thay đổi cấu trúc Option từ index.ts
+    const observer = new MutationObserver(syncFloorSelectToCustom);
+    observer.observe(nativeFloorSelect, { childList: true, subtree: true });
+
+    // Lắng nghe nếu TS cố tình cập nhật value của floor-selector nhưng không phát Event
+    const originalFloorSetter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set;
+    Object.defineProperty(nativeFloorSelect, 'value', {
+      set: function (val) {
+        originalFloorSetter.call(this, val);
+        setTimeout(syncFloorSelectToCustom, 50); // Đợi DOM
+      },
+      get: function () {
+        return Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').get.call(this);
+      }
+    });
+  </script>
+  <script type="module" src="./index.ts"></script>
 </body>
 
 </html>
