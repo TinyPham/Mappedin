@@ -24,6 +24,7 @@
     "dist",
     "backend",
     "inspect_labels.js",
-    "**/*.js"
+    "**/*.js",
+    "**/*.mjs"
   ]
 }

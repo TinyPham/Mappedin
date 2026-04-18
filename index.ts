@@ -856,6 +856,7 @@ async function init() {
   let blueDot: any = null; // Blue dot instance
   let blueDotAnimationInterval: any = null; // Interval cho animation
   let isAnimating: boolean = false; // Trạng thái đang animate
+  let previewMarker: any = null; // Marker dùng để demo thay cho BlueDot thật
   let isPaused: boolean = false; // Trạng thái pause
   let animationState: any = null; // State của animation (để hỗ trợ pause/resume/seek)
   let animationStartTime: number = 0; // Thời gian bắt đầu animation
@@ -958,6 +959,17 @@ async function init() {
 
   // Expose mapView globally for easier debugging and access from console
   (window as any).mapView = mapView;
+
+  // Inject Preview Blue Dot CSS Once
+  const previewStyle = document.createElement('style');
+  previewStyle.id = 'preview-blue-dot-styles';
+  previewStyle.textContent = `
+    .preview-blue-dot-container { position: relative; width: 24px; height: 24px; display: flex !important; align-items: center; justify-content: center; transform: translate(-12px, -12px); pointer-events: none; z-index: 1000; }
+    .preview-blue-dot-core { position: absolute; width: 14px; height: 14px; background: #214ca6; border: 3px solid #fff; border-radius: 50%; box-shadow: 0 0 10px rgba(0,0,0,0.4); z-index: 1002; }
+    .preview-blue-dot-pulse { position: absolute; width: 34px; height: 34px; background: rgba(33, 76, 166, 0.4); border-radius: 50%; animation: preview-pulse 1.5s infinite; z-index: 1001; }
+    @keyframes preview-pulse { 0% { transform: scale(0.6); opacity: 1; } 100% { transform: scale(1.4); opacity: 0; } }
+  `;
+  document.head.appendChild(previewStyle);
 
   // LƯU Ý: XÓA LOADING SCREEN KHI HOÀN TẤT
   if (progressInterval) clearInterval(progressInterval);
@@ -4558,12 +4570,16 @@ async function init() {
   let currentNavigation: any = null;
   let currentSelectedStepIndex: number = -1; // Bước đang được chọn
 
+  // Mảng lưu trữ các vật thể đặc biệt để highlight
+  let allLevelConnectors: any[] = [];
+
   // ============================================
   // BLUE DOT ANIMATION CONSTANTS
   // ============================================
-  const BLUE_DOT_SPEED_MPS = 1.4; // 1.4 m/s (tốc độ đi bộ thực tế)
-  const FRAME_INTERVAL = 50; // 50ms / frame
-  let speedMultiplier: number = 1.0; // Tốc độ multiplier (0.5x, 1x, 2x)
+  const BLUE_DOT_SPEED_MPS = 1.4; // Trả về 1.4 m/s để tính toán thời gian đi bộ thực tế chính xác
+  const FRAME_INTERVAL = 30; // Giữ 30ms để animation mượt mà
+  const PREVIEW_SPEED_BOOST = 3.0; // Nhân tử tăng tốc riêng cho chế độ Preview (giúp snappy mà không sai số liệu thực)
+  (window as any).speedMultiplier = 1.0;
 
   // ============================================
   // HELPER FUNCTIONS CHO BLUE DOT ANIMATION
@@ -4680,42 +4696,41 @@ async function init() {
       return null;
     }
 
-    // Đảm bảo targetDistance không vượt quá totalDistance
     const totalDistance = distances[distances.length - 1];
     const clampedDistance = Math.max(0, Math.min(targetDistance, totalDistance));
 
-    // Tìm segment chứa targetDistance
     for (let i = 1; i < distances.length; i++) {
       if (clampedDistance <= distances[i] || i === distances.length - 1) {
         const prevDist = distances[i - 1];
         const nextDist = distances[i];
         const segmentLength = nextDist - prevDist;
 
-        // Tránh chia cho 0
         if (segmentLength <= 0) {
-          return coords[i - 1];
+          const c = coords[i - 1];
+          return { latitude: c.latitude, longitude: c.longitude, floorId: c.floorId || c.floor?.id };
         }
 
         const ratio = (clampedDistance - prevDist) / segmentLength;
-        const clampedRatio = Math.max(0, Math.min(1, ratio)); // Đảm bảo ratio trong [0, 1]
+        const clampedRatio = Math.max(0, Math.min(1, ratio));
 
         const a = coords[i - 1];
         const b = coords[i];
 
         if (!a || !b) {
-          return coords[coords.length - 1];
+          const last = coords[coords.length - 1];
+          return { latitude: last.latitude, longitude: last.longitude, floorId: last.floorId || last.floor?.id };
         }
 
-        // Luôn nội suy mượt để di chuyển từ từ
         return {
           latitude: a.latitude + (b.latitude - a.latitude) * clampedRatio,
           longitude: a.longitude + (b.longitude - a.longitude) * clampedRatio,
+          floorId: a.floorId || a.floor?.id || b.floorId || b.floor?.id
         };
       }
     }
 
-    // Fallback: trả về coordinate cuối cùng
-    return coords[coords.length - 1];
+    const last = coords[coords.length - 1];
+    return { latitude: last.latitude, longitude: last.longitude, floorId: last.floorId || last.floor?.id };
   };
 
   /**
@@ -4877,9 +4892,23 @@ async function init() {
 
       const statusEl = document.getElementById("wayfinding-status");
 
+      // Helper: Lấy tọa độ anchor của một object (Internal to drawNavigation)
+      const getObjAnchor = (obj: any): any => {
+        if (obj.anchor) return obj.anchor;
+        if (obj.coordinate) return obj.coordinate;
+        if (obj.center) return obj.center;
+        if (obj.centroid) return obj.centroid;
+        if (obj.entrances && obj.entrances.length > 0 && obj.entrances[0].coordinate) return obj.entrances[0].coordinate;
+        if (obj.navigableNodes && obj.navigableNodes.length > 0) {
+          const node = obj.navigableNodes[0];
+          return node.coordinate || node.anchor || null;
+        }
+        return null;
+      };
+
       // Tính khoảng cách nhanh (chỉ tính khi cần)
-      const originAnchor = getObjectAnchor(wayfindingOrigin);
-      const destAnchor = getObjectAnchor(wayfindingDestination);
+      const originAnchor = getObjAnchor(wayfindingOrigin);
+      const destAnchor = getObjAnchor(wayfindingDestination);
       let distance: number | null = null;
 
       if (originAnchor && destAnchor &&
@@ -4895,7 +4924,7 @@ async function init() {
       const smoothingConfig = {
         enabled: true,
         __EXPERIMENTAL_METHOD: 'dp-optimal' as const,
-        radius: 1.2, // Tăng radius lên để nắn thẳng hoàn toàn các đoạn zic-zac (noise) dọc hành lang, tạo đường thẳng mượt hơn
+        radius: 0.5, // Cân bằng: Đủ lớn để xóa zic-zắc, đủ nhỏ để không vát góc quá lượn, bảo toàn ngã tư.
         __EXPERIMENTAL_INCLUDE_DOOR_BUFFER_NODES: true,
       };
 
@@ -4940,17 +4969,17 @@ async function init() {
             allInstructions.push(...insts);
           }
 
-          if (dir.path) {
-            allPaths.push(dir.path);
-          } else if (dir.paths) {
-            allPaths.push(...dir.paths);
+          if ((dir as any).path) {
+            allPaths.push((dir as any).path);
+          } else if ((dir as any).paths) {
+            allPaths.push(...(dir as any).paths);
           }
 
           totalDistance += dir.distance || 0;
         }
       }
 
-      const combinedDirections = {
+      const combinedDirections: any = {
         coordinates: allCoordinates,
         instructions: allInstructions,
         distance: totalDistance,
@@ -5110,7 +5139,6 @@ async function init() {
             console.log("✅ Intelligent Simplification complete. New steps count:", merged.length);
 
             // POST-MERGE: Gộp Departure + Continue liền kề thành 1 bước "Đi thẳng"
-            // (Xảy ra khi 2 bước rẽ ngược bị Rule 2 gộp thành Continue ngay sau Departure)
             const postMerged: any[] = [];
             for (let j = 0; j < merged.length; j++) {
               const step = merged[j];
@@ -5119,28 +5147,21 @@ async function init() {
               const prevType = prevStep ? (prevStep.action?.type || '').toLowerCase() : '';
 
               if ((prevType === 'departure' || prevType === 'start') && stepType === 'continue') {
-                // Gộp Continue vào Departure
                 prevStep.distance += step.distance;
                 console.log(`  -> Post-merge: Merging Continue into Departure (total dist: ${prevStep.distance.toFixed(1)})`);
               } else {
                 postMerged.push(step);
               }
             }
-            if (postMerged.length < merged.length) {
-              console.log(`  ✅ Post-merge reduced steps: ${merged.length} -> ${postMerged.length}`);
-            }
             merged.length = 0;
             postMerged.forEach(s => merged.push(s));
 
-            // Lưu originalDistance TRƯỚC KHI dịch (dùng cho cumulativeDistance đồng bộ chấm xanh)
+            // Lưu originalDistance TRƯỚC KHI dịch
             merged.forEach(step => {
               step.originalDistance = step.distance || 0;
             });
 
             // DISTANCE SHIFTING cho hiển thị UI:
-            // Mappedin dùng distance = "khoảng cách ĐẾN điểm hành động"
-            // Người dùng muốn thấy = "khoảng cách SAU hành động" (giống Google Maps)
-            // Ví dụ: "Đi thẳng 22m" thay vì "Đi thẳng 0m"
             for (let i = 0; i < merged.length - 1; i++) {
               merged[i].distance = merged[i + 1].distance;
             }
@@ -5152,13 +5173,12 @@ async function init() {
           console.warn("Error simplifying instructions:", e);
         }
 
-
         const navigationOptions: any = {
           pathOptions: {
             displayArrowsOnPath: true,
             animateArrowsOnPath: true,
-            accentColor: '#214ca6', // Navy Blue chuẩn
-            width: 2.0, // Đường kẻ đậm nét, chuyên nghiệp hơn
+            accentColor: '#214ca6',
+            width: 1.0, // Đã giảm từ 2.0 xuống 1.0 để thanh mảnh tinh tế hơn, không gây rối
           },
           markerOptions: {
             departureColor: '#214ca6',
@@ -5171,7 +5191,7 @@ async function init() {
         // HELPERS CHO NAVIGATION UI
         // ============================================
 
-        // Helper: Tính khoảng cách giữa 2 tọa độ (Haversine formula, trả về mét)
+        // Helper: Tính khoảng cách (mét) giữa 2 tọa độ
         const calcDistanceMeters = (coord1: any, coord2: any): number => {
           if (!coord1 || !coord2) return Infinity;
           const lat1 = coord1.latitude || coord1.lat;
@@ -5270,9 +5290,14 @@ async function init() {
           const bearing = (instruction.action?.bearing || '').toLowerCase();
           const connection = instruction.action?.connection;
           const t = (key: string, def: string) => TranslationManager.t(key, def);
-
-          // Lấy text hướng dẫn gốc của Mappedin (đã rẽ trái/phải chuẩn theo map)
           const mappedinText = instruction.action?.instruction || instruction.instruction || "";
+
+          let landmarkText = "";
+          const coord = instruction.coordinate;
+          if (coord) {
+            const nearL = findNearbyLandmark(coord, coord.floorId, 15);
+            if (nearL) landmarkText = ` ${t('near', 'gần')} ${nearL}`;
+          }
 
           if (connection) {
             const connName = connection.name || TranslationManager.getName(connection);
@@ -5294,7 +5319,7 @@ async function init() {
             if (isEnter) {
               const action = isElevator ? t('action_enter', 'Vào') : t('action_take', 'Đi');
               const name = isElevator ? t('elevator', 'thang máy') : (connName || t('escalator', 'thang cuốn'));
-              return `${action} ${name} ${dirText}${floorText}`;
+              return `${action} ${name} ${dirText}${floorText}${landmarkText}`;
             } else {
               const name = isElevator ? t('elevator', 'thang máy') : (connName || t('escalator', 'thang cuốn'));
               return `${t('action_exit_connection', 'Ra khỏi')} ${name}${floorText}`;
@@ -5315,60 +5340,26 @@ async function init() {
                 .replace(/Turn\s+around/gi, t('action_turn_around', 'Quay lại'))
                 .replace(/Slight\s+left/gi, t('action_slight_left', 'Rẽ trái nhẹ'))
                 .replace(/Slight\s+right/gi, t('action_slight_right', 'Rẽ phải nhẹ'));
-              return vText;
+              return landmarkText ? `${vText}${landmarkText}` : vText;
             }
-            if (bearing.includes('slight') && bearing.includes('left')) return t('action_slight_left', 'Rẽ trái nhẹ');
-            if (bearing.includes('slight') && bearing.includes('right')) return t('action_slight_right', 'Rẽ phải nhẹ');
-            if (bearing.includes('left')) return t('action_turn_left', 'Rẽ trái');
-            if (bearing.includes('right')) return t('action_turn_right', 'Rẽ phải');
-            return t('action_turn', 'Rẽ');
+            let turnAction = t('action_turn', 'Rẽ');
+            if (bearing.includes('left')) turnAction = t('action_turn_left', 'Rẽ trái');
+            if (bearing.includes('right')) turnAction = t('action_turn_right', 'Rẽ phải');
+            return landmarkText ? `${turnAction}${landmarkText}` : turnAction;
           }
 
           const actionMap: Record<string, string> = {
             'arrival': t('action_arrival', 'Kết thúc'),
-            'continue': t('action_continue', 'Tiếp tục'),
+            'continue': t('action_continue', 'Tiếp tục đi thẳng'),
             'arrive': t('action_arrive', 'Đến nơi'),
             'stopover': mappedinText || 'Điểm dừng',
-            'enter': t('action_enter', 'Vào'),
-            'exit': t('action_exit', 'Ra'),
-            'takeconnection': t('action_take_connection', 'Sử dụng liên kết'),
-            'exitconnection': t('action_exit_connection', 'Rời khỏi liên kết'),
             'departure': t('action_departure', 'Khởi hành'),
           };
 
-          return actionMap[actionType] || mappedinText || actionType;
+          return (actionMap[actionType] || mappedinText || actionType) + (actionType === 'continue' ? landmarkText : '');
         };
 
-        // Navigation segment highlighting
-        const highlightPathSegment = (stepIndex: number) => {
-          if (!currentNavigation || !directions.instructions) return;
-          if (mapView.Navigation && typeof (mapView.Navigation as any).clearAllHighlightedPathSections === 'function') {
-            (mapView.Navigation as any).clearAllHighlightedPathSections();
-          }
 
-          const current = directions.instructions[stepIndex];
-          if (!current || !current.coordinate) return;
-
-          const next = directions.instructions[stepIndex + 1];
-          const toCoord = next?.coordinate || directions.coordinates[directions.coordinates.length - 1];
-
-          /* 
-          if (current.coordinate && toCoord && (mapView.Navigation as any).highlightPathSection) {
-            (mapView.Navigation as any).highlightPathSection(current.coordinate, toCoord, {
-              color: '#4CAF50', widthMultiplier: 1.2, animationDuration: 0
-            });
-          }
-          */
-        };
-
-        (window as any).selectStep = (index: number) => {
-          if (isAnimating) return; // Không cho phép click khi đang demo
-          // highlightPathSegment(index); // REMOVED as per user request to remove colored path segment
-        };
-
-        // ============================================
-        // TẠO BẢNG HƯỚNG DẪN TỪNG BƯỚC 
-        // ============================================
 
         const instructionsListEl = document.getElementById("instructions-list");
         let instructionsHtml = '';
@@ -5378,11 +5369,8 @@ async function init() {
           if (!directions.instructions || directions.instructions.length === 0) {
             instructionsHtml = `<div style="padding:10px; color:#666; font-style:italic;">${TranslationManager.t('not_found', "Không tìm thấy đường đi")}</div>`;
           } else {
-            instructionsHtml = `
-              <div id="instructions-raw-list" style="padding-top: 10px; padding-bottom: 30px;">
-            `;
+            instructionsHtml = `<div id="instructions-raw-list" style="padding-top: 10px; padding-bottom: 30px;">`;
 
-            const mentionedLandmarks: string[] = [];
             simplifiedInstructions.forEach((instruction: any, index: number) => {
               const isFirstStep = index === 0;
               const isLastStep = index === simplifiedInstructions.length - 1;
@@ -5418,8 +5406,6 @@ async function init() {
               }
 
               const floorName = TranslationManager.getFloorName(instruction.coordinate?.floorId || "");
-
-              // Step icon (Circle with number or icon)
               let stepIcon = (index + 1).toString();
               if (isFirstStep) {
                 stepIcon = `<svg width="12" height="12" viewBox="0 0 24 24" fill="white" stroke="none"><circle cx="12" cy="12" r="8"/></svg>`;
@@ -5427,59 +5413,28 @@ async function init() {
                 stepIcon = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>`;
               }
 
-              // Badges
               let metaBadges = '';
-              if (distanceText) {
-                metaBadges += `<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;background:#f8f9fa;border:1px solid #edf2f7;border-radius:6px;font-size:11px;color:#4a5568;font-weight:700;">${distanceText}</span>`;
-              }
-              if (timeText) {
-                metaBadges += `<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;background:#f8f9fa;border:1px solid #edf2f7;border-radius:6px;font-size:11px;color:#4a5568;font-weight:700;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>${timeText}</span>`;
-              }
-              if (floorName) {
-                metaBadges += `<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;background:#eef2ff;border:1px solid #d0dfff;border-radius:6px;font-size:11px;color:#214ca6;font-weight:700;">${floorName}</span>`;
-              }
+              if (distanceText) metaBadges += `<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;background:#f8f9fa;border:1px solid #edf2f7;border-radius:6px;font-size:11px;color:#4a5568;font-weight:700;">${distanceText}</span>`;
+              if (timeText) metaBadges += `<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;background:#f8f9fa;border:1px solid #edf2f7;border-radius:6px;font-size:11px;color:#4a5568;font-weight:700;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>${timeText}</span>`;
+              if (floorName) metaBadges += `<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;background:#eef2ff;border:1px solid #d0dfff;border-radius:6px;font-size:11px;color:#214ca6;font-weight:700;">${floorName}</span>`;
 
-              // Row background
               let rowBg = 'white';
               if (isFirstStep) rowBg = 'linear-gradient(90deg, #f0f7ff 0%, #ffffff 100%)';
               else if (isLastStep) rowBg = 'linear-gradient(90deg, #fffcf5 0%, #ffffff 100%)';
 
               instructionsHtml += `
-                <div class="instruction-step" style="
-                  position:relative; display:flex; align-items:center; gap:16px;
-                  padding:18px 20px; cursor:pointer; width: 100%; box-sizing: border-box;
-                  background: ${rowBg}; border-bottom: 1px solid #f8f9fb;
-                  transition: all 0.2s;
-                " onclick="window.selectStep(${index})"
-                onmouseenter="this.style.background='rgba(33, 76, 166, 0.03)'"
-                onmouseleave="this.style.background='${rowBg}'">
-                    
-                    <!-- Vertical Timeline Line -->
-                    ${!isLastStep ? `<div style="position:absolute; left:33px; top:40px; bottom:-18px; width:2px; background:#dfe6f0; z-index:1;"></div>` : ''}
-                    
-                    <div style="
-                      position:relative; z-index:2;
-                      width:26px; height:26px; min-width:26px;
-                      background: ${isFirstStep ? '#214ca6' : isLastStep ? '#ffa500' : '#214ca6'};
-                      border-radius:50%;
-                      display:flex; align-items:center; justify-content:center;
-                      color: white; font-size: 13px; font-weight: 800;
-                    ">${stepIcon}</div>
-                    
-                    <div style="flex:1; display: flex; flex-direction: column; gap: 6px;">
-                        <div style="font-size:15px; font-weight:700; color:#1a1a2e; line-height:1.3;">${actionText}</div>
-                        <div style="display:flex; align-items:center; gap:6px; flex-wrap: wrap;">
-                          ${metaBadges}
-                        </div>
-                    </div>
-                </div>
-              `;
+                <div class="instruction-step" style="position:relative; display:flex; align-items:center; gap:16px; padding:18px 20px; cursor:pointer; width:100%; box-sizing:border-box; background:${rowBg}; border-bottom:1px solid #f8f9fb; transition:all 0.2s;" onclick="window.selectStep(${index})" onmouseenter="this.style.background='rgba(33, 76, 166, 0.03)'" onmouseleave="this.style.background='${rowBg}'">
+                  ${!isLastStep ? `<div style="position:absolute; left:33px; top:40px; bottom:-18px; width:2px; background:#dfe6f0; z-index:1;"></div>` : ''}
+                  <div style="position:relative; z-index:2; width:26px; height:26px; min-width:26px; background:${isFirstStep ? '#214ca6' : isLastStep ? '#ffa500' : '#214ca6'}; border-radius:50%; display:flex; align-items:center; justify-content:center; color:white; font-size:13px; font-weight:800;">${stepIcon}</div>
+                  <div style="flex:1; display:flex; flex-direction:column; gap:6px;">
+                    <div style="font-size:15px; font-weight:700; color:#1a1a2e; line-height:1.3;">${actionText}</div>
+                    <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">${metaBadges}</div>
+                  </div>
+                </div>`;
             });
             instructionsHtml += '</div>';
           }
 
-          // Store for demo - dùng originalDistance (chưa bị dịch) để tính cumulativeDistance
-          // Đảm bảo ranh giới bước khớp với quỹ đạo thực tế của chấm xanh
           let cumulativeDist = 0;
           simplifiedInstructions.forEach(inst => {
             inst.cumulativeDistance = cumulativeDist;
@@ -5488,68 +5443,37 @@ async function init() {
 
           simplifiedInstructionsGlobal = simplifiedInstructions;
           routeTotalSecondsGlobal = routeTotalSeconds;
-          (window as any).instructionTotalDistance = cumulativeDist; // Real scale for demo
-
-          // Reset highlights initially
-          deselectAllSteps();
+          (window as any).instructionTotalDistance = cumulativeDist;
 
         } catch (e) {
           console.warn("Error drawing navigation steps:", e);
           instructionsHtml = `<div style="padding:10px; color:#f44336;">${TranslationManager.t('error_nav', "Lỗi khi tìm đường đi")}</div>`;
         }
 
-        if (instructionsListEl) {
-          instructionsListEl.innerHTML = instructionsHtml;
-        }
+        if (instructionsListEl) instructionsListEl.innerHTML = instructionsHtml;
 
-        // Cập nhật status bar với tổng thời gian thực tế
+        const statusEl = document.getElementById("wayfinding-status");
         if (statusEl) {
-          // Tính lại tổng khoảng cách hiển thị thực tế theo logic mới
           let totalDisplayDist = 0;
           simplifiedInstructions.forEach((inst, idx) => {
             const actType = (inst.action?.type || '').toLowerCase();
             const isConn = actType.includes('connection') || actType.includes('elevator') || actType.includes('stair') || actType.includes('escalator');
             let d = inst.distance || 0;
-
             if (isConn) {
               const isEnter = actType === 'takeconnection' || actType === 'enter';
               if (isEnter) {
-                const connType = (inst.action?.connection?.type || '').toLowerCase();
-                const isElevator = connType.includes('elevator') || (inst.action?.connection?.name || '').toLowerCase().includes('thang máy');
-
-                // Mặc định: Thang máy 3m, Thang cuốn/bộ 6m
-                d = isElevator ? 3 : 6;
-              } else {
-                d = 0;
-              }
+                const isElev = (inst.action?.connection?.type || '').toLowerCase().includes('elevator') || (inst.action?.connection?.name || '').toLowerCase().includes('thang máy');
+                d = isElev ? 3 : 6;
+              } else d = 0;
             }
-
-            // Không tính bước cuối (Arrival)
-            if (!actType.includes('arrive') && !actType.includes('arrival')) {
-              totalDisplayDist += Math.round(d);
-            }
+            if (!actType.includes('arrive') && !actType.includes('arrival')) totalDisplayDist += Math.round(d);
           });
 
-          let totalTimeString = '';
-          const mLabel = TranslationManager.t('minute_label', 'phút');
-          const sLabel = TranslationManager.t('second_label', 'giây');
-          if (routeTotalSeconds < 60) {
-            totalTimeString = `${routeTotalSeconds}s`;
-          } else {
-            const mins = Math.floor(routeTotalSeconds / 60);
-            const secs = routeTotalSeconds % 60;
-            totalTimeString = secs > 0 ? `${mins} ${mLabel} ${secs} ${sLabel}` : `${mins} ${mLabel}`;
-          }
-
-          // ============================================
-          // INCHEON STYLE SUMMARY & PREVIEW
-          // ============================================
-          // Hide info and show summary
           const popup = document.getElementById("sidebar-info-panel");
-          if (popup) popup.style.display = "none";
           const categorySection = document.getElementById("category-section");
-          if (categorySection) categorySection.style.display = "none";
           const sidebarActions = document.querySelector(".sidebar-actions") as HTMLElement;
+          if (popup) popup.style.display = "none";
+          if (categorySection) categorySection.style.display = "none";
           if (sidebarActions) sidebarActions.style.display = "none";
 
           const summaryContainer = document.getElementById("wayfinding-summary-container");
@@ -5557,37 +5481,54 @@ async function init() {
 
           if (summaryContainer) {
             summaryContainer.style.display = "block";
-
-            const mLabelShort = TranslationManager.t('minute_label_short', 'm'); // e.g. 2m
+            const mLabelShort = TranslationManager.t('minute_label_short', 'm');
             const largeTime = routeTotalSeconds < 60 ? `${routeTotalSeconds}s` : `${Math.floor(routeTotalSeconds / 60)}${mLabelShort}`;
-
             summaryContainer.innerHTML = `
               <div style="padding: 24px 20px 15px; background: white; border-top: 1.5px solid #f0f4f8;">
                 <div style="display: flex; align-items: flex-end; justify-content: space-between;">
                   <div style="display: flex; align-items: baseline; gap: 10px;">
-                    <span style="font-size: 38px; font-weight: 900; color: #1a1a2e; letter-spacing: -1.5px; line-height:1;">${largeTime}</span>
-                    <span style="font-size: 18px; font-weight: 600; color: #64748b;">${Math.round(totalDisplayDist)}m</span>
+                    <span style="font-size:38px; font-weight:900; color:#1a1a2e; letter-spacing:-1.5px; line-height:1;">${largeTime}</span>
+                    <span style="font-size:18px; font-weight:600; color:#64748b;">${Math.round(totalDisplayDist)}m</span>
                   </div>
-                  <div style="margin-bottom: 4px;">
+                  <div style="margin-bottom:4px;">
                     <span style="display:inline-flex; align-items:center; gap:4px; padding:4px 12px; background:#f0f6ff; border-radius:12px; color:#214ca6; font-size:11px; font-weight:500; border:1px solid #d0dfff;">
                         <svg viewBox="0 0 24 24" style="width:12px;height:12px;fill:#214ca6;"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
                         ${TranslationManager.t('route_found', 'Đã tìm thấy đường đi')}
                     </span>
                   </div>
                 </div>
-              </div>
-            `;
+              </div>`;
           }
-
-          if (previewBar) {
-            previewBar.style.display = "block";
-          }
+          if (previewBar) previewBar.style.display = "block";
 
           (window as any).isNavigationActive = true;
-
           if (statusEl) statusEl.textContent = "";
         }
 
+        // Navigation segment highlighting (Skeleton)
+        const highlightPathSegment = (stepIndex: number) => {
+          if (!currentNavigation || !directions.instructions) return;
+          if (mapView.Navigation && typeof (mapView.Navigation as any).clearAllHighlightedPathSections === 'function') {
+            (mapView.Navigation as any).clearAllHighlightedPathSections();
+          }
+          const current = directions.instructions[stepIndex];
+          if (!current || !current.coordinate) return;
+          const next = directions.instructions[stepIndex + 1];
+          const toCoord = next?.coordinate || directions.coordinates[directions.coordinates.length - 1];
+        };
+
+        (window as any).selectStep = (index: number) => {
+          if (isAnimating) return;
+          const inst = simplifiedInstructions[index];
+          if (!inst || !inst.coordinate) return;
+          if (inst.coordinate.floorId !== mapView.currentFloor.id) mapView.setFloor(inst.coordinate.floorId);
+          mapView.Camera.animateTo({ center: inst.coordinate }, { duration: 800 });
+          (mapView.Camera as any).set({ zoomLevel: 20 });
+          document.querySelectorAll('.instruction-step').forEach((s, i) => {
+            (s as HTMLElement).style.background = (i === index) ? 'rgba(33, 76, 166, 0.05)' : 'white';
+            (s as HTMLElement).style.borderLeft = (i === index) ? '4px solid #214ca6' : '4px solid transparent';
+          });
+        };
         // Cập nhật trạng thái Map Objects
         allMapObjects.forEach((obj: any) => {
           try {
@@ -5638,6 +5579,48 @@ async function init() {
 
   (window as any).drawNavigation = drawNavigation;
 
+
+
+
+  const resetWayfinding = () => {
+    (window as any).isNavigationActive = false;
+    wayfindingOrigin = null;
+    wayfindingDestination = null;
+    wayfindingStopovers = [];
+    wayfindingDirections = null;
+    isSelectingOrigin = false;
+    isSelectingDestination = false;
+    isSelectingStopoverIndex = -1;
+
+    // Clear detail info panel if open
+    if (typeof hideInfo === 'function') hideInfo();
+
+    clearNavigation();
+    updateWayfindingUI();
+    syncURL(true); // Update URL to remove directions
+
+    // RESET UI BUTTONS
+    const directionsBtn = document.getElementById("directions-btn");
+    if (directionsBtn) directionsBtn.classList.remove("active");
+
+    const rwPreviewBtn = document.getElementById("wayfinding-preview-btn");
+    const rwPreviewBtnMain = document.getElementById("wayfinding-preview-btn-main");
+    if (rwPreviewBtn) rwPreviewBtn.textContent = TranslationManager.t('start_preview', "Bắt đầu");
+    if (rwPreviewBtnMain) {
+      const span = rwPreviewBtnMain.querySelector('span');
+      if (span) span.textContent = TranslationManager.t('route_preview', "Route Preview");
+    }
+
+    const previewBar = document.getElementById("route-preview-bar");
+    if (previewBar) previewBar.style.display = "none";
+    const summaryContainer = document.getElementById("wayfinding-summary-container");
+    if (summaryContainer) summaryContainer.style.display = "none";
+    // Re-highlight selection
+    updateHighlights();
+
+    const statusEl = document.getElementById("wayfinding-status");
+    if (statusEl) statusEl.textContent = "";
+  };
 
   /**
    * Update wayfinding UI
@@ -5932,16 +5915,13 @@ async function init() {
     if (!safeQuery) {
       isSuggested = true;
       // Show default list (Suggested/Frequent)
-      // Pick objects that have POI or have a valid name.
       allMapObjects.forEach((obj: any) => {
         const localizedName = TranslationManager.getName(obj);
         if (localizedName && localizedName.trim().length > 0 && !localizedName.toLowerCase().includes("khu vực không tên")) {
-          // Avoid pushing same names or irrelevant spaces to keep it clean.
-          // Prioritize POI or Point types if possible, but any named area is fine.
           allMatchedObjects.push({ name: localizedName, primaryObject: obj });
         }
       });
-      // Sort alphabetically for consistency, or just keep as is
+      // Sort alphabetically for consistency
       allMatchedObjects.sort((a, b) => a.name.localeCompare(b.name));
     } else {
       allMapObjects.forEach((obj: any) => {
@@ -6020,46 +6000,6 @@ async function init() {
     resultsContainer.style.display = "block";
   };
 
-  const resetWayfinding = () => {
-    (window as any).isNavigationActive = false;
-    wayfindingOrigin = null;
-    wayfindingDestination = null;
-    wayfindingStopovers = [];
-    wayfindingDirections = null;
-    isSelectingOrigin = false;
-    isSelectingDestination = false;
-    isSelectingStopoverIndex = -1;
-
-    // Clear detail info panel if open
-    if (typeof hideInfo === 'function') hideInfo();
-
-    clearNavigation();
-    updateWayfindingUI();
-    syncURL(true); // Update URL to remove directions
-
-    // RESET UI BUTTONS
-    const directionsBtn = document.getElementById("directions-btn");
-    if (directionsBtn) directionsBtn.classList.remove("active");
-
-    const rwPreviewBtn = document.getElementById("wayfinding-preview-btn");
-    const rwPreviewBtnMain = document.getElementById("wayfinding-preview-btn-main");
-    if (rwPreviewBtn) rwPreviewBtn.textContent = TranslationManager.t('start_preview', "Bắt đầu");
-    if (rwPreviewBtnMain) {
-      const span = rwPreviewBtnMain.querySelector('span');
-      if (span) span.textContent = TranslationManager.t('route_preview', "Route Preview");
-    }
-
-    const previewBar = document.getElementById("route-preview-bar");
-    if (previewBar) previewBar.style.display = "none";
-    const summaryContainer = document.getElementById("wayfinding-summary-container");
-    if (summaryContainer) summaryContainer.style.display = "none";
-    // Re-highlight selection
-    updateHighlights();
-
-    const statusEl = document.getElementById("wayfinding-status");
-    if (statusEl) statusEl.textContent = "";
-  };
-
   /**
    * Swap origin and destination
    */
@@ -6097,6 +6037,8 @@ async function init() {
       console.warn("Camera focus error:", e);
     }
   };
+
+
 
   /**
    * Update Information Panel
@@ -6393,6 +6335,127 @@ async function init() {
     syncURL(true); // Update URL to root/map state
   };
 
+  // ============================================
+  // BLUE DOT NAVIGATION ANIMATION
+  // ============================================
+  (window as any).toggleAnimation = () => {
+    if (isAnimating) {
+      if (isPaused) resumeAnimation(); else pauseAnimation();
+    } else {
+      startNavigationAnimation();
+    }
+  };
+
+  const startNavigationAnimation = async () => {
+    if (!wayfindingDirections || isAnimating) return;
+    isAnimating = true;
+    isPaused = false;
+
+    const coords = wayfindingDirections.coordinates;
+    const { distances, totalDistance } = buildDistanceTable(coords);
+
+    const previewBtn = document.getElementById("wayfinding-preview-btn");
+    const previewBtnMain = document.getElementById("wayfinding-preview-btn-main");
+    if (previewBtn) previewBtn.textContent = TranslationManager.t('pause_preview', "Tạm dừng");
+
+    const marker = await mapView.Markers.add(coords[0], `
+      <div style="width:20px;height:20px;background:#214ca6;border:3px solid white;border-radius:50%;box-shadow:0 0 10px rgba(0,0,0,0.3);"></div>
+    `);
+
+    animationState = { marker, coords, distances, totalDistance, currentDist: 0 };
+
+    blueDotAnimationInterval = setInterval(() => {
+      if (isPaused) return;
+
+      animationState.currentDist += (BLUE_DOT_SPEED_MPS * ((window as any).speedMultiplier || 1.0) * (FRAME_INTERVAL / 1000));
+
+      if (animationState.currentDist >= totalDistance) {
+        stopNavigationAnimation();
+        return;
+      }
+
+      const newCoord = interpolateByDistance(coords, distances, animationState.currentDist);
+      if (newCoord) {
+        (mapView.Markers as any).animateTo(marker, newCoord, { duration: FRAME_INTERVAL, easing: 'linear' });
+
+        // AUTO-FOLLOW CAMERA
+        mapView.Camera.set({ center: newCoord });
+
+        // AUTO-SWITCH FLOOR IF NEEDED
+        if (newCoord.floorId && newCoord.floorId !== mapView.currentFloor.id) {
+          mapView.setFloor(newCoord.floorId);
+        }
+
+        // SYNC SIDEBAR STEP HIGHLIGHTING
+        // Find current instruction index based on distance
+        let currentStepIndex = 0;
+        let cumulativeDist = 0;
+        const insts = (window as any).simplifiedInstructionsGlobal || [];
+        for (let i = 0; i < insts.length; i++) {
+          cumulativeDist += (insts[i] as any).distance || 0;
+          if (animationState.currentDist <= cumulativeDist) {
+            currentStepIndex = i;
+            break;
+          }
+        }
+
+        if (currentStepIndex !== currentSelectedStepIndex) {
+          currentSelectedStepIndex = currentStepIndex;
+          const steps = document.querySelectorAll('.instruction-step');
+          steps.forEach((s, idx) => {
+            if (idx === currentStepIndex) {
+              (s as HTMLElement).style.background = '#f0f4ff';
+              (s as HTMLElement).style.borderLeft = '4px solid #214ca6';
+              s.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            } else {
+              (s as HTMLElement).style.background = 'white';
+              (s as HTMLElement).style.borderLeft = '4px solid transparent';
+            }
+          });
+        }
+      }
+    }, FRAME_INTERVAL);
+  };
+
+  const stopNavigationAnimation = () => {
+    clearInterval(blueDotAnimationInterval);
+    if (animationState && animationState.marker) {
+      mapView.Markers.remove(animationState.marker);
+    }
+    isAnimating = false;
+    isPaused = false;
+    animationState = null;
+    const previewBtn = document.getElementById("wayfinding-preview-btn");
+    if (previewBtn) previewBtn.textContent = TranslationManager.t('start_preview', "Bắt đầu");
+  };
+
+  const pauseAnimation = () => { isPaused = true; };
+  const resumeAnimation = () => { isPaused = false; };
+
+  (window as any).setAnimationSpeed = (speed: number) => {
+    const oldMultiplier = (window as any).speedMultiplier || 1.0;
+    (window as any).speedMultiplier = speed;
+
+    // Nếu đang chạy animation, cập nhật duration và startTime tức thì để không bị giật
+    if (isAnimating && animationState && !isPaused) {
+      const currentMultiplier = speed * PREVIEW_SPEED_BOOST;
+      const baseDurationMs = (routeTotalSecondsGlobal > 0 ? routeTotalSecondsGlobal : (animationState.totalDistance / BLUE_DOT_SPEED_MPS)) * 1000;
+      const newTotalDurationMs = baseDurationMs / currentMultiplier;
+
+      // Tính toán lại startTime để duy trì vị trí hiện tại (traveled distance)
+      const traveled = currentAnimationDistance;
+      const totalDist = animationState.totalDistance;
+      if (totalDist > 0) {
+        const progress = traveled / totalDist;
+        const newElapsed = progress * newTotalDurationMs;
+        // Adjust startTime so: performance.now() - startTime - animationPauseTime = newElapsed
+        animationState.startTime = performance.now() - newElapsed - animationPauseTime;
+        animationState.totalDurationMs = newTotalDurationMs;
+        totalAnimationDuration = newTotalDurationMs;
+      }
+    }
+  };
+
   // Exposed for external access
   (window as any).updateInfo = updateInfo;
   (window as any).hideInfo = hideInfo;
@@ -6404,13 +6467,9 @@ async function init() {
     if (wayfindingOrigin && wayfindingDestination) {
       drawNavigation();
     }
-    // REFRESH INFO PANEL IF OPEN
-    if (selectedSpace) {
-      updateInfo(selectedSpace);
-    }
+    if (selectedSpace) updateInfo(selectedSpace);
   });
 
-  // INITIALIZE UI state for Wayfinding inputs (From / To empty states)
   updateWayfindingUI();
 
   // ============================================
@@ -7375,7 +7434,7 @@ async function init() {
           heading: undefined,
           floorOrFloorId: currentFloor?.id || 'device',
           timestamp: Date.now(),
-        });
+        }, { animate: false });
         focusCameraOnCoordinate(toCoord, false); // Không zoom
       } catch (e) {
         console.warn("Error updating blue dot:", e);
@@ -7392,8 +7451,9 @@ async function init() {
     if (totalDistance === 0) return;
 
     // 3️⃣ Tính duration theo vận tốc (Ưu tiên dùng tổng thời gian từ UI)
+    const currentMultiplier = ((window as any).speedMultiplier || 1.0) * PREVIEW_SPEED_BOOST;
     const baseDurationMs = (routeTotalSecondsGlobal > 0 ? routeTotalSecondsGlobal : (totalDistance / BLUE_DOT_SPEED_MPS)) * 1000;
-    const totalDurationMs = baseDurationMs / speedMultiplier;
+    const totalDurationMs = baseDurationMs / currentMultiplier;
 
     // Use instruction distance for UI scale if available
     const uiScaleDistance = (window as any).instructionTotalDistance || totalDistance;
@@ -7463,18 +7523,28 @@ async function init() {
     }
 
     try {
-      blueDot.update({
-        latitude: startPos.latitude,
-        longitude: startPos.longitude,
-        accuracy: 5,
-        heading: startHeading,
-        floorOrFloorId: startFloorId,
-        timestamp: Date.now(),
-      });
+      // Remove any previously created fake previewMarker
+      if (previewMarker) {
+        mapView.Markers.remove(previewMarker);
+        previewMarker = null;
+      }
+
+      // Use native BlueDot! Make sure it stays enabled.
+      if (blueDot) {
+        blueDot.update({
+          latitude: startPos.latitude,
+          longitude: startPos.longitude,
+          accuracy: 5,
+          heading: undefined,
+          floorOrFloorId: startFloorId || mapView.currentFloor?.id || 'device',
+          timestamp: Date.now()
+        }, { animate: false });
+      }
+
       // Zoom lên 20x và focus vào blue dot khi bắt đầu preview
       focusCameraOnCoordinate(startPos, true);
     } catch (e) {
-      console.warn("Error updating blue dot:", e);
+      console.warn("Error initiating preview blue dot:", e);
     }
 
     // Animate với vận tốc cố định
@@ -7492,17 +7562,35 @@ async function init() {
         }
       }
 
-      const elapsed = performance.now() - startTime - animationPauseTime;
-      const traveled = Math.min((elapsed / totalDurationMs) * totalDistance, totalDistance);
+      const currentStartTime = animationState?.startTime || startTime;
+      const currentDuration = animationState?.totalDurationMs || totalDurationMs;
+      const elapsed = performance.now() - currentStartTime - animationPauseTime;
+      const traveled = Math.min((elapsed / currentDuration) * totalDistance, totalDistance);
       currentAnimationDistance = traveled;
 
       // 4️⃣ Nội suy vị trí
       const pos = interpolateByDistance(segmentCoords, distances, traveled);
 
-      // Tính heading và lấy floor từ segmentCoords (không tìm nearest)
-      let heading: number | undefined = undefined;
+      // Xác định target floor từ segment hiện tại
       const currentIndex = distances.findIndex((d: number) => d >= traveled);
       const segmentCoord = segmentCoords[Math.max(0, Math.min(currentIndex, segmentCoords.length - 1))];
+      let targetFloorId = mapView.currentFloor?.id || 'device';
+
+      if (segmentCoord) {
+        if (segmentCoord.floor) {
+          targetFloorId = segmentCoord.floor.id || segmentCoord.floor;
+        } else if (segmentCoord.floorId) {
+          targetFloorId = segmentCoord.floorId;
+        }
+      }
+
+      // Đảm bảo pos luôn có floorId để Mappedin Marker hiển thị đúng
+      if (pos && !pos.floorId) {
+        pos.floorId = targetFloorId;
+      }
+
+      // Tính heading và lấy floor từ segmentCoords (không tìm nearest)
+      let heading: number | undefined = undefined;
 
       if (currentIndex > 0 && currentIndex < segmentCoords.length) {
         const prevCoord = segmentCoords[currentIndex - 1];
@@ -7515,9 +7603,8 @@ async function init() {
       }
 
       try {
-        // Lấy floor từ segmentCoords (KHÔNG tìm nearest từ full path)
+        // Chuyển tầng nếu cần (targetFloorId đã được tính ở trên)
         const currentFloor = mapView.currentFloor;
-        let targetFloorId = currentFloor?.id || 'device';
 
         // Lấy floor trực tiếp từ segment coordinate hiện tại
         if (segmentCoord) {
@@ -7528,14 +7615,24 @@ async function init() {
           }
         }
 
-        blueDot.update({
-          latitude: pos.latitude,
-          longitude: pos.longitude,
-          accuracy: 5,
-          heading: heading,
-          floorOrFloorId: targetFloorId,
-          timestamp: Date.now(),
-        });
+        if (previewMarker) {
+          mapView.Markers.remove(previewMarker);
+          previewMarker = null;
+        }
+        try {
+          if (blueDot) {
+            blueDot.update({
+              latitude: pos.latitude,
+              longitude: pos.longitude,
+              accuracy: 5,
+              heading: heading,
+              floorOrFloorId: targetFloorId,
+              timestamp: Date.now()
+            }, { animate: false });
+          }
+        } catch (err) {
+          // Mappedin throws if coordinate is invalid or out of bounds. We safely ignore.
+        }
 
         // Chuyển tầng nếu cần
         if (targetFloorId !== 'device' && targetFloorId !== currentFloor?.id) {
@@ -7546,18 +7643,17 @@ async function init() {
           }
         }
 
-        // 5️⃣ Camera follow (mỗi 40 frame ~ 2 giây) - zoom lên 20x khi preview, giảm giật
-        const frameCount = Math.floor(elapsed / FRAME_INTERVAL);
-        if (frameCount % 40 === 0) {
-          focusCameraOnCoordinate(pos, true); // Zoom lên 20x khi preview
+        // 5️⃣ Camera follow - Gọi mỗi frame, hàm focusCameraOnCoordinate sẽ tự throttle theo CAMERA_UPDATE_INTERVAL
+        if (!isPaused) {
+          focusCameraOnCoordinate(pos, true);
         }
 
         // Cập nhật progress bar và time liên tục
-        updateVideoProgress(elapsed, totalDurationMs);
+        updateVideoProgress(elapsed, currentDuration);
 
         // 6️⃣ Kết thúc
         if (traveled >= totalDistance) {
-          updateVideoProgress(totalDurationMs, totalDurationMs);
+          updateVideoProgress(currentDuration, currentDuration);
 
           // Tự động thoát demo khi kết thúc
           setTimeout(() => {
@@ -7631,9 +7727,9 @@ async function init() {
       progressBar.disabled = false;
     }
 
-    // Thời gian giả lập (real travel time)
-    const simulatedElapsedMs = elapsed * speedMultiplier;
-    const simulatedTotalMs = totalDuration * speedMultiplier;
+    // Thời gian hiển thị (thời gian đã trôi qua và tổng thời gian mô phỏng)
+    const simulatedElapsedMs = elapsed;
+    const simulatedTotalMs = totalDuration;
 
     const formatTime = (ms: number) => {
       const totalSeconds = Math.max(0, Math.floor(ms / 1000));
@@ -7777,7 +7873,7 @@ async function init() {
         heading: heading,
         floorOrFloorId: targetFloorId,
         timestamp: Date.now(),
-      });
+      }, { animate: false });
 
       // Chuyển tầng nếu cần
       if (targetFloorId !== 'device' && targetFloorId !== currentFloor?.id) {
@@ -7860,7 +7956,7 @@ async function init() {
    * @param allowZoom - Nếu false, giữ nguyên zoom level hiện tại. Nếu true và đang preview, zoom lên 20x
    */
   let lastCameraUpdateTime = 0;
-  const CAMERA_UPDATE_INTERVAL = 1000; // Cập nhật camera mỗi 1 giây để giảm giật
+  const CAMERA_UPDATE_INTERVAL = 500; // Cập nhật camera mỗi 0.5 giây để theo kịp tốc độ 4x
 
   const focusCameraOnCoordinate = (coord: any, allowZoom: boolean = true) => {
     if (!coord || !mapView || !mapView.Camera) return;
@@ -8052,9 +8148,13 @@ async function init() {
     animationState = null;
     currentAnimationDistance = 0;
 
-    // Ẩn blue dot
+    // Ẩn blue dot và xóa preview marker
     if (blueDot) {
       blueDot.disable();
+    }
+    if (previewMarker) {
+      mapView.Markers.remove(previewMarker);
+      previewMarker = null;
     }
 
     // Ẩn video control bar và hiện lại preview bar
@@ -8135,7 +8235,7 @@ async function init() {
   if (speedSelect) {
     speedSelect.addEventListener("change", () => {
       const speed = parseFloat(speedSelect.value);
-      speedMultiplier = speed;
+      (window as any).setAnimationSpeed(speed);
       // Nếu đang animate, restart với speed mới
       if (isAnimating && animationState) {
         // Lưu trạng thái pause hiện tại
@@ -8425,8 +8525,8 @@ async function init() {
   `;
 
   // Inject CSS for visibility toggle
-  const style = document.createElement('style');
-  style.textContent = `
+  const visibilityStyle = document.createElement('style');
+  visibilityStyle.textContent = `
     body.zoom-far .custom-3d-label {
       opacity: 0 !important;
       pointer-events: none !important;
@@ -8460,7 +8560,7 @@ async function init() {
         2px 2px 4px rgba(0, 0, 0, 0.5) !important;
     }
   `;
-  document.head.appendChild(style);
+  document.head.appendChild(visibilityStyle);
 
   // Helper: Debounce function for auto-update
   const debounce = (func: Function, wait: number) => {
@@ -11073,7 +11173,12 @@ if (speedDisplay && speedMenu) {
       const value = (item as HTMLElement).dataset.value;
       const text = (item as HTMLElement).textContent;
       if (value && speedValueText) {
-        (window as any).speedMultiplier = parseFloat(value);
+        const speed = parseFloat(value);
+        if (typeof (window as any).setAnimationSpeed === 'function') {
+          (window as any).setAnimationSpeed(speed);
+        } else {
+          (window as any).speedMultiplier = speed;
+        }
         speedValueText.textContent = text;
 
         // Cập nhật UI menu

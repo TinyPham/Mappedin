@@ -742,15 +742,16 @@ app.post('/api/areas/sync', async (req, res) => {
                 .input('FID', sql.NVarChar(100), area.floorId || null)
                 .query(`
                     IF NOT EXISTS (SELECT 1 FROM AreaList WHERE MappedinID = @MID)
-                        INSERT INTO AreaList (MappedinID, LocationName, FloorID)
-                        VALUES (@MID, @Name, @FID)
+                        INSERT INTO AreaList (MappedinID, Name)
+                        VALUES (@MID, ISNULL(@Name, @MID))
                     ELSE
-                        UPDATE AreaList SET LocationName = @Name, FloorID = @FID, LastSync = GETDATE()
+                        UPDATE AreaList SET Name = ISNULL(@Name, Name), LastSync = GETDATE()
                         WHERE MappedinID = @MID
                 `);
         }
         res.json({ success: true });
     } catch (err: any) {
+        console.error('SQL Error in /areas/sync:', err.message || err);
         res.status(500).json({ error: err.message });
     }
 });
