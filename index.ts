@@ -889,7 +889,26 @@ async function init() {
   let placingPreviewModel: any = null;
   let isAddingPreview = false; // Lock for async model addition
 
-
+  // ============================================
+  // MULTI-SELECT STATE (Shift+Click)
+  // ============================================
+  const multiSelectedModels: Map<string, { instance: any; meta: any }> = new Map(); // uuid -> { instance, meta }
+  let isMultiPlacingMode = false; // True when placing multiple models
+  let multiPlaceSourceModels: { meta: any; offsetLat: number; offsetLon: number }[] = []; // Relative offsets from anchor
+  let multiPlaceMode: 'copy' | 'move' = 'copy';
+  const multiPlacePreviewModels: any[] = []; // Preview 3D ghosts for multi-place
+  let multiPlaceAnchorSet = false;
+  
+  // Track shift key globally since SDK might not pass originalEvent reliably
+  let isShiftPressed = false;
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Shift') isShiftPressed = true;
+  });
+  document.addEventListener('keyup', (e) => {
+    if (e.key === 'Shift') isShiftPressed = false;
+  });
+  // Also clear shift on window blur to prevent it gracefully sticking
+  window.addEventListener('blur', () => { isShiftPressed = false; });
 
   // UI Elements
   // UI Elements
@@ -6490,6 +6509,86 @@ async function init() {
     }
 
     // ============================================
+    // -1. HANDLE MULTI-MODEL PLACEMENT (PRIORITY)
+    // ============================================
+    if (isMultiPlacingMode && multiPlaceSourceModels.length > 0 && event.coordinate) {
+      console.log(`🎯 Multi-Place Mode: ${multiPlaceMode} (${multiPlaceSourceModels.length} models)`);
+      try {
+        const { latitude, longitude } = event.coordinate;
+        const targetFloor = mapView.currentFloor;
+        let placedCount = 0;
+
+        for (const srcModel of multiPlaceSourceModels) {
+          const destLat = latitude + srcModel.offsetLat;
+          const destLon = longitude + srcModel.offsetLon;
+          const coord = mapView.createCoordinate(destLat, destLon, targetFloor);
+
+          let uuid: string;
+          let url = srcModel.meta.url;
+
+          // Resolve URL
+          if (url && url.startsWith("./")) {
+            url = url.replace("./", `${SERVER_URL}/`);
+          } else if (url && !url.startsWith("http")) {
+            url = `${SERVER_URL}/${url}`;
+          }
+
+          if (multiPlaceMode === 'copy') {
+            const filename = (url || "model").split('/').pop() || 'model';
+            uuid = generateUUID(filename);
+          } else {
+            // Move: reuse UUID, remove old instance
+            uuid = srcModel.meta.uuid;
+            const oldInstance = MODEL_INSTANCE_REGISTRY.get(uuid);
+            if (oldInstance) {
+              if ((oldInstance as any).marker) mapView.Markers.remove((oldInstance as any).marker);
+              try { mapView.Models.remove(oldInstance); } catch (e) { }
+              MODEL_ID_REGISTRY.delete(oldInstance.id);
+            }
+          }
+
+          const model = await mapView.Models.add(coord, url, {
+            interactive: true,
+            scale: srcModel.meta.scale,
+            rotation: srcModel.meta.rotation,
+            verticalOffset: srcModel.meta.elevation || 0
+          });
+
+          (model as any).url = url;
+          (model as any).uuid = uuid;
+          (model as any).originalCoordinate = coord;
+
+          const newMeta: ModelMetadata = {
+            url: srcModel.meta.url, // keep original URL for DB
+            uuid,
+            name: srcModel.meta.name,
+            desc: srcModel.meta.desc,
+            rotation: srcModel.meta.rotation,
+            scale: srcModel.meta.scale,
+            originalCoordinate: coord,
+            floorId: targetFloor.id,
+            thumb: srcModel.meta.thumb,
+            displayWebsite: srcModel.meta.displayWebsite,
+            elevation: srcModel.meta.elevation || 0
+          };
+
+          MODEL_ID_REGISTRY.set(model.id, newMeta);
+          MODEL_INSTANCE_REGISTRY.set(uuid, model);
+          saveModelToAPI(newMeta);
+          placedCount++;
+        }
+
+        console.log(`✅ Multi-place: ${placedCount} models placed successfully`);
+        cleanupMultiPlaceMode();
+        return;
+      } catch (e) {
+        console.error("❌ Multi-Placement Error:", e);
+        cleanupMultiPlaceMode();
+        return;
+      }
+    }
+
+    // ============================================
     // 0. HANDLE 3D MODEL PLACEMENT (PRIORITY)
     // ============================================
     if (placingModelConfig && event.coordinate) {
@@ -6598,17 +6697,36 @@ async function init() {
     }
 
     // ============================================
-    // 1. SELECT EXISTING 3D MODEL
+    // 1. SELECT EXISTING 3D MODEL (with Shift+Click multi-select)
     // ============================================
     if (event.models && event.models.length > 0) {
       const clickedModel = event.models[0];
       console.log("🎯 Clicked Model ID:", clickedModel.id);
+
+      const meta = MODEL_ID_REGISTRY.get(clickedModel.id);
+      const isShiftHeld = event.originalEvent?.shiftKey === true || isShiftPressed;
+
+      if (isShiftHeld && meta) {
+        // SHIFT+CLICK: Toggle multi-selection
+        toggleMultiSelectModel(clickedModel, meta);
+        // Don't open single-model controls panel in multi-select mode
+        if (multiSelectedModels.size > 0) {
+          controlsPanel?.classList.add("hidden");
+          activeModelInstance = null;
+        }
+        return;
+      }
+
+      // Normal click (no shift): clear multi-select if any, select single model
+      if (multiSelectedModels.size > 0) {
+        clearMultiSelect();
+      }
+
       activeModelInstance = clickedModel;
 
       // Hide space info box if open to avoid distraction
       if (typeof hideInfo === 'function') hideInfo();
 
-      const meta = MODEL_ID_REGISTRY.get(clickedModel.id);
       if (meta) {
         syncUIFromModel(meta);
         controlsPanel?.classList.remove("hidden");
@@ -6621,6 +6739,10 @@ async function init() {
       activeModelInstance = null;
       controlsPanel?.classList.add("hidden");
       // Continue processing to allow selecting areas
+    }
+    // Also clear multi-select when clicking empty space (unless in multi-place mode)
+    if (multiSelectedModels.size > 0 && !isMultiPlacingMode) {
+      clearMultiSelect();
     }
 
     let clickedObject: any = null;
@@ -8807,7 +8929,402 @@ async function init() {
     }
   };
 
+  // ============================================
+  // MULTI-SELECT HELPERS
+  // ============================================
 
+  /** Toggle a model in/out of multi-selection */
+  const toggleMultiSelectModel = (modelInstance: any, meta: any) => {
+    const uuid = meta.uuid;
+    if (multiSelectedModels.has(uuid)) {
+      // Deselect
+      multiSelectedModels.delete(uuid);
+      removeMultiSelectHighlight(modelInstance);
+    } else {
+      // Select
+      multiSelectedModels.set(uuid, { instance: modelInstance, meta });
+      addMultiSelectHighlight(modelInstance);
+    }
+    updateMultiSelectToolbar();
+    console.log(`🔷 Multi-select: ${multiSelectedModels.size} models selected`);
+  };
+
+  /** Clear all multi-selections */
+  const clearMultiSelect = () => {
+    for (const [, { instance }] of multiSelectedModels) {
+      removeMultiSelectHighlight(instance);
+    }
+    multiSelectedModels.clear();
+    updateMultiSelectToolbar();
+  };
+
+  /** Add visual highlight (blue tint) to a multi-selected model */
+  const addMultiSelectHighlight = (modelInstance: any) => {
+    try {
+      // Create a highlight marker at the model's position
+      const coord = (modelInstance as any).originalCoordinate || (modelInstance as any).coordinate;
+      if (coord && mapView.Markers) {
+        const markerHtml = `<div class="multi-select-indicator" style="
+          width: 24px; height: 24px; 
+          background: rgba(8, 94, 187, 0.85); 
+          border: 3px solid #fff; 
+          border-radius: 50%; 
+          box-shadow: 0 0 12px rgba(8, 94, 187, 0.6), 0 0 24px rgba(8, 94, 187, 0.3);
+          display: flex; align-items: center; justify-content: center;
+          pointer-events: none;
+          animation: multiSelectPulse 1.5s infinite;
+        ">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="white" stroke="none">
+            <polyline points="20 6 9 17 4 12" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>`;
+        const marker = mapView.Markers.add(coord, markerHtml, { interactive: false });
+        (modelInstance as any)._multiSelectMarker = marker;
+      }
+    } catch (e) {
+      console.warn("Could not add multi-select highlight", e);
+    }
+  };
+
+  /** Remove visual highlight from a model */
+  const removeMultiSelectHighlight = (modelInstance: any) => {
+    try {
+      if ((modelInstance as any)._multiSelectMarker) {
+        mapView.Markers.remove((modelInstance as any)._multiSelectMarker);
+        delete (modelInstance as any)._multiSelectMarker;
+      }
+    } catch (e) { }
+  };
+
+  /** Update the multi-select floating toolbar visibility and count */
+  const updateMultiSelectToolbar = () => {
+    let toolbar = document.getElementById('multi-select-toolbar');
+    if (!toolbar) {
+      // Create toolbar
+      toolbar = document.createElement('div');
+      toolbar.id = 'multi-select-toolbar';
+      toolbar.innerHTML = `
+        <div style="display:flex; align-items:center; gap:12px; background:rgba(8,94,187,0.95); color:white; padding:10px 18px; border-radius:14px; box-shadow:0 8px 30px rgba(0,0,0,0.3); backdrop-filter:blur(12px); font-family:inherit; font-size:13px; font-weight:600; white-space:nowrap; user-select:none;">
+          <span id="multi-select-count" style="background:rgba(255,255,255,0.2); padding:4px 10px; border-radius:8px; min-width:20px; text-align:center;"></span>
+          <span>đã chọn</span>
+          <div style="width:1px; height:22px; background:rgba(255,255,255,0.3);"></div>
+          
+          <!-- Nudge controls -->
+          <div style="display:flex; gap:2px; background:rgba(0,0,0,0.2); border-radius:8px; padding:4px;">
+            <button id="btn-multi-move-up" title="Lên" style="background:none; border:none; color:white; cursor:pointer; border-radius:4px; padding:2px; display:flex; align-items:center; justify-content:center;" onmouseenter="this.style.background='rgba(255,255,255,0.2)'" onmouseleave="this.style.background='none'">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 15l-6-6-6 6"/></svg>
+            </button>
+            <button id="btn-multi-move-down" title="Xuống" style="background:none; border:none; color:white; cursor:pointer; border-radius:4px; padding:2px; display:flex; align-items:center; justify-content:center;" onmouseenter="this.style.background='rgba(255,255,255,0.2)'" onmouseleave="this.style.background='none'">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+            <button id="btn-multi-move-left" title="Trái" style="background:none; border:none; color:white; cursor:pointer; border-radius:4px; padding:2px; display:flex; align-items:center; justify-content:center;" onmouseenter="this.style.background='rgba(255,255,255,0.2)'" onmouseleave="this.style.background='none'">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+            </button>
+            <button id="btn-multi-move-right" title="Phải" style="background:none; border:none; color:white; cursor:pointer; border-radius:4px; padding:2px; display:flex; align-items:center; justify-content:center;" onmouseenter="this.style.background='rgba(255,255,255,0.2)'" onmouseleave="this.style.background='none'">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+            </button>
+          </div>
+
+          <div style="width:1px; height:22px; background:rgba(255,255,255,0.3);"></div>
+          
+          <button id="btn-multi-copy" title="Copy tất cả" style="background:rgba(255,255,255,0.15); border:none; color:white; padding:6px 12px; border-radius:8px; cursor:pointer; font-size:13px; font-weight:600; display:flex; align-items:center; gap:4px; transition:background 0.2s;"
+            onmouseenter="this.style.background='rgba(255,255,255,0.3)'" onmouseleave="this.style.background='rgba(255,255,255,0.15)'">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>
+            Copy
+          </button>
+          <button id="btn-multi-cut" title="Cut (di chuyển) tất cả" style="background:rgba(255,255,255,0.15); border:none; color:white; padding:6px 12px; border-radius:8px; cursor:pointer; font-size:13px; font-weight:600; display:flex; align-items:center; gap:4px; transition:background 0.2s;"
+            onmouseenter="this.style.background='rgba(255,255,255,0.3)'" onmouseleave="this.style.background='rgba(255,255,255,0.15)'">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>
+            Cut
+          </button>
+          <button id="btn-multi-delete" title="Xóa tất cả" style="background:rgba(220,50,50,0.8); border:none; color:white; padding:6px 12px; border-radius:8px; cursor:pointer; font-size:13px; font-weight:600; display:flex; align-items:center; gap:4px; transition:background 0.2s;"
+            onmouseenter="this.style.background='rgba(220,50,50,1)'" onmouseleave="this.style.background='rgba(220,50,50,0.8)'">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            Xóa
+          </button>
+          <div style="width:1px; height:22px; background:rgba(255,255,255,0.3);"></div>
+          <button id="btn-multi-deselect" title="Bỏ chọn tất cả" style="background:rgba(255,255,255,0.15); border:none; color:white; padding:6px 8px; border-radius:8px; cursor:pointer; display:flex; align-items:center; transition:background 0.2s;"
+            onmouseenter="this.style.background='rgba(255,255,255,0.3)'" onmouseleave="this.style.background='rgba(255,255,255,0.15)'">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+      `;
+      toolbar.style.cssText = 'position:fixed; bottom:30px; left:50%; transform:translateX(-50%); z-index:20000; display:none; animation:multiToolbarSlideUp 0.3s ease;';
+      document.body.appendChild(toolbar);
+
+      // Inject animation CSS
+      if (!document.getElementById('multi-select-styles')) {
+        const styleEl = document.createElement('style');
+        styleEl.id = 'multi-select-styles';
+        styleEl.textContent = `
+          @keyframes multiSelectPulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.8; }
+          }
+          @keyframes multiToolbarSlideUp {
+            from { opacity: 0; transform: translateX(-50%) translateY(20px); }
+            to { opacity: 1; transform: translateX(-50%) translateY(0); }
+          }
+          .multi-place-cursor {
+            position: fixed;
+            pointer-events: none;
+            z-index: 20001;
+            background: rgba(8, 94, 187, 0.9);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            white-space: nowrap;
+          }
+        `;
+        document.head.appendChild(styleEl);
+      }
+
+      // Attach event handlers
+      document.getElementById('btn-multi-copy')!.addEventListener('click', () => startMultiPlace('copy'));
+      document.getElementById('btn-multi-cut')!.addEventListener('click', () => startMultiPlace('move'));
+      document.getElementById('btn-multi-delete')!.addEventListener('click', handleMultiDelete);
+      document.getElementById('btn-multi-deselect')!.addEventListener('click', clearMultiSelect);
+
+      document.getElementById('btn-multi-move-up')!.addEventListener('click', () => nudgeMultiSelectModels('up'));
+      document.getElementById('btn-multi-move-down')!.addEventListener('click', () => nudgeMultiSelectModels('down'));
+      document.getElementById('btn-multi-move-left')!.addEventListener('click', () => nudgeMultiSelectModels('left'));
+      document.getElementById('btn-multi-move-right')!.addEventListener('click', () => nudgeMultiSelectModels('right'));
+    }
+
+    const count = multiSelectedModels.size;
+    const countEl = document.getElementById('multi-select-count');
+    if (countEl) countEl.textContent = count + '';
+    toolbar.style.display = count > 0 ? 'block' : 'none';
+  };
+
+  /** Nudge selected models in a direction */
+  const nudgeMultiSelectModels = async (direction: 'up' | 'down' | 'left' | 'right') => {
+    if (multiSelectedModels.size === 0) return;
+    const step = 0.000005; 
+    let dLat = 0, dLon = 0;
+    if (direction === 'up') dLat = step;
+    else if (direction === 'down') dLat = -step;
+    else if (direction === 'left') dLon = -step;
+    else if (direction === 'right') dLon = step;
+
+    for (const [uuid, data] of multiSelectedModels) {
+      const meta = data.meta;
+      const oldInstance = data.instance;
+      if (!oldInstance || !meta || !meta.originalCoordinate) continue;
+
+      const newLat = meta.originalCoordinate.latitude + dLat;
+      const newLon = meta.originalCoordinate.longitude + dLon;
+      // Get current floor from globals correctly or fallback
+      let currentFloor = mapView.currentFloor;
+      if (typeof mapData !== 'undefined' && typeof mapData.getByType === 'function') {
+        const floorData = mapData.getByType("floor").find((f: any) => f.id === (meta.floorId || mapView.currentFloor.id));
+        if (floorData) currentFloor = floorData;
+      }
+      
+      const newCoord = mapView.createCoordinate(newLat, newLon, currentFloor);
+      meta.originalCoordinate = newCoord;
+      
+      const newRot = meta.rotation || [0,0,0];
+      const newScale = meta.scale || [1,1,1];
+      const oldId = oldInstance.id;
+      const url = oldInstance.url || meta.url;
+
+      try {
+        const newInstance = await mapView.Models.add(newCoord, url, {
+          interactive: true,
+          scale: newScale,
+          rotation: newRot,
+          verticalOffset: meta.elevation || 0
+        });
+
+        // Attach properties
+        (newInstance as any).uuid = uuid;
+        (newInstance as any).url = url;
+        (newInstance as any).originalCoordinate = newCoord;
+
+        // Swap in Registry
+        MODEL_ID_REGISTRY.delete(oldId);
+        MODEL_ID_REGISTRY.set(newInstance.id, meta);
+        MODEL_INSTANCE_REGISTRY.set(uuid, newInstance);
+
+        // Update multi-select struct
+        data.instance = newInstance;
+
+        // Remove old after new is added
+        try {
+          mapView.Models.remove(oldInstance);
+          removeMultiSelectHighlight(oldInstance);
+        } catch(e){}
+
+        // Add highlight to new one
+        addMultiSelectHighlight(newInstance);
+
+        // Background save
+        // We do saveModelToAPI(meta) without await to avoid lag
+        if (typeof saveModelToAPI === 'function') {
+          saveModelToAPI(meta);
+        } else if (typeof debouncedSaveToAPI === 'function') {
+          (debouncedSaveToAPI as any)(meta);
+        }
+
+      } catch (e) {
+        console.error("Nudge failed for", uuid, e);
+      }
+    }
+  };
+
+  /** Start multi-model placement (copy or move) */
+  const startMultiPlace = (mode: 'copy' | 'move') => {
+    if (multiSelectedModels.size === 0) return;
+
+    multiPlaceMode = mode;
+    isMultiPlacingMode = true;
+    multiPlaceAnchorSet = false;
+
+    // Calculate center of all selected models (anchor point)
+    let sumLat = 0, sumLon = 0;
+    const models: { meta: any; instance: any }[] = [];
+    for (const [, data] of multiSelectedModels) {
+      const coord = data.meta.originalCoordinate;
+      if (coord) {
+        sumLat += coord.latitude;
+        sumLon += coord.longitude;
+        models.push(data);
+      }
+    }
+    const anchorLat = sumLat / models.length;
+    const anchorLon = sumLon / models.length;
+
+    // Build offset array relative to anchor
+    multiPlaceSourceModels = models.map(({ meta }) => ({
+      meta: { ...meta },
+      offsetLat: meta.originalCoordinate.latitude - anchorLat,
+      offsetLon: meta.originalCoordinate.longitude - anchorLon
+    }));
+
+    // If mode is 'move', hide originals
+    if (mode === 'move') {
+      for (const [, data] of multiSelectedModels) {
+        try {
+          if (typeof data.instance.hide === 'function') {
+            data.instance.hide();
+          } else {
+            mapView.Models.remove(data.instance);
+          }
+        } catch (e) { }
+      }
+    }
+
+    // Close controls panel, clear single selection
+    controlsPanel?.classList.add("hidden");
+    activeModelInstance = null;
+
+    // Add placing mode visual
+    document.body.classList.add("placing-mode");
+
+    // Create cursor hint
+    let cursorHint = document.getElementById('multi-place-cursor');
+    if (!cursorHint) {
+      cursorHint = document.createElement('div');
+      cursorHint.id = 'multi-place-cursor';
+      cursorHint.className = 'multi-place-cursor';
+      document.body.appendChild(cursorHint);
+    }
+    cursorHint.textContent = `📦 ${mode === 'copy' ? 'Copy' : 'Move'} ${multiPlaceSourceModels.length} model — Click để đặt`;
+    cursorHint.style.display = 'block';
+
+    // Track mouse for cursor hint
+    const mouseHandler = (e: MouseEvent) => {
+      if (cursorHint) {
+        cursorHint.style.left = (e.clientX + 20) + 'px';
+        cursorHint.style.top = (e.clientY + 20) + 'px';
+      }
+    };
+    document.addEventListener('mousemove', mouseHandler);
+    (window as any)._multiPlaceMouseHandler = mouseHandler;
+
+    // Listen for Escape to cancel
+    const escHandler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        cleanupMultiPlaceMode();
+        document.removeEventListener('keydown', escHandler);
+      }
+    };
+    document.addEventListener('keydown', escHandler);
+    (window as any)._multiPlaceEscHandler = escHandler;
+
+    console.log(`🔷 Multi-place started: ${mode} ${multiPlaceSourceModels.length} models`);
+  };
+
+  /** Cleanup multi-placement mode */
+  const cleanupMultiPlaceMode = () => {
+    isMultiPlacingMode = false;
+    multiPlaceSourceModels = [];
+    multiPlaceAnchorSet = false;
+    document.body.classList.remove("placing-mode");
+
+    // Remove cursor hint
+    const cursorHint = document.getElementById('multi-place-cursor');
+    if (cursorHint) {
+      cursorHint.style.display = 'none';
+    }
+
+    // Remove mouse handler
+    if ((window as any)._multiPlaceMouseHandler) {
+      document.removeEventListener('mousemove', (window as any)._multiPlaceMouseHandler);
+      (window as any)._multiPlaceMouseHandler = null;
+    }
+
+    // Remove esc handler
+    if ((window as any)._multiPlaceEscHandler) {
+      document.removeEventListener('keydown', (window as any)._multiPlaceEscHandler);
+      (window as any)._multiPlaceEscHandler = null;
+    }
+
+    // Remove preview models
+    for (const preview of multiPlacePreviewModels) {
+      try { mapView.Models.remove(preview); } catch (e) { }
+    }
+    multiPlacePreviewModels.length = 0;
+
+    clearMultiSelect();
+  };
+
+  /** Handle multi-delete */
+  const handleMultiDelete = () => {
+    if (multiSelectedModels.size === 0) return;
+    if (!confirm(`Bạn có chắc muốn xóa ${multiSelectedModels.size} model đã chọn?`)) return;
+
+    for (const [uuid, data] of multiSelectedModels) {
+      try {
+        const oldId = (data.instance as any).id;
+        // Remove marker
+        if ((data.instance as any).marker) {
+          mapView.Markers.remove((data.instance as any).marker);
+        }
+        // Remove highlight marker
+        removeMultiSelectHighlight(data.instance);
+        // Remove from map
+        mapView.Models.remove(data.instance);
+        // Remove from registries
+        MODEL_ID_REGISTRY.delete(oldId);
+        MODEL_INSTANCE_REGISTRY.delete(uuid);
+        // Delete from API
+        deleteModelFromAPI(uuid);
+      } catch (e) {
+        console.warn(`Failed to delete model ${uuid}:`, e);
+      }
+    }
+
+    console.log(`🗑 Multi-delete: Removed ${multiSelectedModels.size} models`);
+    multiSelectedModels.clear();
+    updateMultiSelectToolbar();
+    controlsPanel?.classList.add("hidden");
+    activeModelInstance = null;
+  };
 
   // ============================================
   // LOAD MODELS FROM API (Replaces localStorage)
