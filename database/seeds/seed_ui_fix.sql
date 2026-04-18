@@ -18,6 +18,7 @@ INSERT INTO Translation_UI (KeyCode, KeyType, VN, EN, ZH, JA, KO) VALUES ('route
 INSERT INTO Translation_UI (KeyCode, KeyType, VN, EN, ZH, JA, KO) VALUES ('route_found', 'badge', N'Đã tìm thấy đường đi', N'Route found', N'已找到路线', N'ルートが見つかりました', N'경로를 찾았습니다');
 INSERT INTO Translation_UI (KeyCode, KeyType, VN, EN, ZH, JA, KO) VALUES ('action_departure', 'action', N'Khởi hành', N'Departure', N'出发', N'出発', N'출발');
 INSERT INTO Translation_UI (KeyCode, KeyType, VN, EN, ZH, JA, KO) VALUES ('action_arrival', 'action', N'Kết thúc', N'Arrival', N'到达', N'到着', N'도착');
+INSERT INTO Translation_UI (KeyCode, KeyType, VN, EN, ZH, JA, KO) VALUES ('action_stopover', 'action', N'Điểm dừng', N'Stopover', N'经停点', N'経由地', N'경유지');
 INSERT INTO Translation_UI (KeyCode, KeyType, VN, EN, ZH, JA, KO) VALUES ('action_continue', 'action', N'Tiếp tục', N'Continue', N'继续', N'直進', N'계속');
 INSERT INTO Translation_UI (KeyCode, KeyType, VN, EN, ZH, JA, KO) VALUES ('action_go_straight', 'action', N'Đi thẳng', N'Go straight', N'直行', N'直進', N'직진');
 INSERT INTO Translation_UI (KeyCode, KeyType, VN, EN, ZH, JA, KO) VALUES ('action_turn_left', 'action', N'Rẽ trái', N'Turn left', N'左转', N'左折', N'좌회전');

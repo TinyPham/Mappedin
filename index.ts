@@ -898,7 +898,7 @@ async function init() {
   let multiPlaceMode: 'copy' | 'move' = 'copy';
   const multiPlacePreviewModels: any[] = []; // Preview 3D ghosts for multi-place
   let multiPlaceAnchorSet = false;
-  
+
   // Track shift key globally since SDK might not pass originalEvent reliably
   let isShiftPressed = false;
   document.addEventListener('keydown', (e) => {
@@ -4977,7 +4977,8 @@ async function init() {
               const lastInst = insts[insts.length - 1];
               if (lastInst && lastInst.action) {
                 lastInst.action.type = 'stopover';
-                lastInst.instruction = `Điểm dừng: ${TranslationManager.getName(dest)}`;
+                const stopLabel = TranslationManager.t('action_stopover', 'Điểm dừng');
+                lastInst.instruction = `${stopLabel}: ${TranslationManager.getName(dest)}`;
               }
             }
             if (i > 0 && insts.length > 0) {
@@ -5656,7 +5657,7 @@ async function init() {
     // Show instruction prompt
     const statusEl = document.getElementById("wayfinding-status");
     if (statusEl) {
-      statusEl.innerHTML = `<span style="color:#085ebb">${TranslationManager.t('select_on_map', 'Vui lòng chọn trên bản đồ...')}</span>`;
+      statusEl.innerHTML = '';
     }
     updateWayfindingUI();
 
@@ -9103,7 +9104,7 @@ async function init() {
   /** Nudge selected models in a direction */
   const nudgeMultiSelectModels = async (direction: 'up' | 'down' | 'left' | 'right') => {
     if (multiSelectedModels.size === 0) return;
-    const step = 0.000005; 
+    const step = 0.000005;
     let dLat = 0, dLon = 0;
     if (direction === 'up') dLat = step;
     else if (direction === 'down') dLat = -step;
@@ -9123,12 +9124,12 @@ async function init() {
         const floorData = mapData.getByType("floor").find((f: any) => f.id === (meta.floorId || mapView.currentFloor.id));
         if (floorData) currentFloor = floorData;
       }
-      
+
       const newCoord = mapView.createCoordinate(newLat, newLon, currentFloor);
       meta.originalCoordinate = newCoord;
-      
-      const newRot = meta.rotation || [0,0,0];
-      const newScale = meta.scale || [1,1,1];
+
+      const newRot = meta.rotation || [0, 0, 0];
+      const newScale = meta.scale || [1, 1, 1];
       const oldId = oldInstance.id;
       const url = oldInstance.url || meta.url;
 
@@ -9157,7 +9158,7 @@ async function init() {
         try {
           mapView.Models.remove(oldInstance);
           removeMultiSelectHighlight(oldInstance);
-        } catch(e){}
+        } catch (e) { }
 
         // Add highlight to new one
         addMultiSelectHighlight(newInstance);
