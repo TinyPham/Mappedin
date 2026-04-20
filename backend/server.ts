@@ -754,7 +754,7 @@ app.post('/api/areas/sync', async (req, res) => {
                         INSERT INTO AreaList (MappedinID, Name)
                         VALUES (@MID, ISNULL(@Name, @MID))
                     ELSE
-                        UPDATE AreaList SET Name = ISNULL(@Name, Name), LastSync = GETDATE()
+                        UPDATE AreaList SET Name = ISNULL(@Name, Name)
                         WHERE MappedinID = @MID
                 `);
         }

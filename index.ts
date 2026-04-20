@@ -2349,21 +2349,13 @@ async function init() {
 
     const threshold = (window as any).CONNECTION_MARKER_MIN_ZOOM ?? DEFAULT_CONNECTION_MARKER_MIN_ZOOM;
     const shouldShow = z >= threshold;
-    // Bucket zoom để tránh rerender liên tục
-    const bucket = Math.round(z / 0.15);
+    // Bucket zoom removed to prevent WebGL crash due to continuous destruction/creation of DOM markers
 
     if (shouldShow !== connectionMarkersVisible) {
       connectionMarkersVisible = shouldShow;
-      lastConnectionZoomBucket = bucket;
       if (shouldShow) renderConnectionOverlaysForCurrentFloor();
       else clearConnectionOverlays();
       return;
-    }
-
-    // Rerender khi zoom bucket thay đổi để icon scale và label xuất hiện
-    if (connectionMarkersVisible && bucket !== lastConnectionZoomBucket) {
-      lastConnectionZoomBucket = bucket;
-      renderConnectionOverlaysForCurrentFloor();
     }
   };
 
@@ -4478,6 +4470,11 @@ async function init() {
     // Luôn cập nhật Marker Overview (Airport name)
     if (type === "overview") {
       checkZoomVisibility();
+    }
+
+    // MODEL STREAMING: Tải/Hủy models 3D theo khoảng cách camera
+    if (typeof (window as any).updateModelStreaming === 'function') {
+      (window as any).updateModelStreaming();
     }
   });
 
@@ -9111,6 +9108,7 @@ async function init() {
     }
   };
 
+
   /** Start multi-model placement (copy or move) */
   const startMultiPlace = (mode: 'copy' | 'move') => {
     if (multiSelectedModels.size === 0) return;
@@ -9298,105 +9296,191 @@ async function init() {
   };
 
   // ============================================
-  // LOAD MODELS CHO 1 TẦNG CỤ THỂ (Batch loading)
+  // PROFESSIONAL MODEL STREAMING ARCHITECTURE
   // ============================================
-  const _loadModelsForFloor = async (floorId: string) => {
-    if (_loadedFloors.has(floorId)) return;
+  
+  /**
+   * Tải một model đơn lẻ vào Map
+   */
+  const _addSingleModelToMap = async (m: any) => {
+    if (MODEL_INSTANCE_REGISTRY.has(m.uuid)) return;
 
-    const floorModels = _allModelMetadata.filter((m: any) => {
-      if (isViewOnly) {
-        const shouldShow = m.displayWebsite == 1 || m.displayWebsite === true;
-        if (!shouldShow) return false;
+    const lat = Number(m.latitude);
+    const lon = Number(m.longitude);
+    if (isNaN(lat) || isNaN(lon)) return;
+
+    const floors = mapData.getByType("floor");
+    let targetFloor = floors.find((f: any) => f.id === m.floorId);
+    targetFloor = targetFloor || mapView.currentFloor;
+    if (!targetFloor) return;
+
+    try {
+      const coord = mapView.createCoordinate(lat, lon, targetFloor);
+      if (!coord) return;
+
+      // Xử lý Scale/Rotation
+      let s = m.scale;
+      if (typeof s === 'string') try { s = JSON.parse(s); } catch (e) { }
+      let r = m.rotation;
+      if (typeof r === 'string') try { r = JSON.parse(r); } catch (e) { }
+
+      const modelAssetMap: Record<string, any> = { "car": car, "three_palm": tree_palm, "tree_palm": tree_palm };
+      let finalUrl = m.url;
+      if (!finalUrl) return;
+
+      if (modelAssetMap[finalUrl]) {
+        finalUrl = modelAssetMap[finalUrl];
+      } else if (finalUrl.startsWith("./")) {
+        finalUrl = finalUrl.replace("./", `${SERVER_URL}/`);
+      } else if (!finalUrl.startsWith("http")) {
+        finalUrl = `${SERVER_URL}/${finalUrl}`;
       }
-      return m.floorId === floorId;
-    });
 
-    if (floorModels.length === 0) {
-      _loadedFloors.add(floorId);
+      const model = await mapView.Models.add(coord, finalUrl, {
+        interactive: true,
+        scale: s || [1, 1, 1],
+        rotation: r || [0, 0, 0],
+        verticalOffset: Number(m.elevation) || 0
+      });
+
+      (model as any).url = finalUrl;
+      (model as any).uuid = m.uuid;
+      (model as any).originalCoordinate = coord;
+
+      MODEL_ID_REGISTRY.set(model.id, {
+        url: m.url, uuid: m.uuid, name: m.name, desc: m.desc,
+        rotation: r, scale: s,
+        originalCoordinate: coord,
+        floorId: targetFloor?.id || m.floorId,
+        displayWebsite: m.displayWebsite,
+        thumb: m.thumb || m.thumbnail,
+        elevation: m.elevation || 0
+      });
+
+      MODEL_INSTANCE_REGISTRY.set(m.uuid, model);
+      return model;
+    } catch (err) {
+      console.error(`❌ [STREAMING] Failed to load model ${m.uuid}:`, err);
+    }
+  };
+
+  /**
+   * Cập nhật hiển thị models dựa trên khoảng cách Camera (Streaming)
+   * Thuật toán tải động giúp hiển thị được cả 166 models mà không sập WebGL
+   */
+  /**
+   * Cập nhật hiển thị models dựa trên khoảng cách Camera (Streaming)
+   * Thuật toán tải động giúp hiển thị được cả 166 models mà không sập WebGL
+   */
+  const updateModelStreaming = debounce(async () => {
+    const currentFloor = mapView.currentFloor;
+    if (!currentFloor) return;
+
+    const floorName = (currentFloor.name || "").toLowerCase();
+    const isOverview = floorName.includes("overview") || floorName.includes("tổng quan") || currentFloor.id === overviewFloor?.id;
+
+    if (isOverview) {
+      // console.log("🔭 [STREAMING] Skipping overview floor:", currentFloor?.name);
       return;
     }
 
-    console.log(`🚀 Loading ${floorModels.length} models for floor: ${floorId}`);
-
-    const floors = mapData.getByType("floor");
-    const BATCH_SIZE = 3; // Load 3 model mỗi batch
-    const BATCH_DELAY = 200; // Delay 200ms
-
-    for (let i = 0; i < floorModels.length; i += BATCH_SIZE) {
-      const batch = floorModels.slice(i, i + BATCH_SIZE);
-
-      const batchPromises = batch.map(async (m: any) => {
-        if (MODEL_INSTANCE_REGISTRY.has(m.uuid)) return;
-
-        // ÉP KIỂU NUMBER NGHIÊM NGẶT
-        const lat = Number(m.latitude);
-        const lon = Number(m.longitude);
-        if (isNaN(lat) || isNaN(lon)) return;
-
-        let targetFloor = floors.find((f: any) => f.id === m.floorId);
-        if (!targetFloor && m.floorId === "m_d4b5674c0b15e099") {
-          targetFloor = floors.find((f: any) => (f.name || "").toLowerCase().includes("tầng 2"));
-        }
-        targetFloor = targetFloor || mapView.currentFloor;
-        if (!targetFloor) return;
-
-        try {
-          const coord = mapView.createCoordinate(lat, lon, targetFloor);
-          if (!coord) return;
-
-          // Xử lý Scale/Rotation (nếu là string thì parse)
-          let s = m.scale;
-          if (typeof s === 'string') try { s = JSON.parse(s); } catch (e) { }
-          let r = m.rotation;
-          if (typeof r === 'string') try { r = JSON.parse(r); } catch (e) { }
-
-          const modelAssetMap: Record<string, any> = { "car": car, "three_palm": tree_palm, "tree_palm": tree_palm };
-          let finalUrl = m.url;
-          if (!finalUrl) return;
-
-          if (modelAssetMap[finalUrl]) {
-            finalUrl = modelAssetMap[finalUrl];
-          } else if (finalUrl.startsWith("./")) {
-            finalUrl = finalUrl.replace("./", `${SERVER_URL}/`);
-          } else if (!finalUrl.startsWith("http")) {
-            finalUrl = `${SERVER_URL}/${finalUrl}`;
-          }
-
-          const model = await mapView.Models.add(coord, finalUrl, {
-            interactive: true,
-            scale: s || [1, 1, 1],
-            rotation: r || [0, 0, 0],
-            verticalOffset: Number(m.elevation) || 0
-          });
-
-          (model as any).url = finalUrl;
-          (model as any).uuid = m.uuid;
-          (model as any).originalCoordinate = coord;
-
-          MODEL_ID_REGISTRY.set(model.id, {
-            url: m.url, uuid: m.uuid, name: m.name, desc: m.desc,
-            rotation: r, scale: s,
-            originalCoordinate: coord,
-            floorId: targetFloor?.id || m.floorId,
-            displayWebsite: m.displayWebsite,
-            thumb: m.thumb || m.thumbnail,
-            elevation: m.elevation || 0
-          });
-
-          MODEL_INSTANCE_REGISTRY.set(m.uuid, model);
-          console.log(`✅ Loaded model: ${m.name || m.uuid} on ${targetFloor.name}`);
-        } catch (modelError) {
-          console.error(`❌ Failed to add model ${m.uuid}:`, modelError);
-        }
-      });
-
-      await Promise.all(batchPromises);
-      await new Promise(resolve => setTimeout(resolve, BATCH_DELAY));
+    const focalPoint = (mapView.Camera as any).center;
+    if (!focalPoint) {
+      console.warn("⚠️ [STREAMING] No focal point found center.");
+      return;
     }
 
-    _loadedFloors.add(floorId);
-    showOverviewModelsOnAllFloors();
+    // CONFIGURATION (Điều chỉnh để ẩn hiện cực nhạy khi zoom/di chuyển)
+    const LOAD_RADIUS = 100;   // Chỉ load trong 100m quanh Camera
+    const UNLOAD_RADIUS = 150; // Ngoài 150m là gỡ bỏ ngay để nhẹ GPU
+    const MAX_CONCURRENT_MODELS = 100; // Tăng lên 100 để đủ cho khu vực nhìn thấy
+
+    // 1. Tự động dọn dẹp models ở các floor khác (Dọn rác VRAM triệt để)
+    for (const [uuid, instance] of MODEL_INSTANCE_REGISTRY.entries()) {
+      const meta = [...MODEL_ID_REGISTRY.values()].find(meta => meta.uuid === uuid);
+      if (!meta || meta.floorId !== currentFloor.id) {
+        try {
+          mapView.Models.remove(instance);
+          MODEL_INSTANCE_REGISTRY.delete(uuid);
+        } catch (e) { }
+      }
+    }
+
+    // 2. Lấy toàn bộ models của floor hiện tại
+    const floorModels = _allModelMetadata.filter((m: any) => m.floorId === currentFloor.id);
+    
+    // Áp dụng ViewOnly filter (Tạm thời bỏ qua để debug theo yêu cầu)
+    const visibleModels = floorModels.filter((m: any) => {
+      return true; // Bypass filter
+    });
+
+    if (visibleModels.length === 0) return;
+
+    const modelsToLoad: any[] = [];
+    const modelsToUnload: string[] = [];
+
+    visibleModels.forEach((m: any) => {
+      const lat = Number(m.latitude);
+      const lon = Number(m.longitude);
+      if (isNaN(lat) || isNaN(lon)) return;
+
+      const dist = calculateDistance(focalPoint, { latitude: lat, longitude: lon });
+      const isLoaded = MODEL_INSTANCE_REGISTRY.has(m.uuid);
+
+      if (dist <= LOAD_RADIUS) {
+        if (!isLoaded) modelsToLoad.push(m);
+      } else if (dist > UNLOAD_RADIUS) {
+        if (isLoaded) modelsToUnload.push(m.uuid);
+      }
+    });
+
+    // 3. Thực hiện Unload NGAY LẬP TỨC để giải phóng GPU
+    modelsToUnload.forEach(uuid => {
+      const instance = MODEL_INSTANCE_REGISTRY.get(uuid);
+      if (instance) {
+        try {
+          mapView.Models.remove(instance);
+          MODEL_INSTANCE_REGISTRY.delete(uuid);
+        } catch (e) { }
+      }
+    });
+
+    if (modelsToLoad.length > 0 || modelsToUnload.length > 0) {
+       console.log(`📡 [STREAMING] Quota: ${MODEL_INSTANCE_REGISTRY.size}/${MAX_CONCURRENT_MODELS} | Load: ${modelsToLoad.length} | Unload: ${modelsToUnload.length}`);
+    }
+
+    // 4. Thực hiện Load (nếu còn quota)
+    if (modelsToLoad.length > 0) {
+      // Ưu tiên tải model gần Camera nhất
+      modelsToLoad.sort((a, b) => {
+        const distA = calculateDistance(focalPoint, { latitude: Number(a.latitude), longitude: Number(a.longitude) });
+        const distB = calculateDistance(focalPoint, { latitude: Number(b.latitude), longitude: Number(b.longitude) });
+        return distA - distB;
+      });
+
+      const BATCH_SIZE = 3; 
+      for (let i = 0; i < modelsToLoad.length; i += BATCH_SIZE) {
+        if (MODEL_INSTANCE_REGISTRY.size >= MAX_CONCURRENT_MODELS) {
+          console.warn(`🛑 [STREAMING] VRAM Quota reached (${MAX_CONCURRENT_MODELS})`);
+          break;
+        }
+        const batch = modelsToLoad.slice(i, i + BATCH_SIZE);
+        await Promise.all(batch.map(m => _addSingleModelToMap(m)));
+        await new Promise(r => setTimeout(r, 50)); 
+      }
+    }
+  }, 300);
+
+  // Expose globally
+  (window as any).updateModelStreaming = updateModelStreaming;
+
+  // Giữ lại tên hàm cũ để các nơi khác không lỗi, nhưng chuyển sang logic streaming
+  const _loadModelsForFloor = async (floorId: string) => {
+    console.log(`🌐 [STREAMING] Activating model stream for floor: ${floorId}`);
+    _loadedFloors.add(floorId); 
+    updateModelStreaming();
   };
+
 
   // ============================================
   // OVERVIEW MODELS PERSISTENCE ACROSS FLOORS
