@@ -2349,13 +2349,21 @@ async function init() {
 
     const threshold = (window as any).CONNECTION_MARKER_MIN_ZOOM ?? DEFAULT_CONNECTION_MARKER_MIN_ZOOM;
     const shouldShow = z >= threshold;
-    // Bucket zoom removed to prevent WebGL crash due to continuous destruction/creation of DOM markers
+    // Bucket zoom để tránh rerender liên tục
+    const bucket = Math.round(z / 0.15);
 
     if (shouldShow !== connectionMarkersVisible) {
       connectionMarkersVisible = shouldShow;
+      lastConnectionZoomBucket = bucket;
       if (shouldShow) renderConnectionOverlaysForCurrentFloor();
       else clearConnectionOverlays();
       return;
+    }
+
+    // Rerender khi zoom bucket thay đổi để icon scale và label xuất hiện
+    if (connectionMarkersVisible && bucket !== lastConnectionZoomBucket) {
+      lastConnectionZoomBucket = bucket;
+      renderConnectionOverlaysForCurrentFloor();
     }
   };
 
@@ -3614,10 +3622,12 @@ async function init() {
       updateUIVisibility();
 
       // LAZY LOADING: Load models cho tầng mới nếu chưa load
-      if (_allModelMetadata.length > 0 && !_loadedFloors.has(id)) {
-        console.log(`🔄 Lazy loading models for floor: ${id}`);
+      if (_allModelMetadata.length > 0) {
         _loadModelsForFloor(id);
       }
+      
+      // Hook camera-change cho streaming
+      mapView.on("camera-change", (window as any).updateModelStreaming);
 
       // BƯỚC 5: Comment vô hiệu hóa hàm tạo Clone Model 3D (Shadow copies)
       // Hàm này đang gây bão Error 404 do file GLB không tồn tại làm đứt mạng & kẹt GPU!
@@ -4470,11 +4480,6 @@ async function init() {
     // Luôn cập nhật Marker Overview (Airport name)
     if (type === "overview") {
       checkZoomVisibility();
-    }
-
-    // MODEL STREAMING: Tải/Hủy models 3D theo khoảng cách camera
-    if (typeof (window as any).updateModelStreaming === 'function') {
-      (window as any).updateModelStreaming();
     }
   });
 
@@ -9032,6 +9037,159 @@ async function init() {
     toolbar.style.display = count > 0 ? 'block' : 'none';
   };
 
+  // ============================================
+  // PROFESSIONAL MODEL STREAMING ARCHITECTURE
+  // ============================================
+  
+  /**
+   * Entry point để kích hoạt stream models cho một tầng
+   */
+  const _loadModelsForFloor = async (floorId: string) => {
+    console.log(`🌐 [STREAMING] Activating model stream for floor: ${floorId}`);
+    _loadedFloors.add(floorId); 
+    (window as any).updateModelStreaming(); // Kích hoạt ngay lập tức
+  };
+
+  /**
+   * Helper để load từng model vào Map (Dùng nội bộ cho Streaming)
+   */
+  const _addSingleModelToMap = async (m: any) => {
+    if (MODEL_INSTANCE_REGISTRY.has(m.uuid)) return;
+
+    const lat = Number(m.latitude);
+    const lon = Number(m.longitude);
+    if (isNaN(lat) || isNaN(lon)) return;
+
+    let targetFloor = allFloors.find((f: any) => f.id === m.floorId);
+    if (!targetFloor) return;
+
+    try {
+      const coord = mapView.createCoordinate(lat, lon, targetFloor);
+      if (!coord) return;
+
+      const modelAssetMap: Record<string, any> = { "car": car, "tree_palm": tree_palm };
+      let finalUrl = m.url;
+      if (!finalUrl) return;
+
+      if (modelAssetMap[finalUrl]) {
+        finalUrl = modelAssetMap[finalUrl];
+      } else if (finalUrl.startsWith("./")) {
+        finalUrl = finalUrl.replace("./", `${SERVER_URL}/`);
+      } else if (!finalUrl.startsWith("http")) {
+        finalUrl = `${SERVER_URL}${finalUrl.startsWith("/") ? "" : "/"}${finalUrl}`;
+      }
+
+      const model = await mapView.Models.add(coord, finalUrl, {
+        rotation: typeof m.rotation === 'string' ? JSON.parse(m.rotation) : m.rotation,
+        scale: typeof m.scale === 'string' ? JSON.parse(m.scale) : m.scale,
+        interactive: !isViewOnly
+      });
+
+      MODEL_INSTANCE_REGISTRY.set(m.uuid, model);
+      return model;
+    } catch (err) {
+      console.error(`❌ [STREAMING] Failed to load model ${m.uuid}:`, err);
+    }
+  };
+
+  /**
+   * Cập nhật hiển thị models dựa trên khoảng cách Camera (Streaming)
+   * Thuật toán tải động giúp hiển thị được cả 166 models mà không sập WebGL
+   */
+  const updateModelStreaming = debounce(async () => {
+    const currentFloor = mapView.currentFloor;
+    if (!currentFloor) return;
+
+    const floorName = (currentFloor.name || "").toLowerCase();
+    const isOverview = floorName.includes("overview") || floorName.includes("tổng quan") || currentFloor.id === overviewFloor?.id;
+
+    if (isOverview) return;
+
+    const focalPoint = (mapView.Camera as any).center;
+    if (!focalPoint) return;
+
+    // CONFIGURATION (Điều chỉnh cực nhạy khi zoom/di chuyển)
+    const LOAD_RADIUS = 100;   // Chỉ load trong 100m quanh Camera khi zoom gần
+    const UNLOAD_RADIUS = 150; // Ngoài 150m hoăc khi zoom xa ra là gỡ bỏ ngay để nhẹ GPU
+    const MAX_CONCURRENT_MODELS = 120; // Quota an toàn cho VRAM
+
+    // Xác định tầng dưới để giữ Thang máy/Thang cuốn liên thông
+    const sortedFloors = [...mapData.getByType("floor")].sort((a, b) => (a as any).elevation - (b as any).elevation);
+    const currentIndex = sortedFloors.findIndex(f => f.id === currentFloor.id);
+    const floorBelowId = currentIndex > 0 ? sortedFloors[currentIndex-1].id : null;
+
+    const isThang = (name: string) => {
+        const s = (name || "").toLowerCase();
+        return s.includes("thang máy") || s.includes("thang cuốn") || s.includes("thang bộ") || s.includes("thang ");
+    };
+
+    // 1. Tự động dọn dẹp các model xa hoặc sai tầng
+    for (const [uuid, instance] of MODEL_INSTANCE_REGISTRY.entries()) {
+      const meta = [...MODEL_ID_REGISTRY.values()].find(meta => meta.uuid === uuid);
+      if (!meta) {
+        try { mapView.Models.remove(instance); MODEL_INSTANCE_REGISTRY.delete(uuid); } catch(e){}
+        continue;
+      }
+
+      const isCurrentFloor = meta.floorId === currentFloor.id;
+      const isVerticalBelow = floorBelowId && meta.floorId === floorBelowId && isThang(meta.name);
+
+      if (!isCurrentFloor && !isVerticalBelow) {
+        try { mapView.Models.remove(instance); MODEL_INSTANCE_REGISTRY.delete(uuid); } catch(e){}
+      }
+    }
+
+    // 2. Lọc danh sách models tiềm năng (Tầng hiện tại + Thang tầng dưới)
+    const candidateModels = _allModelMetadata.filter((m: any) => {
+        const isCurrent = m.floorId === currentFloor.id;
+        const isVerticalBelow = floorBelowId && m.floorId === floorBelowId && isThang(m.name);
+        return isCurrent || isVerticalBelow;
+    });
+
+    const modelsToLoad: any[] = [];
+    const modelsToUnload: string[] = [];
+
+    candidateModels.forEach((m: any) => {
+      const dist = calculateDistance(focalPoint, { latitude: Number(m.latitude), longitude: Number(m.longitude) });
+      const isLoaded = MODEL_INSTANCE_REGISTRY.has(m.uuid);
+
+      if (dist <= LOAD_RADIUS) {
+        if (!isLoaded) modelsToLoad.push(m);
+      } else if (dist > UNLOAD_RADIUS) {
+        const isVerticalBelow = floorBelowId && m.floorId === floorBelowId && isThang(m.name);
+        if (isLoaded && !isVerticalBelow) modelsToUnload.push(m.uuid);
+      }
+    });
+
+    // 3. Thực hiện Unload ngay để giải phóng GPU
+    modelsToUnload.forEach(uuid => {
+      const instance = MODEL_INSTANCE_REGISTRY.get(uuid);
+      if (instance) {
+        try { mapView.Models.remove(instance); MODEL_INSTANCE_REGISTRY.delete(uuid); } catch(e){}
+      }
+    });
+
+    // 4. Thực hiện Load mới theo thứ tự ưu tiên gần nhất
+    if (modelsToLoad.length > 0) {
+      modelsToLoad.sort((a, b) => {
+        const dA = calculateDistance(focalPoint, { latitude: Number(a.latitude), longitude: Number(a.longitude) });
+        const dB = calculateDistance(focalPoint, { latitude: Number(b.latitude), longitude: Number(b.longitude) });
+        return dA - dB;
+      });
+
+      const BATCH_SIZE = 3; 
+      for (let i = 0; i < modelsToLoad.length; i += BATCH_SIZE) {
+        if (MODEL_INSTANCE_REGISTRY.size >= MAX_CONCURRENT_MODELS) break;
+        const batch = modelsToLoad.slice(i, i + BATCH_SIZE);
+        await Promise.all(batch.map(m => _addSingleModelToMap(m)));
+        await new Promise(r => setTimeout(r, 50)); 
+      }
+    }
+  }, 300);
+
+  (window as any).updateModelStreaming = updateModelStreaming;
+  mapView.on("camera-change", updateModelStreaming);
+
   /** Nudge selected models in a direction */
   const nudgeMultiSelectModels = async (direction: 'up' | 'down' | 'left' | 'right') => {
     if (multiSelectedModels.size === 0) return;
@@ -9107,7 +9265,6 @@ async function init() {
       }
     }
   };
-
 
   /** Start multi-model placement (copy or move) */
   const startMultiPlace = (mode: 'copy' | 'move') => {
@@ -9293,192 +9450,6 @@ async function init() {
     } catch (e) {
       console.error("❌ Error loading from API:", e);
     }
-  };
-
-  // ============================================
-  // PROFESSIONAL MODEL STREAMING ARCHITECTURE
-  // ============================================
-  
-  /**
-   * Tải một model đơn lẻ vào Map
-   */
-  const _addSingleModelToMap = async (m: any) => {
-    if (MODEL_INSTANCE_REGISTRY.has(m.uuid)) return;
-
-    const lat = Number(m.latitude);
-    const lon = Number(m.longitude);
-    if (isNaN(lat) || isNaN(lon)) return;
-
-    const floors = mapData.getByType("floor");
-    let targetFloor = floors.find((f: any) => f.id === m.floorId);
-    targetFloor = targetFloor || mapView.currentFloor;
-    if (!targetFloor) return;
-
-    try {
-      const coord = mapView.createCoordinate(lat, lon, targetFloor);
-      if (!coord) return;
-
-      // Xử lý Scale/Rotation
-      let s = m.scale;
-      if (typeof s === 'string') try { s = JSON.parse(s); } catch (e) { }
-      let r = m.rotation;
-      if (typeof r === 'string') try { r = JSON.parse(r); } catch (e) { }
-
-      const modelAssetMap: Record<string, any> = { "car": car, "three_palm": tree_palm, "tree_palm": tree_palm };
-      let finalUrl = m.url;
-      if (!finalUrl) return;
-
-      if (modelAssetMap[finalUrl]) {
-        finalUrl = modelAssetMap[finalUrl];
-      } else if (finalUrl.startsWith("./")) {
-        finalUrl = finalUrl.replace("./", `${SERVER_URL}/`);
-      } else if (!finalUrl.startsWith("http")) {
-        finalUrl = `${SERVER_URL}/${finalUrl}`;
-      }
-
-      const model = await mapView.Models.add(coord, finalUrl, {
-        interactive: true,
-        scale: s || [1, 1, 1],
-        rotation: r || [0, 0, 0],
-        verticalOffset: Number(m.elevation) || 0
-      });
-
-      (model as any).url = finalUrl;
-      (model as any).uuid = m.uuid;
-      (model as any).originalCoordinate = coord;
-
-      MODEL_ID_REGISTRY.set(model.id, {
-        url: m.url, uuid: m.uuid, name: m.name, desc: m.desc,
-        rotation: r, scale: s,
-        originalCoordinate: coord,
-        floorId: targetFloor?.id || m.floorId,
-        displayWebsite: m.displayWebsite,
-        thumb: m.thumb || m.thumbnail,
-        elevation: m.elevation || 0
-      });
-
-      MODEL_INSTANCE_REGISTRY.set(m.uuid, model);
-      return model;
-    } catch (err) {
-      console.error(`❌ [STREAMING] Failed to load model ${m.uuid}:`, err);
-    }
-  };
-
-  /**
-   * Cập nhật hiển thị models dựa trên khoảng cách Camera (Streaming)
-   * Thuật toán tải động giúp hiển thị được cả 166 models mà không sập WebGL
-   */
-  /**
-   * Cập nhật hiển thị models dựa trên khoảng cách Camera (Streaming)
-   * Thuật toán tải động giúp hiển thị được cả 166 models mà không sập WebGL
-   */
-  const updateModelStreaming = debounce(async () => {
-    const currentFloor = mapView.currentFloor;
-    if (!currentFloor) return;
-
-    const floorName = (currentFloor.name || "").toLowerCase();
-    const isOverview = floorName.includes("overview") || floorName.includes("tổng quan") || currentFloor.id === overviewFloor?.id;
-
-    if (isOverview) {
-      // console.log("🔭 [STREAMING] Skipping overview floor:", currentFloor?.name);
-      return;
-    }
-
-    const focalPoint = (mapView.Camera as any).center;
-    if (!focalPoint) {
-      console.warn("⚠️ [STREAMING] No focal point found center.");
-      return;
-    }
-
-    // CONFIGURATION (Điều chỉnh để ẩn hiện cực nhạy khi zoom/di chuyển)
-    const LOAD_RADIUS = 100;   // Chỉ load trong 100m quanh Camera
-    const UNLOAD_RADIUS = 150; // Ngoài 150m là gỡ bỏ ngay để nhẹ GPU
-    const MAX_CONCURRENT_MODELS = 100; // Tăng lên 100 để đủ cho khu vực nhìn thấy
-
-    // 1. Tự động dọn dẹp models ở các floor khác (Dọn rác VRAM triệt để)
-    for (const [uuid, instance] of MODEL_INSTANCE_REGISTRY.entries()) {
-      const meta = [...MODEL_ID_REGISTRY.values()].find(meta => meta.uuid === uuid);
-      if (!meta || meta.floorId !== currentFloor.id) {
-        try {
-          mapView.Models.remove(instance);
-          MODEL_INSTANCE_REGISTRY.delete(uuid);
-        } catch (e) { }
-      }
-    }
-
-    // 2. Lấy toàn bộ models của floor hiện tại
-    const floorModels = _allModelMetadata.filter((m: any) => m.floorId === currentFloor.id);
-    
-    // Áp dụng ViewOnly filter (Tạm thời bỏ qua để debug theo yêu cầu)
-    const visibleModels = floorModels.filter((m: any) => {
-      return true; // Bypass filter
-    });
-
-    if (visibleModels.length === 0) return;
-
-    const modelsToLoad: any[] = [];
-    const modelsToUnload: string[] = [];
-
-    visibleModels.forEach((m: any) => {
-      const lat = Number(m.latitude);
-      const lon = Number(m.longitude);
-      if (isNaN(lat) || isNaN(lon)) return;
-
-      const dist = calculateDistance(focalPoint, { latitude: lat, longitude: lon });
-      const isLoaded = MODEL_INSTANCE_REGISTRY.has(m.uuid);
-
-      if (dist <= LOAD_RADIUS) {
-        if (!isLoaded) modelsToLoad.push(m);
-      } else if (dist > UNLOAD_RADIUS) {
-        if (isLoaded) modelsToUnload.push(m.uuid);
-      }
-    });
-
-    // 3. Thực hiện Unload NGAY LẬP TỨC để giải phóng GPU
-    modelsToUnload.forEach(uuid => {
-      const instance = MODEL_INSTANCE_REGISTRY.get(uuid);
-      if (instance) {
-        try {
-          mapView.Models.remove(instance);
-          MODEL_INSTANCE_REGISTRY.delete(uuid);
-        } catch (e) { }
-      }
-    });
-
-    if (modelsToLoad.length > 0 || modelsToUnload.length > 0) {
-       console.log(`📡 [STREAMING] Quota: ${MODEL_INSTANCE_REGISTRY.size}/${MAX_CONCURRENT_MODELS} | Load: ${modelsToLoad.length} | Unload: ${modelsToUnload.length}`);
-    }
-
-    // 4. Thực hiện Load (nếu còn quota)
-    if (modelsToLoad.length > 0) {
-      // Ưu tiên tải model gần Camera nhất
-      modelsToLoad.sort((a, b) => {
-        const distA = calculateDistance(focalPoint, { latitude: Number(a.latitude), longitude: Number(a.longitude) });
-        const distB = calculateDistance(focalPoint, { latitude: Number(b.latitude), longitude: Number(b.longitude) });
-        return distA - distB;
-      });
-
-      const BATCH_SIZE = 3; 
-      for (let i = 0; i < modelsToLoad.length; i += BATCH_SIZE) {
-        if (MODEL_INSTANCE_REGISTRY.size >= MAX_CONCURRENT_MODELS) {
-          console.warn(`🛑 [STREAMING] VRAM Quota reached (${MAX_CONCURRENT_MODELS})`);
-          break;
-        }
-        const batch = modelsToLoad.slice(i, i + BATCH_SIZE);
-        await Promise.all(batch.map(m => _addSingleModelToMap(m)));
-        await new Promise(r => setTimeout(r, 50)); 
-      }
-    }
-  }, 300);
-
-  // Expose globally
-  (window as any).updateModelStreaming = updateModelStreaming;
-
-  // Giữ lại tên hàm cũ để các nơi khác không lỗi, nhưng chuyển sang logic streaming
-  const _loadModelsForFloor = async (floorId: string) => {
-    console.log(`🌐 [STREAMING] Activating model stream for floor: ${floorId}`);
-    _loadedFloors.add(floorId); 
-    updateModelStreaming();
   };
 
 
