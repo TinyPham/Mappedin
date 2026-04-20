@@ -44,9 +44,10 @@ const FRONTEND_DIST = path.join(ROOT_DIR, 'dist');
 
 app.use('/icon-category', express.static(path.join(ROOT_DIR, 'icon-category')));
 // Cache headers cho Model3D: trình duyệt giữ cache 30 ngày, không tải lại file GLB
-// Tạm tắt cache để trình duyệt luôn tải lại file mới
+// Cache headers cho Model3D: trình duyệt giữ cache 30 ngày để load cực nhanh
 app.use('/Model3D', express.static(path.join(ROOT_DIR, 'Model3D'), {
-    maxAge: 0,
+    maxAge: '30d',
+    immutable: true,
     etag: true,
     lastModified: true
 }));
@@ -754,7 +755,7 @@ app.post('/api/areas/sync', async (req, res) => {
                         INSERT INTO AreaList (MappedinID, Name)
                         VALUES (@MID, ISNULL(@Name, @MID))
                     ELSE
-                        UPDATE AreaList SET Name = ISNULL(@Name, Name), LastSync = GETDATE()
+                        UPDATE AreaList SET Name = ISNULL(@Name, Name)
                         WHERE MappedinID = @MID
                 `);
         }
