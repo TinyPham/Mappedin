@@ -1300,6 +1300,14 @@ async function init() {
       }
     } catch (e) { }
 
+    // Lấy các objects (Để bắt được các quầy, kệ, booth nhỏ...)
+    try {
+      const objects = mapData.getByType("object");
+      if (objects && objects.length > 0) {
+        allObjects.push(...objects);
+      }
+    } catch (e) { }
+
     // Loại bỏ duplicates dựa trên id
     const uniqueObjects = allObjects.filter((obj, index, self) =>
       index === self.findIndex((o) => o.id === obj.id)
@@ -2821,23 +2829,23 @@ async function init() {
     return 'neutral_support';
   };
 
-  // === HỆ THỐNG MÀU MASTER (MASTER TOKEN SYSTEM) - Áp dụng cho TẤT CẢ các tầng ===
+  // === HỆ THỐNG MÀU MASTER (MASTER TOKEN SYSTEM) - Chuẩn sân bay quốc tế (Changi/Incheon Style) ===
   const MASTER_PALETTE: Record<string, { fill: string; hover: string }> = {
-    // 1. MACRO ZONES (Khu vực nền lớn) - Chuyển sang mã HEX đã pha sáng (Mô phỏng 65% opacity trên nền trắng)
-    international: { fill: '#E7ECF4', hover: '#D8E2F0' }, // Quốc tế (Xanh lam nhạt trong vắt)
-    domestic: { fill: '#F0ECE5', hover: '#E8E2D6' }, // Quốc nội (Be ngà ấm mịn)
-    restricted: { fill: '#DBE8F4', hover: '#C9DDED' }, // Khu cách ly chung (Xanh trời sáng)
-    public: { fill: '#FAFAFB', hover: '#F0F0F3' },  // Khu công cộng (Trắng xám cực nét)
+    // 1. MACRO ZONES (Khu vực nền lưu thông - Hiệu ứng xuyên thấu Changi Style)
+    international: { fill: '#4A90E244', hover: '#4A90E244' }, // Xanh dương trong suốt
+    domestic: { fill: '#50E3C244', hover: '#50E3C244' },      // Xanh ngọc trong suốt
+    restricted: { fill: '#7B1FA233', hover: '#7B1FA233' },    // Khu cách ly/Transit (Tím thạch anh xuyên thấu - 20% Alpha)
+    public: { fill: '#F5A62333', hover: '#F5A62333' },        // Khu công cộng (Cam hổ phách xuyên thấu - 20% Alpha)
 
-    // 2. MICRO ZONES (Khu vực chức năng - Màu đặc (solid) tinh tế, quy hoạch hài hòa với tone Navy #214ca6)
-    retail: { fill: '#A3B1C6', hover: '#8F9FB5' },  // Bán lẻ, Mua sắm (Xanh Indigo tro sang trọng, hợp rơ với Navy)
-    dining: { fill: '#E0A96D', hover: '#D1965A' },  // Ẩm thực, Nhà hàng (Vàng Nâu Hổ phách, nhã nhặn kích thích vị giác)
-    special: { fill: '#DCC8BE', hover: '#D2BAB0' },  // CIP, Baby Care, VIP (Hồng đất sang trọng)
-    controlled: { fill: '#A1ADBC', hover: '#909EAE' },  // An ninh, Hải quan (Xám Than thép - tạo giới tuyến cứng cáp)
-    utility: { fill: '#C4D8E8', hover: '#B0C9DA' },  // WC, Thang máy (Xanh biển sáng thanh thoát)
-    checkin: { fill: '#8BC3B0', hover: '#7BB3A0' },  // Đảo check-in (Xanh Mint tươi dịu, nổi bật sảnh ngoài)
-    operational: { fill: '#CDD5DC', hover: '#C2CBD4' },  // Hành lý, Băng chuyền (Xám nhạt công vụ)
-    gate: { fill: '#DFE5D3', hover: '#D2DBBE' },  // Cửa ra tàu bay/Khu chờ (Xanh lá Sage pastel - mỏ neo thị giác)
+    // 2. MICRO ZONES (Khu vực chức năng - GIỮ NGUYÊN MÀU ĐẬM ĐỂ NỔI BẬT DƯỚI LỚP XUYÊN THẤU)
+    retail: { fill: '#F3E5F5', hover: '#F3E5F5' },        // Bán lẻ, Miễn thuế (Tím Lavender hoàng gia)
+    dining: { fill: '#FFF3E0', hover: '#FFF3E0' },        // Ẩm thực, Nhà hàng (Cam đào/Peach)
+    special: { fill: '#EFEBE9', hover: '#EFEBE9' },       // CIP, Lounge, VIP (Beige/Nâu cà phê)
+    gate: { fill: '#E0F7FA', hover: '#E0F7FA' },          // Cửa ra tàu bay/Khu chờ (Xanh Aqua)
+    checkin: { fill: '#FFF9C4', hover: '#FFF9C4' },       // Đảo thủ tục/Check-in (Vàng sáng)
+    controlled: { fill: '#FFCCD2', hover: '#FFCCD2' },    // An ninh, Hải quan, Nhập cảnh (Hồng Rose Vivid)
+    utility: { fill: '#E8EAF6', hover: '#E8EAF6' },       // WC, Thang máy, Tiện ích (Xanh tím)
+    operational: { fill: '#C5D0DE', hover: '#C5D0DE' },   // Hành lý, Băng chuyền, Kỹ thuật (Xanh xám Steel)
   };
 
   const classifyZone = (name?: string): string => {
@@ -2851,6 +2859,8 @@ async function init() {
     // 1. MICRO FUNCTIONAL ZONES (Ưu tiên kiểm tra trước)
     if (n.includes('an ninh') || n.includes('xuất cảnh') || n.includes('hải quan') ||
       n.includes('soi chiếu') || n.includes('security') || n.includes('nhập cảnh') ||
+      n.includes('passport') || n.includes('visa') || n.includes('công an cửa khẩu') || n.includes('kiểm soát') ||
+      n.includes('khu vực nhập cảnh') || n.includes('quầy nhập cảnh') || n.includes(' immigration booth') ||
       n.includes('customs') || n.includes('immigration')) return 'controlled';
 
     if (n.includes('đảo làm thủ tục') || n.includes('quầy thủ tục') ||
@@ -2860,9 +2870,15 @@ async function init() {
 
     if (n.includes('cip') || n.includes('hạng thương gia') || n.includes('vip') ||
       n.includes('em bé') || n.includes('cầu nguyện') || n.includes('massage') ||
-      n.includes('hút thuốc') || n.includes('phòng chờ') || n.includes('lounge')) return 'special';
+      n.includes('hút thuốc') || n.includes('phòng chờ') || n.includes('lounge') ||
+      n.includes('vui chơi') || n.includes('trẻ em') || n.includes('kids') || n.includes('play area') ||
+      n.includes('nghỉ ngơi') || n.includes('resting') || n.includes('nap zone') ||
+      n.includes('văn hóa') || n.includes('truyền thống') || n.includes('culture') ||
+      n.includes('triển lãm') || n.includes('trưng bày') || n.includes('exhibition') || n.includes('gallery') ||
+      n.includes('nghỉ chờ') || n.includes('xe đưa đón') || n.includes('shuttle') || n.includes('khách sạn') || n.includes('hotel')) return 'special';
 
     if (n.includes('cà phê') || n.includes('bánh ngọt') || n.includes('đồ ăn') || n.includes('ẩm thực') ||
+      n.includes('tráng miệng') || n.includes('dessert') || n.includes('kem') || n.includes('ice cream') ||
       n.includes('food') || n.includes('món ăn') || n.includes('quầy bar') || n.includes('nhà hàng') ||
       n.includes('restaurant') || n.includes('cafe')) return 'dining';
 
@@ -2877,11 +2893,13 @@ async function init() {
       n.includes('lưu trữ hành lý') || n.includes('gửi hành lý') ||
       n.includes('băng chuyền') || n.includes('kỹ thuật') || n.includes('công vụ') ||
       n.includes('hành lý thất lạc') || n.includes('lost') ||
-      n.includes('đảo nhận hành lý') || n.includes('carousel') ||
+      n.includes('đảo nhận hành lý') || n.includes('đảo trả hành lý') || n.includes('carousel') || n.includes('reclaim') ||
       n.includes('nhận hành lý') || n.includes('baggage')) return 'operational';
 
     if (n.includes('wc') || n.includes('vệ sinh') || n.includes('thang máy') ||
       n.includes('thang cuốn') || n.includes('thông tin') || n.includes('ngoại tệ') ||
+      n.includes('thu đổi') || n.includes('đổi tiền') || n.includes('money exchange') ||
+      n.includes('viễn thông') || n.includes('telecom') || n.includes('sim card') || n.includes('internet') ||
       n.includes('exchange') || n.includes('bưu điện') || n.includes('atm') ||
       n.includes('ngân hàng') || n.includes('y tế') || n.includes('medical')) return 'utility';
 
@@ -2895,7 +2913,7 @@ async function init() {
 
     if (n.includes('sảnh') || n.includes('hall') || n.includes('công cộng') ||
       n.includes('public') || n.includes('cửa ra vào sảnh') || n.includes('cửa vào sảnh') ||
-      n.includes('entrance') || n.includes('triển lãm') || n.includes('vui chơi') ||
+      n.includes('entrance') ||
       n.includes('landside')) return 'public';
 
     // 3. Fallback mặc định
@@ -2908,14 +2926,14 @@ async function init() {
     const objFloorId = obj?.floor?.id || obj?.floorId || (typeof obj?.floor === 'string' ? obj.floor : null);
     const isOverviewPoly = overviewFloor && objFloorId === overviewFloor.id;
 
-    // Khu vực không có tên
+    // Khu vực không có tên (Unclassified Spaces/Structural Voids)
     if (!name || name.trim() === '') {
       if (isOverviewPoly) {
-        // Overview Roof: Bạc kim loại mượt (Metallic Silver) để tôn hình khối mái nhà
-        return { color: '#D5DCE4', hoverColor: '#D5DCE4' };
+        // Overview Roof: Ngọc trai xám bạc (Pearl Slate Silver) để tôn hình khối 3D nắp nhà
+        return { color: '#E2E8F0', hoverColor: '#E2E8F0' };
       }
-      // Các không gian chết bên trong tầng: Off-white nguyên bản để không vỡ layout màu
-      return { color: '#F9F8F6', hoverColor: '#F9F8F6' };
+      // Các không gian chết bên trong tầng (Structural spaces): Slate-50 rất nhạt để hòa chung với nền Public
+      return { color: '#F8FAFC', hoverColor: '#F8FAFC' };
     }
 
     // Phân loại theo Master Token System (áp dụng cho TẤT CẢ tầng)
@@ -2986,7 +3004,7 @@ async function init() {
       // 2. BẬT ĐÈN SÂN KHẤU (SPOTLIGHT EFFECT)
       if (isTargetFocus) {
         style.color = "#214ca6";     // Navy Blue
-        style.hoverColor = "#1a3c85";
+        style.hoverColor = "#214ca6"; // KHÓA HOVER
       }
       // Dập tắt ánh sáng kết cấu xung quanh
       else if (hasAnyFocus) {
@@ -3019,75 +3037,7 @@ async function init() {
   // Expose to window
   (window as any).applyAreaColors = applyAreaColors;
 
-  // Set interactive cho locations có name
-  try {
-    const mapDataAny = mapData as any;
-    if (mapDataAny.locations && Array.isArray(mapDataAny.locations)) {
-      mapDataAny.locations.forEach((location: any) => {
-        // Filter: Only update locations on the current floor
-        const locFloorId = location.floorId || location.floor?.id;
-        if (locFloorId && locFloorId !== mapView.currentFloor?.id) return;
-
-        if (location.name) {
-          try {
-            // Locations có name → màu trắng
-            mapView.updateState(location, {
-              interactive: true,
-              color: "#FFFFFF",
-              hoverColor: updateObjectHoverColor(location), // Sử dụng hàm để set hover color đúng
-            });
-          } catch (e) { }
-        } else {
-          // Locations không có name → màu xám
-          try {
-            mapView.updateState(location, {
-              interactive: true,
-              color: "#eeece7",
-              hoverColor: "#eeece7", // Không có hover cho khu vực không có tên
-            });
-          } catch (e) { }
-        }
-      });
-    }
-  } catch (e) { }
-
-  // Hàm để update hover color dựa trên trạng thái wayfinding
-  // Định nghĩa sớm để dùng trong các phần khác
-  const updateObjectHoverColor = (obj: any) => {
-    // Nếu đã có wayfinding (origin và destination), không cho hover vàng vào objects không có name
-    if (wayfindingOrigin && wayfindingDestination) {
-      // Chỉ cho hover vàng nếu object có name, không có name thì hover xám
-      return obj.name ? "#FFFACD" : "#eeece7"; // Không có hover cho khu vực không có tên
-    } else {
-      // Logic cũ: cho hover vàng nếu có name, không có name thì hover xám
-      return obj.name ? "#FFFACD" : "#eeece7"; // Không có hover cho khu vực không có tên
-    }
-  };
-
-  // Set interactive cho elevators và stairways
-  allElevators.forEach((elev: any) => {
-    try {
-      // Màu xám cho khu vực không có tên, trắng cho khu vực có tên
-      const defaultColor = elev.name ? "#FFFFFF" : "#eeece7";
-      mapView.updateState(elev, {
-        interactive: true,
-        color: defaultColor,
-        hoverColor: updateObjectHoverColor(elev),
-      });
-    } catch (e) { }
-  });
-
-  allStairways.forEach((stair: any) => {
-    try {
-      // Màu xám cho khu vực không có tên, trắng cho khu vực có tên
-      const defaultColor = stair.name ? "#FFFFFF" : "#eeece7";
-      mapView.updateState(stair, {
-        interactive: true,
-        color: defaultColor,
-        hoverColor: updateObjectHoverColor(stair),
-      });
-    } catch (e) { }
-  });
+  // (Removed redundant manual location, elevator, and stairway color overrides. Everything is now managed centrally by applyAreaColors -> MASTER_PALETTE)
 
   // ============================================
   // 9. HOVER HANDLER
@@ -5549,39 +5499,9 @@ async function init() {
             (s as HTMLElement).style.borderLeft = (i === index) ? '4px solid #214ca6' : '4px solid transparent';
           });
         };
-        // Cập nhật trạng thái Map Objects
-        allMapObjects.forEach((obj: any) => {
-          try {
-            const currentState: any = {
-              interactive: true,
-              color: obj.name ? "#FFFFFF" : "#eeece7",
-              hoverColor: updateObjectHoverColor(obj),
-            };
-            if (obj.id === wayfindingOrigin?.id || obj.id === wayfindingDestination?.id) {
-              currentState.color = "#4CAF50";
-              currentState.hoverColor = "#4CAF50";
-            }
-            mapView.updateState(obj, currentState);
-          } catch (e) { }
-        });
-
-        allElevators.forEach((elev: any) => {
-          try {
-            mapView.updateState(elev, {
-              interactive: true,
-              hoverColor: updateObjectHoverColor(elev),
-            });
-          } catch (e) { }
-        });
-
-        allStairways.forEach((stair: any) => {
-          try {
-            mapView.updateState(stair, {
-              interactive: true,
-              hoverColor: updateObjectHoverColor(stair),
-            });
-          } catch (e) { }
-        });
+        // Gọi hàm applyAreaColors để render lại toàn bộ mảng sáng tối theo bảng màu Premium
+        // applyAreaColors() tự động nhận diện Focus để spotlight đường đi và làm mờ các không gian xung quanh
+        applyAreaColors();
       } else {
         const statusEl = document.getElementById("wayfinding-status");
         if (statusEl) {
