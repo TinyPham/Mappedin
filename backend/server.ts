@@ -5,6 +5,7 @@
 import express from 'express';
 import { getDbConnection, sql } from './db';
 import cors from 'cors';
+import compression from 'compression';
 import fs from 'fs';
 import path from 'path';
 
@@ -23,6 +24,8 @@ if (fs.existsSync(appSettingsPath)) {
 const PORT = appSettings.AppSettings?.Port || process.env.PORT || 3002;
 
 // Middleware
+// Bật nén Gzip/Brotli tự động cho mọi response HTTP (giảm ~30% bandwidth)
+app.use(compression());
 app.use(cors({
     origin: '*',
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
@@ -40,7 +43,13 @@ const ROOT_DIR = __filename.endsWith('.js')
 const FRONTEND_DIST = path.join(ROOT_DIR, 'dist');
 
 app.use('/icon-category', express.static(path.join(ROOT_DIR, 'icon-category')));
-app.use('/Model3D', express.static(path.join(ROOT_DIR, 'Model3D')));
+// Cache headers cho Model3D: trình duyệt giữ cache 30 ngày, không tải lại file GLB
+// Tạm tắt cache để trình duyệt luôn tải lại file mới
+app.use('/Model3D', express.static(path.join(ROOT_DIR, 'Model3D'), {
+    maxAge: 0,
+    etag: true,
+    lastModified: true
+}));
 app.use('/uploads', express.static(path.join(ROOT_DIR, 'uploads')));
 
 // Serve Vite-built frontend

@@ -880,6 +880,14 @@ async function init() {
   let hideInfo: any = null;
   let updateInfo: any = null;
 
+  // ============================================
+  // LAZY LOADING: Cache metadata + track loaded floors
+  // ============================================
+  // Lưu metadata tất cả models từ API (nhẹ, chỉ JSON)
+  let _allModelMetadata: any[] = [];
+  // Theo dõi tầng nào đã load models rồi (tránh load lại)
+  const _loadedFloors: Set<string> = new Set();
+
   // Placement Globals
   let placingModelConfig: any = null;
   let placingMode: 'new' | 'copy' | 'move' = 'new';
@@ -3610,8 +3618,14 @@ async function init() {
       renderObjectMarkersForCurrentFloor();
       // Cập nhật markers (ẩn/hiện Main Entrance và tên bản đồ)
       updateMarkersForCurrentFloor();
-      // Cập nhật visibility của UI controls (ví hạn ẩn nút thêm model/phân loại khi ở overview)
+      // Cập nhật visibility của UI controls (ví dụ ẩn nút thêm model/phân loại khi ở overview)
       updateUIVisibility();
+
+      // LAZY LOADING: Load models cho tầng mới nếu chưa load
+      if (_allModelMetadata.length > 0 && !_loadedFloors.has(id)) {
+        console.log(`🔄 Lazy loading models for floor: ${id}`);
+        _loadModelsForFloor(id);
+      }
 
       // BƯỚC 5: Comment vô hiệu hóa hàm tạo Clone Model 3D (Shadow copies)
       // Hàm này đang gây bão Error 404 do file GLB không tồn tại làm đứt mạng & kẹt GPU!
@@ -9248,88 +9262,120 @@ async function init() {
   };
 
   // ============================================
-  // LOAD MODELS FROM API (Replaces localStorage)
+  // LOAD MODELS FROM API (LAZY LOADING BY FLOOR)
   // ============================================
   const loadModelsFromAPI = async () => {
     try {
-      console.log("📥 Loading models from API...");
+      // Đảm bảo mapView đã sẵn sàng
+      if (!mapView) {
+        console.warn("⚠️ MapView not ready, delaying model load...");
+        setTimeout(loadModelsFromAPI, 1000);
+        return;
+      }
+
+      console.log("📥 Loading model metadata from API...");
       const models = await ApiService.getAllModels();
 
-      // If NO models (empty DB), create default airplanes
-      // If NO models (empty DB), just log
       if (!models || models.length === 0) {
         console.log("🆕 Empty DB - No models to load.");
         return;
       }
 
-      console.log(`📦 Loaded ${models.length} models from DB`);
+      _allModelMetadata = models;
+      console.log(`📦 Cached ${models.length} model metadata from DB`);
 
-      for (const m of models) {
-        if (isViewOnly) {
-          // DATABASE-DRIVEN VISIBILITY: Only show models explicitly marked for website
-          const shouldShow = m.displayWebsite == 1 || m.displayWebsite === true;
-          if (!shouldShow) continue;
+      // Khởi động load cho tầng hiện tại (delay nhẹ để map render xong floor plan)
+      setTimeout(async () => {
+        const currentFloorId = mapView.currentFloor?.id;
+        if (currentFloorId) {
+          await _loadModelsForFloor(currentFloorId);
         }
+      }, 1000);
 
-        // Skip duplicate check if we trust DB ID
-        if (MODEL_INSTANCE_REGISTRY.has(m.uuid)) continue;
+    } catch (e) {
+      console.error("❌ Error loading from API:", e);
+    }
+  };
 
-        // Resolve Floor object
-        const floors = mapData.getByType("floor");
+  // ============================================
+  // LOAD MODELS CHO 1 TẦNG CỤ THỂ (Batch loading)
+  // ============================================
+  const _loadModelsForFloor = async (floorId: string) => {
+    if (_loadedFloors.has(floorId)) return;
+
+    const floorModels = _allModelMetadata.filter((m: any) => {
+      if (isViewOnly) {
+        const shouldShow = m.displayWebsite == 1 || m.displayWebsite === true;
+        if (!shouldShow) return false;
+      }
+      return m.floorId === floorId;
+    });
+
+    if (floorModels.length === 0) {
+      _loadedFloors.add(floorId);
+      return;
+    }
+
+    console.log(`🚀 Loading ${floorModels.length} models for floor: ${floorId}`);
+
+    const floors = mapData.getByType("floor");
+    const BATCH_SIZE = 3; // Load 3 model mỗi batch
+    const BATCH_DELAY = 200; // Delay 200ms
+
+    for (let i = 0; i < floorModels.length; i += BATCH_SIZE) {
+      const batch = floorModels.slice(i, i + BATCH_SIZE);
+
+      const batchPromises = batch.map(async (m: any) => {
+        if (MODEL_INSTANCE_REGISTRY.has(m.uuid)) return;
+
+        // ÉP KIỂU NUMBER NGHIÊM NGẶT
+        const lat = Number(m.latitude);
+        const lon = Number(m.longitude);
+        if (isNaN(lat) || isNaN(lon)) return;
+
         let targetFloor = floors.find((f: any) => f.id === m.floorId);
-
-        // Specific fallback for User's Floor 2 ID
         if (!targetFloor && m.floorId === "m_d4b5674c0b15e099") {
-          targetFloor = floors.find((f: any) => {
-            const n = (f.name || "").toLowerCase();
-            return n.includes("tầng 2") || n.includes("tang 2") || n.includes("floor 2");
-          });
+          targetFloor = floors.find((f: any) => (f.name || "").toLowerCase().includes("tầng 2"));
         }
-
-        // Final fallback
         targetFloor = targetFloor || mapView.currentFloor;
-
-        console.log(`📍 Placing model ${m.name || m.uuid} on floor: ${targetFloor?.name} (${targetFloor?.id})`);
-
-        const coord = mapView.createCoordinate(m.latitude, m.longitude, targetFloor);
-
-        // Ensure URL is absolute or resolve from asset map
-        const modelAssetMap: Record<string, any> = {
-          "car": car,
-          "three_palm": tree_palm,
-          "tree_palm": tree_palm
-        };
-
-        let finalUrl = m.url;
-        if (modelAssetMap[finalUrl]) {
-          finalUrl = modelAssetMap[finalUrl];
-        } else if (finalUrl && finalUrl.startsWith("./")) {
-          finalUrl = finalUrl.replace("./", `${SERVER_URL}/`);
-        } else if (finalUrl && !finalUrl.startsWith("http")) {
-          finalUrl = `${SERVER_URL}/${finalUrl}`;
-        }
+        if (!targetFloor) return;
 
         try {
+          const coord = mapView.createCoordinate(lat, lon, targetFloor);
+          if (!coord) return;
+
+          // Xử lý Scale/Rotation (nếu là string thì parse)
+          let s = m.scale;
+          if (typeof s === 'string') try { s = JSON.parse(s); } catch (e) { }
+          let r = m.rotation;
+          if (typeof r === 'string') try { r = JSON.parse(r); } catch (e) { }
+
+          const modelAssetMap: Record<string, any> = { "car": car, "three_palm": tree_palm, "tree_palm": tree_palm };
+          let finalUrl = m.url;
+          if (!finalUrl) return;
+
+          if (modelAssetMap[finalUrl]) {
+            finalUrl = modelAssetMap[finalUrl];
+          } else if (finalUrl.startsWith("./")) {
+            finalUrl = finalUrl.replace("./", `${SERVER_URL}/`);
+          } else if (!finalUrl.startsWith("http")) {
+            finalUrl = `${SERVER_URL}/${finalUrl}`;
+          }
+
           const model = await mapView.Models.add(coord, finalUrl, {
             interactive: true,
-            scale: m.scale,
-            rotation: m.rotation,
-            verticalOffset: m.elevation || 0
+            scale: s || [1, 1, 1],
+            rotation: r || [0, 0, 0],
+            verticalOffset: Number(m.elevation) || 0
           });
 
-          // Re-attach Properties
           (model as any).url = finalUrl;
           (model as any).uuid = m.uuid;
           (model as any).originalCoordinate = coord;
 
-          // Register Metadata
           MODEL_ID_REGISTRY.set(model.id, {
-            url: m.url,
-            uuid: m.uuid,
-            name: m.name,
-            desc: m.desc,
-            rotation: m.rotation,
-            scale: m.scale,
+            url: m.url, uuid: m.uuid, name: m.name, desc: m.desc,
+            rotation: r, scale: s,
             originalCoordinate: coord,
             floorId: targetFloor?.id || m.floorId,
             displayWebsite: m.displayWebsite,
@@ -9337,18 +9383,18 @@ async function init() {
             elevation: m.elevation || 0
           });
 
-          // Register Instance
           MODEL_INSTANCE_REGISTRY.set(m.uuid, model);
-
+          console.log(`✅ Loaded model: ${m.name || m.uuid} on ${targetFloor.name}`);
         } catch (modelError) {
           console.error(`❌ Failed to add model ${m.uuid}:`, modelError);
         }
-      }
-    } catch (e) {
-      console.error("❌ Error loading from API:", e);
+      });
+
+      await Promise.all(batchPromises);
+      await new Promise(resolve => setTimeout(resolve, BATCH_DELAY));
     }
 
-    // NEW: After loading all models, ensure Overview models are visible on current floor
+    _loadedFloors.add(floorId);
     showOverviewModelsOnAllFloors();
   };
 

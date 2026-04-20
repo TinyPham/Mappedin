@@ -1,0 +1,929 @@
+{
+  "timestamp": "2026-04-20T08:59:04.206Z",
+  "totalFiles": 153,
+  "successCount": 153,
+  "failCount": 0,
+  "totalOriginalMB": 283.06,
+  "totalOptimizedMB": 161.28,
+  "reductionPercent": 43,
+  "details": [
+    {
+      "file": "ATM.glb",
+      "originalSize": 51024,
+      "optimizedSize": 43340,
+      "reduction": 15.1
+    },
+    {
+      "file": "AirFrance.glb",
+      "originalSize": 426444,
+      "optimizedSize": 325788,
+      "reduction": 23.6
+    },
+    {
+      "file": "Atlas Air.glb",
+      "originalSize": 1736164,
+      "optimizedSize": 1736164,
+      "reduction": 0
+    },
+    {
+      "file": "CathayPacific Airlines.glb",
+      "originalSize": 4899440,
+      "optimizedSize": 2688188,
+      "reduction": 45.1
+    },
+    {
+      "file": "Cây cau cảnh.glb",
+      "originalSize": 3525056,
+      "optimizedSize": 412800,
+      "reduction": 88.3
+    },
+    {
+      "file": "Cây cọ cảnh.glb",
+      "originalSize": 2439372,
+      "optimizedSize": 353588,
+      "reduction": 85.5
+    },
+    {
+      "file": "Cây cọ nhiệt đới.glb",
+      "originalSize": 579860,
+      "optimizedSize": 579860,
+      "reduction": 0
+    },
+    {
+      "file": "Cây dương xỉ.glb",
+      "originalSize": 944020,
+      "optimizedSize": 362148,
+      "reduction": 61.6
+    },
+    {
+      "file": "Cây lưỡi hổ.glb",
+      "originalSize": 1101500,
+      "optimizedSize": 1101500,
+      "reduction": 0
+    },
+    {
+      "file": "Cây thiên điểu.glb",
+      "originalSize": 4552452,
+      "optimizedSize": 1861204,
+      "reduction": 59.1
+    },
+    {
+      "file": "Cây trầu bà.glb",
+      "originalSize": 7673472,
+      "optimizedSize": 1063572,
+      "reduction": 86.1
+    },
+    {
+      "file": "Cổng từ.glb",
+      "originalSize": 19056,
+      "optimizedSize": 16180,
+      "reduction": 15.1
+    },
+    {
+      "file": "Cửa kính.glb",
+      "originalSize": 13792,
+      "optimizedSize": 10524,
+      "reduction": 23.7
+    },
+    {
+      "file": "Cửa sinh trắc học.glb",
+      "originalSize": 34848,
+      "optimizedSize": 34848,
+      "reduction": 0
+    },
+    {
+      "file": "Gate 1 thả trần.glb",
+      "originalSize": 22568,
+      "optimizedSize": 16796,
+      "reduction": 25.6
+    },
+    {
+      "file": "Gate 1.glb",
+      "originalSize": 30740,
+      "optimizedSize": 23484,
+      "reduction": 23.6
+    },
+    {
+      "file": "Gate 10 thả trần.glb",
+      "originalSize": 22568,
+      "optimizedSize": 16932,
+      "reduction": 25
+    },
+    {
+      "file": "Gate 10.glb",
+      "originalSize": 30712,
+      "optimizedSize": 23452,
+      "reduction": 23.6
+    },
+    {
+      "file": "Gate 11 thả trần.glb",
+      "originalSize": 22568,
+      "optimizedSize": 15956,
+      "reduction": 29.3
+    },
+    {
+      "file": "Gate 11.glb",
+      "originalSize": 26732,
+      "optimizedSize": 22556,
+      "reduction": 15.6
+    },
+    {
+      "file": "Gate 12 thả trần.glb",
+      "originalSize": 22568,
+      "optimizedSize": 17988,
+      "reduction": 20.3
+    },
+    {
+      "file": "Gate 12.glb",
+      "originalSize": 29488,
+      "optimizedSize": 23260,
+      "reduction": 21.1
+    },
+    {
+      "file": "Gate 13 thả trần.glb",
+      "originalSize": 22568,
+      "optimizedSize": 18364,
+      "reduction": 18.6
+    },
+    {
+      "file": "Gate 13.glb",
+      "originalSize": 30316,
+      "optimizedSize": 23420,
+      "reduction": 22.7
+    },
+    {
+      "file": "Gate 14 thả trần.glb",
+      "originalSize": 22568,
+      "optimizedSize": 16316,
+      "reduction": 27.7
+    },
+    {
+      "file": "Gate 14.glb",
+      "originalSize": 28020,
+      "optimizedSize": 22916,
+      "reduction": 18.2
+    },
+    {
+      "file": "Gate 15 thả trần.glb",
+      "originalSize": 22568,
+      "optimizedSize": 16764,
+      "reduction": 25.7
+    },
+    {
+      "file": "Gate 15.glb",
+      "originalSize": 29292,
+      "optimizedSize": 23116,
+      "reduction": 21.1
+    },
+    {
+      "file": "Gate 16 thả trần.glb",
+      "originalSize": 22568,
+      "optimizedSize": 17156,
+      "reduction": 24
+    },
+    {
+      "file": "Gate 16.glb",
+      "originalSize": 31052,
+      "optimizedSize": 23588,
+      "reduction": 24
+    },
+    {
+      "file": "Gate 17 thả trần.glb",
+      "originalSize": 22568,
+      "optimizedSize": 17204,
+      "reduction": 23.8
+    },
+    {
+      "file": "Gate 17.glb",
+      "originalSize": 28500,
+      "optimizedSize": 22924,
+      "reduction": 19.6
+    },
+    {
+      "file": "Gate 18 thả trần.glb",
+      "originalSize": 22568,
+      "optimizedSize": 18588,
+      "reduction": 17.6
+    },
+    {
+      "file": "Gate 18.glb",
+      "originalSize": 31612,
+      "optimizedSize": 23812,
+      "reduction": 24.7
+    },
+    {
+      "file": "Gate 19 thả trần.glb",
+      "originalSize": 22568,
+      "optimizedSize": 17108,
+      "reduction": 24.2
+    },
+    {
+      "file": "Gate 19.glb",
+      "originalSize": 30964,
+      "optimizedSize": 23644,
+      "reduction": 23.6
+    },
+    {
+      "file": "Gate 2 thả trần.glb",
+      "originalSize": 22568,
+      "optimizedSize": 18936,
+      "reduction": 16.1
+    },
+    {
+      "file": "Gate 2.glb",
+      "originalSize": 33128,
+      "optimizedSize": 24228,
+      "reduction": 26.9
+    },
+    {
+      "file": "Gate 20 thả trần.glb",
+      "originalSize": 22568,
+      "optimizedSize": 18856,
+      "reduction": 16.4
+    },
+    {
+      "file": "Gate 20.glb",
+      "originalSize": 33140,
+      "optimizedSize": 24292,
+      "reduction": 26.7
+    },
+    {
+      "file": "Gate 21 thả trần.glb",
+      "originalSize": 22568,
+      "optimizedSize": 17972,
+      "reduction": 20.4
+    },
+    {
+      "file": "Gate 21.glb",
+      "originalSize": 29504,
+      "optimizedSize": 23260,
+      "reduction": 21.2
+    },
+    {
+      "file": "Gate 22 thả trần.glb",
+      "originalSize": 22568,
+      "optimizedSize": 18904,
+      "reduction": 16.2
+    },
+    {
+      "file": "Gate 22.glb",
+      "originalSize": 29556,
+      "optimizedSize": 24028,
+      "reduction": 18.7
+    },
+    {
+      "file": "Gate 23 thả trần.glb",
+      "originalSize": 22568,
+      "optimizedSize": 17828,
+      "reduction": 21
+    },
+    {
+      "file": "Gate 23.glb",
+      "originalSize": 32704,
+      "optimizedSize": 24164,
+      "reduction": 26.1
+    },
+    {
+      "file": "Gate 24 thả trần.glb",
+      "originalSize": 22568,
+      "optimizedSize": 17172,
+      "reduction": 23.9
+    },
+    {
+      "file": "Gate 24.glb",
+      "originalSize": 30524,
+      "optimizedSize": 23780,
+      "reduction": 22.1
+    },
+    {
+      "file": "Gate 25 thả trần.glb",
+      "originalSize": 22568,
+      "optimizedSize": 17660,
+      "reduction": 21.7
+    },
+    {
+      "file": "Gate 25.glb",
+      "originalSize": 31732,
+      "optimizedSize": 23844,
+      "reduction": 24.9
+    },
+    {
+      "file": "Gate 26 thả trần.glb",
+      "originalSize": 22568,
+      "optimizedSize": 17860,
+      "reduction": 20.9
+    },
+    {
+      "file": "Gate 26.glb",
+      "originalSize": 33516,
+      "optimizedSize": 24404,
+      "reduction": 27.2
+    },
+    {
+      "file": "Gate 27 thả trần.glb",
+      "originalSize": 22568,
+      "optimizedSize": 18276,
+      "reduction": 19
+    },
+    {
+      "file": "Gate 27.glb",
+      "originalSize": 30980,
+      "optimizedSize": 23700,
+      "reduction": 23.5
+    },
+    {
+      "file": "Gate 28 thả trần.glb",
+      "originalSize": 22568,
+      "optimizedSize": 19368,
+      "reduction": 14.2
+    },
+    {
+      "file": "Gate 28.glb",
+      "originalSize": 34056,
+      "optimizedSize": 24620,
+      "reduction": 27.7
+    },
+    {
+      "file": "Gate 29 thả trần.glb",
+      "originalSize": 22568,
+      "optimizedSize": 17860,
+      "reduction": 20.9
+    },
+    {
+      "file": "Gate 29.glb",
+      "originalSize": 33348,
+      "optimizedSize": 24388,
+      "reduction": 26.9
+    },
+    {
+      "file": "Gate 3 thả trần.glb",
+      "originalSize": 22568,
+      "optimizedSize": 18028,
+      "reduction": 20.1
+    },
+    {
+      "file": "Gate 3.glb",
+      "originalSize": 33880,
+      "optimizedSize": 24604,
+      "reduction": 27.4
+    },
+    {
+      "file": "Gate 30 thả trần.glb",
+      "originalSize": 22568,
+      "optimizedSize": 17916,
+      "reduction": 20.6
+    },
+    {
+      "file": "Gate 30.glb",
+      "originalSize": 33904,
+      "optimizedSize": 24524,
+      "reduction": 27.7
+    },
+    {
+      "file": "Gate 31 thả trần.glb",
+      "originalSize": 22568,
+      "optimizedSize": 18284,
+      "reduction": 19
+    },
+    {
+      "file": "Gate 31.glb",
+      "originalSize": 30324,
+      "optimizedSize": 23420,
+      "reduction": 22.8
+    },
+    {
+      "file": "Gate 32 thả trần.glb",
+      "originalSize": 22568,
+      "optimizedSize": 17836,
+      "reduction": 21
+    },
+    {
+      "file": "Gate 32.glb",
+      "originalSize": 32720,
+      "optimizedSize": 24164,
+      "reduction": 26.1
+    },
+    {
+      "file": "Gate 33 thả trần.glb",
+      "originalSize": 22568,
+      "optimizedSize": 18124,
+      "reduction": 19.7
+    },
+    {
+      "file": "Gate 33.glb",
+      "originalSize": 30472,
+      "optimizedSize": 24460,
+      "reduction": 19.7
+    },
+    {
+      "file": "Gate 34 thả trần.glb",
+      "originalSize": 22568,
+      "optimizedSize": 18704,
+      "reduction": 17.1
+    },
+    {
+      "file": "Gate 34.glb",
+      "originalSize": 31392,
+      "optimizedSize": 23876,
+      "reduction": 23.9
+    },
+    {
+      "file": "Gate 35 thả trần.glb",
+      "originalSize": 22568,
+      "optimizedSize": 17932,
+      "reduction": 20.5
+    },
+    {
+      "file": "Gate 35.glb",
+      "originalSize": 32572,
+      "optimizedSize": 24156,
+      "reduction": 25.8
+    },
+    {
+      "file": "Gate 36 thả trần.glb",
+      "originalSize": 22568,
+      "optimizedSize": 18172,
+      "reduction": 19.5
+    },
+    {
+      "file": "Gate 36.glb",
+      "originalSize": 34336,
+      "optimizedSize": 24628,
+      "reduction": 28.3
+    },
+    {
+      "file": "Gate 37 thả trần.glb",
+      "originalSize": 22568,
+      "optimizedSize": 17492,
+      "reduction": 22.5
+    },
+    {
+      "file": "Gate 37.glb",
+      "originalSize": 31784,
+      "optimizedSize": 23884,
+      "reduction": 24.9
+    },
+    {
+      "file": "Gate 38 thả trần.glb",
+      "originalSize": 22568,
+      "optimizedSize": 18316,
+      "reduction": 18.8
+    },
+    {
+      "file": "Gate 38.glb",
+      "originalSize": 34780,
+      "optimizedSize": 24852,
+      "reduction": 28.5
+    },
+    {
+      "file": "Gate 39 thả trần.glb",
+      "originalSize": 22568,
+      "optimizedSize": 18180,
+      "reduction": 19.4
+    },
+    {
+      "file": "Gate 39.glb",
+      "originalSize": 34180,
+      "optimizedSize": 24692,
+      "reduction": 27.8
+    },
+    {
+      "file": "Gate 4 thả trần.glb",
+      "originalSize": 22568,
+      "optimizedSize": 17212,
+      "reduction": 23.7
+    },
+    {
+      "file": "Gate 4.glb",
+      "originalSize": 31708,
+      "optimizedSize": 23940,
+      "reduction": 24.5
+    },
+    {
+      "file": "Gate 40 thả trần.glb",
+      "originalSize": 22568,
+      "optimizedSize": 17228,
+      "reduction": 23.7
+    },
+    {
+      "file": "Gate 40.glb",
+      "originalSize": 31692,
+      "optimizedSize": 23940,
+      "reduction": 24.5
+    },
+    {
+      "file": "Gate 41 thả trần.glb",
+      "originalSize": 22568,
+      "optimizedSize": 16460,
+      "reduction": 27.1
+    },
+    {
+      "file": "Gate 41.glb",
+      "originalSize": 28032,
+      "optimizedSize": 22948,
+      "reduction": 18.1
+    },
+    {
+      "file": "Gate 42 thả trần.glb",
+      "originalSize": 22568,
+      "optimizedSize": 17188,
+      "reduction": 23.8
+    },
+    {
+      "file": "Gate 42.glb",
+      "originalSize": 30480,
+      "optimizedSize": 23748,
+      "reduction": 22.1
+    },
+    {
+      "file": "Gate 43 thả trần.glb",
+      "originalSize": 22568,
+      "optimizedSize": 18668,
+      "reduction": 17.3
+    },
+    {
+      "file": "Gate 43.glb",
+      "originalSize": 31356,
+      "optimizedSize": 23900,
+      "reduction": 23.8
+    },
+    {
+      "file": "Gate 44 thả trần.glb",
+      "originalSize": 22568,
+      "optimizedSize": 16636,
+      "reduction": 26.3
+    },
+    {
+      "file": "Gate 44.glb",
+      "originalSize": 27896,
+      "optimizedSize": 23476,
+      "reduction": 15.8
+    },
+    {
+      "file": "Gate 45 thả trần.glb",
+      "originalSize": 22568,
+      "optimizedSize": 17148,
+      "reduction": 24
+    },
+    {
+      "file": "Gate 45.glb",
+      "originalSize": 30344,
+      "optimizedSize": 23628,
+      "reduction": 22.1
+    },
+    {
+      "file": "Gate 46 thả trần.glb",
+      "originalSize": 22568,
+      "optimizedSize": 17484,
+      "reduction": 22.5
+    },
+    {
+      "file": "Gate 46.glb",
+      "originalSize": 32056,
+      "optimizedSize": 24076,
+      "reduction": 24.9
+    },
+    {
+      "file": "Gate 47 thả trần.glb",
+      "originalSize": 22568,
+      "optimizedSize": 16708,
+      "reduction": 26
+    },
+    {
+      "file": "Gate 47.glb",
+      "originalSize": 29508,
+      "optimizedSize": 23372,
+      "reduction": 20.8
+    },
+    {
+      "file": "Gate 48 thả trần.glb",
+      "originalSize": 22568,
+      "optimizedSize": 17580,
+      "reduction": 22.1
+    },
+    {
+      "file": "Gate 48.glb",
+      "originalSize": 32596,
+      "optimizedSize": 24372,
+      "reduction": 25.2
+    },
+    {
+      "file": "Gate 49 thả trần.glb",
+      "originalSize": 22568,
+      "optimizedSize": 17444,
+      "reduction": 22.7
+    },
+    {
+      "file": "Gate 49.glb",
+      "originalSize": 31952,
+      "optimizedSize": 24124,
+      "reduction": 24.5
+    },
+    {
+      "file": "Gate 5 thả trần.glb",
+      "originalSize": 22568,
+      "optimizedSize": 17636,
+      "reduction": 21.9
+    },
+    {
+      "file": "Gate 5.glb",
+      "originalSize": 32916,
+      "optimizedSize": 24204,
+      "reduction": 26.5
+    },
+    {
+      "file": "Gate 6 thả trần.glb",
+      "originalSize": 22568,
+      "optimizedSize": 17980,
+      "reduction": 20.3
+    },
+    {
+      "file": "Gate 6.glb",
+      "originalSize": 34580,
+      "optimizedSize": 24772,
+      "reduction": 28.4
+    },
+    {
+      "file": "Gate 7 thả trần.glb",
+      "originalSize": 22568,
+      "optimizedSize": 18252,
+      "reduction": 19.1
+    },
+    {
+      "file": "Gate 7.glb",
+      "originalSize": 32128,
+      "optimizedSize": 23940,
+      "reduction": 25.5
+    },
+    {
+      "file": "Gate 8 thả trần.glb",
+      "originalSize": 22568,
+      "optimizedSize": 19472,
+      "reduction": 13.7
+    },
+    {
+      "file": "Gate 8.glb",
+      "originalSize": 35172,
+      "optimizedSize": 24908,
+      "reduction": 29.2
+    },
+    {
+      "file": "Gate 9 thả trần.glb",
+      "originalSize": 22568,
+      "optimizedSize": 17980,
+      "reduction": 20.3
+    },
+    {
+      "file": "Gate 9.glb",
+      "originalSize": 34480,
+      "optimizedSize": 24756,
+      "reduction": 28.2
+    },
+    {
+      "file": "Ghế phòng chờ.glb",
+      "originalSize": 6579788,
+      "optimizedSize": 1406868,
+      "reduction": 78.6
+    },
+    {
+      "file": "Hawaiian Airlines.glb",
+      "originalSize": 6463224,
+      "optimizedSize": 1663164,
+      "reduction": 74.3
+    },
+    {
+      "file": "Icon Men.glb",
+      "originalSize": 45208,
+      "optimizedSize": 27860,
+      "reduction": 38.4
+    },
+    {
+      "file": "Icon Women.glb",
+      "originalSize": 67612,
+      "optimizedSize": 36752,
+      "reduction": 45.6
+    },
+    {
+      "file": "Kiosk Check-in.glb",
+      "originalSize": 61212,
+      "optimizedSize": 57876,
+      "reduction": 5.4
+    },
+    {
+      "file": "Kiosk hỗ trợ thông tin.glb",
+      "originalSize": 164212,
+      "optimizedSize": 65936,
+      "reduction": 59.8
+    },
+    {
+      "file": "Lufthansa Airlines.glb",
+      "originalSize": 3127468,
+      "optimizedSize": 1446904,
+      "reduction": 53.7
+    },
+    {
+      "file": "Màn hình TV.glb",
+      "originalSize": 7731556,
+      "optimizedSize": 335440,
+      "reduction": 95.7
+    },
+    {
+      "file": "Máy bay.glb",
+      "originalSize": 270828,
+      "optimizedSize": 195768,
+      "reduction": 27.7
+    },
+    {
+      "file": "Máy soi chiếu.glb",
+      "originalSize": 2151024,
+      "optimizedSize": 1422780,
+      "reduction": 33.9
+    },
+    {
+      "file": "NorthWest Airlines.glb",
+      "originalSize": 5068308,
+      "optimizedSize": 3846828,
+      "reduction": 24.1
+    },
+    {
+      "file": "Quatas Airlines.glb",
+      "originalSize": 5254112,
+      "optimizedSize": 2431224,
+      "reduction": 53.7
+    },
+    {
+      "file": "Quầy check-in đôi.glb",
+      "originalSize": 26032,
+      "optimizedSize": 21104,
+      "reduction": 18.9
+    },
+    {
+      "file": "Quầy check-in-left.glb",
+      "originalSize": 19980,
+      "optimizedSize": 19164,
+      "reduction": 4.1
+    },
+    {
+      "file": "Quầy check-in-right.glb",
+      "originalSize": 20004,
+      "optimizedSize": 19188,
+      "reduction": 4.1
+    },
+    {
+      "file": "Quầy thông tin.glb",
+      "originalSize": 38052,
+      "optimizedSize": 31220,
+      "reduction": 18
+    },
+    {
+      "file": "Quầy thủ tục Boarding.glb",
+      "originalSize": 45380,
+      "optimizedSize": 33876,
+      "reduction": 25.4
+    },
+    {
+      "file": "Thai Airlines.glb",
+      "originalSize": 3473228,
+      "optimizedSize": 2070492,
+      "reduction": 40.4
+    },
+    {
+      "file": "Thang bộ đơn.glb",
+      "originalSize": 183700,
+      "optimizedSize": 137360,
+      "reduction": 25.2
+    },
+    {
+      "file": "Thang cuốn đôi (chìm).glb",
+      "originalSize": 526560,
+      "optimizedSize": 486964,
+      "reduction": 7.5
+    },
+    {
+      "file": "Thang cuốn đôi (nổi).glb",
+      "originalSize": 368020,
+      "optimizedSize": 277776,
+      "reduction": 24.5
+    },
+    {
+      "file": "Thang cuốn đơn (chìm).glb",
+      "originalSize": 240964,
+      "optimizedSize": 211304,
+      "reduction": 12.3
+    },
+    {
+      "file": "Thang cuốn đơn (nổi).glb",
+      "originalSize": 173840,
+      "optimizedSize": 122660,
+      "reduction": 29.4
+    },
+    {
+      "file": "Thang cuốn-bộ.glb",
+      "originalSize": 368652,
+      "optimizedSize": 277056,
+      "reduction": 24.8
+    },
+    {
+      "file": "Thang máy đôi.glb",
+      "originalSize": 10888,
+      "optimizedSize": 10712,
+      "reduction": 1.6
+    },
+    {
+      "file": "Thang máy đơn.glb",
+      "originalSize": 7816,
+      "optimizedSize": 6668,
+      "reduction": 14.7
+    },
+    {
+      "file": "Thảm thực vật.glb",
+      "originalSize": 4170424,
+      "optimizedSize": 1160968,
+      "reduction": 72.2
+    },
+    {
+      "file": "Trạm sạc điện thoại.glb",
+      "originalSize": 45012,
+      "optimizedSize": 31020,
+      "reduction": 31.1
+    },
+    {
+      "file": "Trụ led information.glb",
+      "originalSize": 294852,
+      "optimizedSize": 41492,
+      "reduction": 85.9
+    },
+    {
+      "file": "United Airlines.glb",
+      "originalSize": 3625144,
+      "optimizedSize": 3017804,
+      "reduction": 16.8
+    },
+    {
+      "file": "VietjetAir.glb",
+      "originalSize": 4568548,
+      "optimizedSize": 1406544,
+      "reduction": 69.2
+    },
+    {
+      "file": "Vietnam Airlines.glb",
+      "originalSize": 26915004,
+      "optimizedSize": 2415072,
+      "reduction": 91
+    },
+    {
+      "file": "Vườn cây xanh.glb",
+      "originalSize": 35927564,
+      "optimizedSize": 5957140,
+      "reduction": 83.4
+    },
+    {
+      "file": "Xe bus.glb",
+      "originalSize": 529940,
+      "optimizedSize": 294312,
+      "reduction": 44.5
+    },
+    {
+      "file": "Xe lăn.glb",
+      "originalSize": 3094188,
+      "optimizedSize": 2067388,
+      "reduction": 33.2
+    },
+    {
+      "file": "Xe điện.glb",
+      "originalSize": 2980480,
+      "optimizedSize": 916788,
+      "reduction": 69.2
+    },
+    {
+      "file": "Xe đẩy em bé.glb",
+      "originalSize": 61182488,
+      "optimizedSize": 57342940,
+      "reduction": 6.3
+    },
+    {
+      "file": "Xe đẩy hành lý.glb",
+      "originalSize": 12226276,
+      "optimizedSize": 9457680,
+      "reduction": 22.6
+    },
+    {
+      "file": "Ô tô.glb",
+      "originalSize": 44112476,
+      "optimizedSize": 44112476,
+      "reduction": 0
+    },
+    {
+      "file": "Đóng gói hành lý.glb",
+      "originalSize": 22197392,
+      "optimizedSize": 10940096,
+      "reduction": 50.7
+    },
+    {
+      "file": "Đảo hành lý.glb",
+      "originalSize": 1798164,
+      "optimizedSize": 663020,
+      "reduction": 63.1
+    }
+  ]
+}
