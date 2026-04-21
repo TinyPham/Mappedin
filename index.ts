@@ -9113,9 +9113,9 @@ async function init() {
 
     const currentZoom = getCameraZoom() || 0;
 
-    // THIẾT LẬP NGƯỠNG (Nâng lên 19 theo yêu cầu)
+    // THIẾT LẬP NGƯỠNG (Điều chỉnh Unload 18.5 theo yêu cầu)
     const ZOOM_LOAD_THRESHOLD = 19.0; 
-    const ZOOM_UNLOAD_THRESHOLD = 18.0; // Đệm 1 đơn vị zoom
+    const ZOOM_UNLOAD_THRESHOLD = 18.5; // Đệm 0.5 đơn vị zoom
     const LOAD_RADIUS = 300;     
     const UNLOAD_RADIUS = 320; 
     const MAX_CONCURRENT_MODELS = 150;
