@@ -76,12 +76,20 @@ class TranslationManager {
       const detectedBrowserLang = browserLang === 'vi' ? 'vn' : (['vn', 'en', 'zh', 'ja', 'ko'].includes(browserLang) ? browserLang : 'vn');
       const langSegment = (path.split('/')[1] || "").toLowerCase();
 
+      // Ưu tiên Tiếng Việt (vn) làm mặc định nếu không có tham số URL
+      this.currentLang = 'vn';
+
       if (langParam && ['vn', 'en', 'zh', 'ja', 'ko'].includes(langParam.toLowerCase())) {
         this.currentLang = langParam.toLowerCase();
       } else if (['vn', 'en', 'zh', 'ja', 'ko'].includes(langSegment)) {
         this.currentLang = langSegment;
       } else {
-        this.currentLang = detectedBrowserLang;
+        // Chỉ lấy theo trình duyệt nếu là các ngôn ngữ được hỗ trợ, còn lại mặc định vn
+        const mappedBrowserLang = browserLang === 'vi' ? 'vn' : browserLang;
+        if (['vn', 'en', 'zh', 'ja', 'ko'].includes(mappedBrowserLang)) {
+           // this.currentLang = mappedBrowserLang; 
+           // Tạm thời comment để ưu tiên VN tuyệt đối như yêu cầu
+        }
       }
     } catch (e) {
       this.currentLang = 'vn';
@@ -110,7 +118,12 @@ class TranslationManager {
       // Set initial dropdown value
       const selector = document.getElementById('language-selector') as HTMLSelectElement;
       if (selector) {
-        selector.value = this.currentLang;
+        // Nếu selector đã có giá trị (do browser cache hoặc SSR), ưu tiên nó
+        if (selector.value && ['vn', 'en', 'zh', 'ja', 'ko'].includes(selector.value)) {
+           this.currentLang = selector.value;
+        } else {
+           selector.value = this.currentLang;
+        }
 
         // RE-ADD MISSING EVENT LISTENER
         selector.onchange = (e) => {
