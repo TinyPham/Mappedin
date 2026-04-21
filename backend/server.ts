@@ -746,9 +746,14 @@ app.post('/api/areas/sync', async (req, res) => {
         const { areas } = req.body; // Array of { id, name, floorId }
         const db = await getDbConnection();
         for (const area of areas) {
+            let finalName = area.name;
+            // CHỐNG NHIỄM NGÔN NGỮ: Tự động dịch ngược các tên chung chung từ Mappedin SDK
+            if (finalName === 'エスカレーター' || finalName === 'Escalator') finalName = 'Thang cuốn';
+            if (finalName === 'エレベーター' || finalName === 'Elevator') finalName = 'Thang máy';
+
             await db.request()
                 .input('MID', sql.NVarChar(100), area.id)
-                .input('Name', sql.NVarChar(200), area.name || null)
+                .input('Name', sql.NVarChar(200), finalName || null)
                 .input('FID', sql.NVarChar(100), area.floorId || null)
                 .query(`
                     IF NOT EXISTS (SELECT 1 FROM AreaList WHERE MappedinID = @MID)

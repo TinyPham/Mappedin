@@ -2339,8 +2339,8 @@ async function init() {
       icon = escalatorIconUrl;
     }
 
-    // If we have a custom name in DB that isn't just the ID, prefer it
-    if (dbName && dbName !== conn.id) {
+    // Nếu có tên tùy chỉnh trong DB (và không phải là tên tiếng Nhật chung chung), ưu tiên dùng nó
+    if (dbName && dbName !== conn.id && dbName !== 'エスカレーター' && dbName !== 'エレベーター') {
       text = dbName;
     }
 
