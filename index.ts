@@ -125,6 +125,12 @@ class TranslationManager {
       // Apply initial translations
       this.applyTranslations();
 
+      // NEW: Force sync with actual selector value if it differs from detected (Fixes JA/VN mismatch)
+      if (selector && selector.value && selector.value !== this.currentLang) {
+        console.log(`🔌 Initial Language Mismatch: Detected ${this.currentLang}, UI says ${selector.value}. Syncing...`);
+        this.setLanguage(selector.value);
+      }
+
     } catch (e) {
       console.warn('Failed to load init-data', e);
     }
@@ -2107,7 +2113,10 @@ async function init() {
       // Render marker cho mỗi coordinate (tham khảo connection markers style)
       coordsToRender.forEach((coord: any) => {
         try {
-          const label = obj.name;
+          // Ưu tiên lấy tên từ Database thông qua TranslationManager để đồng bộ ngôn ngữ
+          const localizedName = TranslationManager.getName(obj);
+          const label = (localizedName && localizedName !== obj.id) ? localizedName : obj.name;
+
           let markerHtml: string;
 
           // 1. Force ATM Icon override
@@ -9267,9 +9276,24 @@ async function init() {
     const currentIndex = sortedFloors.findIndex(f => f.id === currentFloor.id);
     const lowerFloorIds = new Set(currentIndex > 0 ? sortedFloors.slice(0, currentIndex).map(f => f.id) : []);
 
-    const isThang = (name: string) => {
-      const s = (name || "").toLowerCase();
-      return s.includes("thang") || s.includes("escalator") || s.includes("elevator");
+    const isThang = (obj: any) => {
+      if (!obj) return false;
+      
+      // 1. Kiểm tra tên Tiếng Việt (VN) gốc trong Database (Nguồn dữ liệu tin cậy nhất)
+      const id = obj.uuid || obj.id || obj.mappedinId;
+      if (id) {
+        const locData = TranslationManager.data.locations?.[id];
+        const vnName = (locData?.names?.['vn'] || "").toLowerCase();
+        // Kiểm tra từ khóa "thang" để bao quát thang máy, thang cuốn, thang bộ...
+        if (vnName.includes("thang") || vnName.includes("elevator") || vnName.includes("escalator")) return true;
+      }
+
+      // 2. Kiểm tra tên hiện tại (Dự phòng)
+      const name = (typeof obj === 'string') ? obj : (obj.name || "");
+      const s = name.toLowerCase();
+      if (s.includes("thang") || s.includes("escalator") || s.includes("elevator") || s.includes("stair")) return true;
+      
+      return false;
     };
 
     // 1. Tự động dọn dẹp các model xa hoặc sai tầng
@@ -9282,11 +9306,11 @@ async function init() {
 
       const dist = calculateDistance(focalPoint, { latitude: meta.originalCoordinate.latitude, longitude: meta.originalCoordinate.longitude });
       const isCurrentFloor = meta.floorId === currentFloor.id;
-      const isVerticalOnLowerFloor = lowerFloorIds.has(meta.floorId) && isThang(meta.name);
+      const isVerticalOnLowerFloor = lowerFloorIds.has(meta.floorId) && isThang(meta);
 
       // LOGIC XÓA MẠNH TAY:
-      const shouldUnloadDueToZoom = currentZoom < ZOOM_UNLOAD_THRESHOLD && !isThang(meta.name);
-      const shouldUnloadDueToDist = !isThang(meta.name) && dist > UNLOAD_RADIUS;
+      const shouldUnloadDueToZoom = currentZoom < ZOOM_UNLOAD_THRESHOLD && !isThang(meta);
+      const shouldUnloadDueToDist = !isThang(meta) && dist > UNLOAD_RADIUS;
 
       if (!isCurrentFloor && !isVerticalOnLowerFloor || shouldUnloadDueToZoom || shouldUnloadDueToDist) {
         try { mapView.Models.remove(instance); MODEL_INSTANCE_REGISTRY.delete(uuid); } catch (e) { }
@@ -9300,13 +9324,13 @@ async function init() {
         if (!shouldShow) return false;
       }
       const isCurrent = m.floorId === currentFloor.id;
-      const isVerticalOnLowerFloor = lowerFloorIds.has(m.floorId) && isThang(m.name);
+      const isVerticalOnLowerFloor = lowerFloorIds.has(m.floorId) && isThang(m);
       return isCurrent || isVerticalOnLowerFloor;
     });
 
     const modelsToLoad: any[] = [];
     candidateModels.forEach((m: any) => {
-      const isVertical = isThang(m.name);
+      const isVertical = isThang(m);
       const dist = calculateDistance(focalPoint, { latitude: Number(m.latitude), longitude: Number(m.longitude) });
       const isLoaded = MODEL_INSTANCE_REGISTRY.has(m.uuid);
 
