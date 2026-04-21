@@ -1,0 +1,124 @@
+/* =========================================
+   RESPONSIVE DESIGN (MOBILE & TABLET)
+   Consistent with Incheon/Changi standards
+   ========================================= */
+
+@media (max-width: 768px) {
+
+    /* 1. Phá bỏ cấu trúc Flex cồng kềnh */
+    #layout {
+        display: block !important;
+        position: relative;
+    }
+
+    /* 2. Biến Sidebar thành Floating Header */
+    #main-sidebar-left {
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        height: auto !important;
+        width: 100% !important;
+        min-width: 100% !important;
+        background: transparent !important;
+        border-right: none !important;
+        box-shadow: none !important;
+        pointer-events: none !important;
+        z-index: 2000 !important;
+    }
+
+    /* Vùng chứa nội dung Header nổi (Tràn viền 100% theo yêu cầu) */
+    #sidebar-header {
+        pointer-events: auto !important;
+        background: rgba(255, 255, 255, 0.98) !important;
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        margin: 0 !important;
+        border-radius: 0 !important;
+        box-shadow: 0 2px 15px rgba(0, 0, 0, 0.08);
+        border: none !important;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.05) !important;
+        padding: 20px 15px 15px 15px !important;
+    }
+
+    #sidebar-content {
+        display: none !important;
+    }
+
+    /* 3. Ẩn các thành phần không cần thiết theo yêu cầu */
+    #camera-controls {
+        display: none !important;
+    }
+
+    #sidebar-admin-actions {
+        display: none !important;
+    }
+
+    /* 4. Ẩn danh mục khu vực trên Mobile để tiết kiệm diện tích */
+    #category-section {
+        display: none !important;
+    }
+
+    /* 5. Tinh chỉnh các cụm điều khiển (Tầng/Ngôn ngữ) xuống Bottom (Incheon Style) */
+    #map-top-controls {
+        top: auto !important;
+        bottom: 25px !important;
+        left: 50% !important;
+        right: auto !important;
+        transform: translateX(-50%) !important;
+        width: 100% !important;
+        justify-content: center !important;
+        gap: 15px !important;
+        background: transparent !important;
+        pointer-events: auto !important;
+    }
+
+    #map-top-controls .pro-dropdown-menu {
+        top: auto !important;
+        bottom: 110% !important;
+        left: 50% !important;
+        transform: translateX(-50%) translateY(10px) !important;
+    }
+
+    #map-top-controls .open .pro-dropdown-menu {
+        transform: translateX(-50%) translateY(0) !important;
+    }
+
+    #floor-selector {
+        display: none !important;
+    }
+
+    /* Phản hồi khi chọn kết quả tìm kiếm */
+    #search-results {
+        position: fixed !important;
+        top: 130px !important;
+        left: 20px !important;
+        right: 20px !important;
+        width: auto !important;
+        max-height: 50vh !important;
+        border-radius: 12px;
+    }
+
+    /* 6. Tối ưu hóa Màn hình Loading trên Mobile */
+    .loading-container-master {
+        transform: scale(0.7) !important;
+        /* Thu nhỏ hoạt ảnh logo/máy bay */
+        margin-bottom: 0 !important;
+    }
+
+    #loading-text {
+        font-size: 13px !important;
+        width: 90% !important;
+        text-align: center;
+        line-height: 1.5;
+        margin: 0 auto 15px auto !important;
+        padding: 0 20px;
+        box-sizing: border-box;
+    }
+
+    #loading-progress-container {
+        width: 80% !important;
+        max-width: 280px;
+        margin: 0 auto !important;
+    }
+}

@@ -14,6 +14,9 @@ const isViewOnly = (function () {
   } catch (e) { return false; }
 })();
 
+// Detect Mobile Device
+const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
 // Apply global hide style ASAP if viewOnly
 if (isViewOnly) {
   const style = document.createElement('style');
@@ -63,6 +66,28 @@ class TranslationManager {
     locations: {}
   };
 
+  // NEW: Immediate detection logic to prevent UI flicker
+  static {
+    try {
+      const path = window.location.pathname;
+      const params = new URLSearchParams(window.location.search);
+      const langParam = params.get('lang');
+      const browserLang = (navigator.language || (navigator as any).userLanguage || 'vn').split('-')[0].toLowerCase();
+      const detectedBrowserLang = browserLang === 'vi' ? 'vn' : (['vn', 'en', 'zh', 'ja', 'ko'].includes(browserLang) ? browserLang : 'vn');
+      const langSegment = (path.split('/')[1] || "").toLowerCase();
+
+      if (langParam && ['vn', 'en', 'zh', 'ja', 'ko'].includes(langParam.toLowerCase())) {
+        this.currentLang = langParam.toLowerCase();
+      } else if (['vn', 'en', 'zh', 'ja', 'ko'].includes(langSegment)) {
+        this.currentLang = langSegment;
+      } else {
+        this.currentLang = detectedBrowserLang;
+      }
+    } catch (e) {
+      this.currentLang = 'vn';
+    }
+  }
+
   static async init() {
     try {
       // Dynamic API URL: local → localhost:3002, production → same origin
@@ -76,18 +101,10 @@ class TranslationManager {
       // Populate Language Dropdown
       this.populateLanguageDropdown();
 
-      // Check URL for lang prefix or query param
-      const path = window.location.pathname;
-      const params = new URLSearchParams(window.location.search);
-      const langParam = params.get('lang');
-      const validLangs = this.data.languages?.map((l: any) => (l.LanguageId || "").toLowerCase()) || ['vn', 'en'];
-
-      const langSegment = (path.split('/')[1] || "").toLowerCase();
-
-      if (langParam && validLangs.includes(langParam.toLowerCase())) {
-        this.currentLang = langParam.toLowerCase();
-      } else if (validLangs.includes(langSegment)) {
-        this.currentLang = langSegment;
+      // Language detection handled by static block above
+      const validLangs = this.data.languages?.map((l: any) => (l.LanguageId || "").toLowerCase()) || ['vn', 'en', 'zh', 'ja', 'ko'];
+      if (!validLangs.includes(this.currentLang)) {
+        // Keep current static detected lang
       }
 
       // Set initial dropdown value
@@ -101,6 +118,9 @@ class TranslationManager {
           this.setLanguage(newLang);
         };
       }
+
+      // Sync Custom UI Button Text
+      this.syncCustomUI();
 
       // Apply initial translations
       this.applyTranslations();
@@ -168,6 +188,20 @@ class TranslationManager {
       'zh': '个位置',
       'ja': 'か所',
       'ko': '위치'
+    },
+    'loading_3d_map': {
+      'vn': 'Đang khởi tạo bản đồ 3D Cảng Hàng không Quốc tế Long Thành...',
+      'en': 'Initializing 3D Map for Long Thanh International Airport...',
+      'zh': '正在初始化龙城国际机场3D地图...',
+      'ja': 'ロンタイン国際空港の3Dマップを初期化中...',
+      'ko': '롱탄 국제공항 3D 지도 초기화 중...'
+    },
+    'loading_complete': {
+      'vn': 'Hoàn tất!',
+      'en': 'Completed!',
+      'zh': '完成!',
+      'ja': '完了!',
+      'ko': '완료!'
     },
     'searching': {
       'vn': 'Đang tìm...',
@@ -784,6 +818,34 @@ class TranslationManager {
         (window as any).drawNavigation();
       }
     } catch (e) { console.warn("Failed to refresh some UI components", e); }
+
+    // Sync Custom UI Button Text
+    this.syncCustomUI();
+  }
+
+  // Helper to sync the custom dropdown UI in index.html
+  static syncCustomUI() {
+    const textEl = document.getElementById('custom-lang-text');
+    if (!textEl) return;
+
+    const langNames: any = {
+      'vn': 'Tiếng Việt',
+      'en': 'English',
+      'zh': '中文',
+      'ja': '日本語',
+      'ko': '한국어'
+    };
+
+    textEl.textContent = langNames[this.currentLang] || langNames['vn'];
+
+    // Update active class in dropdown items
+    document.querySelectorAll('#lang-options .pro-dropdown-item').forEach(el => {
+      el.classList.remove('custom-active');
+      const itemText = (el as HTMLElement).textContent || "";
+      if (itemText.includes(textEl.textContent!)) {
+        el.classList.add('custom-active');
+      }
+    });
   }
 
   // Legacy support for modal (now mostly for Admin, but kept for compatibility)
@@ -839,7 +901,11 @@ async function init() {
         simProgress += Math.random() * 4 + 1; // Nhảy random 1-5%
         if (simProgress > 90) simProgress = 90;
         const displayPercent = Math.floor(simProgress);
-        loadingText.textContent = `Đang khởi tạo bản đồ 3D Cảng Hàng không Quốc tế Long Thành... ${displayPercent}%`;
+
+        // Cập nhật nội dung I18N
+        const baseMsg = TranslationManager.t('loading_3d_map', 'Đang khởi tạo bản đồ...');
+        loadingText.textContent = `${baseMsg} ${displayPercent}%`;
+
         loadingBar.style.width = `${displayPercent}%`;
       }
     }, 150);
@@ -984,6 +1050,26 @@ async function init() {
     }
   );
 
+  // Cấu hình độ nhạy Camera trực tiếp sau khi khởi tạo (Đảm bảo hiệu lực cho Mobile)
+  try {
+    const cam = mapView.Camera as any;
+    const sensitivity = isMobile ? 12.0 : 1.8; // Đẩy lên mức 12.0 cho mobile - cực nhạy
+
+    // Thử nhiều cách gán khác nhau để bao quát mọi phiên bản SDK
+    if (typeof cam.setZoomSensitivity === 'function') {
+      cam.setZoomSensitivity(sensitivity);
+    } else {
+      cam.zoomSensitivity = sensitivity;
+    }
+
+    if (typeof cam.setPanSensitivity === 'function') cam.setPanSensitivity(isMobile ? 2.5 : 1.2);
+    if (typeof cam.setRotateSensitivity === 'function') cam.setRotateSensitivity(isMobile ? 2.5 : 1.2);
+
+    console.log(`🚀 Mappedin: Camera Sensitivity set to ${sensitivity} (Mobile: ${isMobile})`);
+  } catch (e) {
+    console.warn("Could not set camera sensitivity directly", e);
+  }
+
   // Expose mapView globally for easier debugging and access from console
   (window as any).mapView = mapView;
 
@@ -1003,7 +1089,8 @@ async function init() {
 
   if (loadingScreen && loadingText && loadingBar) {
     // Đẩy vọt lên 100% để user thấy đã chạy xong
-    loadingText.textContent = `Hoàn tất! 100%`;
+    const completeMsg = TranslationManager.t('loading_complete', 'Hoàn tất!');
+    loadingText.textContent = `${completeMsg} 100%`;
     loadingBar.style.width = `100%`;
 
     // Đợi 400ms để hiệu ứng animation % chạy tới đích, rồi mới ẩn Overlay
@@ -1644,11 +1731,18 @@ async function init() {
 
           if (floorId) {
             try {
+              // Ensure we exit Overview mode
+              if (typeof (window as any).isMapInOverview === "function" && (window as any).isMapInOverview()) {
+                (window as any).isInOverview = false;
+              }
+
               const selector = document.getElementById("floor-selector") as HTMLSelectElement;
               if (selector) selector.value = floorId;
-              // await mapView.setFloor(floorId); // TEST: disable direct floor switch from search result
+
+              // Use the safe floor switch helper
+              await performFloorSwitch(floorId, "Search Result Navigation");
             } catch (e) {
-              console.warn("Error switching floor:", e);
+              console.warn("Error switching floor from search:", e);
             }
           }
 
@@ -1656,13 +1750,22 @@ async function init() {
             // Focus and highlight only this single selected location
             highlightObjects([obj], "📍");
 
+            // Focus camera on object with SIDEBAR PADDING (380px)
+            // This ensures the object is centered in the VISIBLE map area
+            mapView.Camera.focusOn(obj, {
+              duration: 1500,
+              minZoomLevel: 19,
+              maxZoomLevel: 21,
+              padding: { top: 0, bottom: 0, left: 380, right: 0 }
+            } as any);
+
             // Open the detail information panel in the sidebar
             if (typeof (window as any).updateInfo === "function") {
               (window as any).updateInfo(obj);
             } else if (typeof updateInfo === "function") {
               updateInfo(obj);
             }
-          }, 300);
+          }, 800);
         });
 
         searchResults.appendChild(item);
@@ -3854,9 +3957,7 @@ async function init() {
         }
       } catch (e) { }
     });
-    if (objectsToHighlight.length > 0) {
-      mapView.Camera.focusOn(objectsToHighlight, { pitch: 45, duration: 1000, minZoomLevel: 17 });
-    }
+    /* Focus controlled by caller for better precision */
   };
 
   // Expose highlightObjects to window for deep linking access
@@ -4231,55 +4332,49 @@ async function init() {
 
                     const executeZoom = () => {
                       console.log("⚡ Item Zoom Triggered");
-                      // User Request: Center zoom (accounting for sidebar 340px)
+                      // Use SIDEBAR PADDING (380px) to center object in visible area
                       mapView.Camera.focusOn(area, {
-                        duration: 1000,
-                        minZoomLevel: 18.5, // User Requested "Smaller by 0.5x" (22 -> 21.5)
-                        maxZoomLevel: 20
-                        // padding: { left: 340, top: 40, right: 40, bottom: 40 } // REMOVED PADDING per user request (Lech issue)
+                        duration: 1500,
+                        minZoomLevel: 19,
+                        maxZoomLevel: 21,
+                        padding: { top: 0, bottom: 0, left: 380, right: 0 }
                       } as any);
-                      setTimeout(() => { isProgrammaticZoom = false; }, 1500);
+                      setTimeout(() => { isProgrammaticZoom = false; }, 2000);
                     };
 
                     // Always force switch if in Overview, or if ID differs
                     if (!currentFloorId || currentFloorId !== floorId) {
                       isProgrammaticZoom = true;
-                      if (isCurrentlyOverview) { isInOverview = false; lastActiveFloorId = floorId; }
+                      if (isCurrentlyOverview) {
+                        (window as any).isInOverview = false;
+                        isInOverview = false;
+                        lastActiveFloorId = floorId;
+                      }
 
                       let executed = false;
                       const handler = () => {
-                        if (executed) return; executed = true;
+                        if (executed) return;
+                        executed = true;
                         mapView.off("floor-change", handler);
-                        setTimeout(executeZoom, 300);
+                        setTimeout(executeZoom, 800);
                       };
                       mapView.on("floor-change", handler);
-                      setTimeout(() => { if (!executed) { console.warn("Fallback Item Zoom"); handler(); } }, 1000);
+                      setTimeout(() => { if (!executed) { console.warn("Fallback Item Zoom"); handler(); } }, 2000);
 
                       try {
-                        // mapView.setFloor(floorId); // TEST: disable item click floor switch
-                        handler();
+                        performFloorSwitch(floorId, "Item Click Navigation");
                       } catch (e) { handler(); }
                     } else {
                       // Same ID, but maybe stuck in Overview visual state?
                       if (isCurrentlyOverview) {
-                        console.log("⚡ TOGGLE TRICK for Item Click");
-                        isInOverview = false; isProgrammaticZoom = true;
-                        const allFloors = mapData.getByType("floor");
-                        const tempFloor = allFloors.find((f: any) => f.id !== floorId);
-                        if (tempFloor) {
-                          try {
-                            console.log("⚡ Switching to temp floor:", tempFloor.id);
-                            // mapView.setFloor(tempFloor.id); // TEST: disable temp floor toggle
-                            setTimeout(() => {
-                              console.log("⚡ Switching back to target floor:", floorId);
-                              // mapView.setFloor(floorId); // TEST: disable temp floor toggle
-                              setTimeout(executeZoom, 500);
-                            }, 250);
-                          } catch (e) { executeZoom(); }
-                          return;
-                        }
+                        console.log("⚡ Exiting Overview for Item Click (Same Floor)");
+                        (window as any).isInOverview = false;
+                        isInOverview = false;
+                        isProgrammaticZoom = true;
+                        executeZoom();
+                      } else {
+                        executeZoom();
                       }
-                      executeZoom();
                     }
                   }
 
@@ -9159,10 +9254,10 @@ async function init() {
     const currentZoom = getCameraZoom() || 0;
 
     // THIẾT LẬP NGƯỠNG (Điều chỉnh Unload 18.5 theo yêu cầu)
-    const ZOOM_LOAD_THRESHOLD = 19.0; 
+    const ZOOM_LOAD_THRESHOLD = 19.0;
     const ZOOM_UNLOAD_THRESHOLD = 18.5; // Đệm 0.5 đơn vị zoom
-    const LOAD_RADIUS = 300;     
-    const UNLOAD_RADIUS = 320; 
+    const LOAD_RADIUS = 300;
+    const UNLOAD_RADIUS = 320;
     const MAX_CONCURRENT_MODELS = 150;
 
     console.log(`📡 [STREAMING] Current Zoom: ${currentZoom.toFixed(2)} (Target > ${ZOOM_LOAD_THRESHOLD})`);
