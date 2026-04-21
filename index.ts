@@ -1139,11 +1139,24 @@ async function init() {
   // ============================================
   const getCameraZoom = (): number | null => {
     try {
-      const cam: any = (mapView as any).Camera || (mapView as any).camera;
-      const z = cam?.zoom ?? cam?.position?.zoom ?? cam?.camera?.zoom ?? cam?.state?.zoom ?? null;
-      return typeof z === "number" ? z : null;
+      const cam = (mapView as any).Camera;
+      if (!cam) return null;
+
+      // Thử các biến thể thuộc tính Zoom trong SDK
+      let z = cam.zoom;
+      if (typeof z !== 'number') z = cam.zoomLevel;
+      if (typeof z !== 'number') z = cam.state?.zoom;
+      if (typeof z !== 'number') z = cam.camera?.zoom;
+      if (typeof z !== 'number' && cam.position) z = cam.position.zoom;
+
+      // Fallback: Nếu vẫn không lấy được (tránh bị 0.00 gây ẩn model)
+      if (typeof z !== 'number' || isNaN(z)) {
+        return 20; // Giả định là đang zoom gần để hiện model nếu lỗi
+      }
+
+      return z;
     } catch {
-      return null;
+      return 20;
     }
   };
 
@@ -1946,18 +1959,12 @@ async function init() {
     const currentFloorId = mapView.currentFloor?.id;
 
     objects.forEach((objStub: any) => {
-      // Resolve object đầy đủ từ mapData (vì obj có thể là stub như Hp2)
       const obj = resolveObjectById(objStub?.id) || objStub;
-
-      // Chỉ render objects có name (theo yêu cầu: marker sẽ là name của object)
       if (!obj.name) return;
 
-      // Lọc theo floor nếu có
       if (currentFloorId) {
         const objFloorId = obj.floor?.id || obj.floorId;
-        if (objFloorId && objFloorId !== currentFloorId) {
-          return;
-        }
+        if (objFloorId && objFloorId !== currentFloorId) return;
       }
 
       // Lấy coordinates (thử nhiều cách)
@@ -1972,6 +1979,7 @@ async function init() {
       }
 
       if (coordsToRender.length === 0) return;
+
 
       // Lấy image nếu có (từ photos/images/metadata)
       let imageUrl: string | null = null;
@@ -2153,7 +2161,7 @@ async function init() {
   const connectionMarkers: any[] = [];
 
   // Cấu hình zoom threshold (Giảm xuống để hiện sớm hơn)
-  const DEFAULT_CONNECTION_MARKER_MIN_ZOOM = 0.1;
+  const DEFAULT_CONNECTION_MARKER_MIN_ZOOM = 16.5; // Ngưỡng ẩn khi zoom xa
   if ((window as any).CONNECTION_MARKER_MIN_ZOOM == null) {
     (window as any).CONNECTION_MARKER_MIN_ZOOM = DEFAULT_CONNECTION_MARKER_MIN_ZOOM;
   }
@@ -2166,31 +2174,20 @@ async function init() {
   /**
    * Tạo HTML cho connection marker (icon + label, scale theo zoom)
    */
-  const getConnectionMarkerHtml = (icon: string, text: string, zoom: number | null) => {
-    const z = zoom ?? DEFAULT_CONNECTION_MARKER_MIN_ZOOM;
-    const threshold = (window as any).CONNECTION_MARKER_MIN_ZOOM ?? DEFAULT_CONNECTION_MARKER_MIN_ZOOM;
-    const labelOffset: number = (window as any).CONNECTION_LABEL_ZOOM_OFFSET ?? 0.15;
-    const maxScale: number = (window as any).CONNECTION_ICON_MAX_SCALE ?? 3.0;
+  const getConnectionMarkerHtml = (icon: string, text: string) => {
+    // Luôn sử dụng kích thước chuẩn như các icon khác (34px container, 20px icon)
+    const size = 20;
 
-    // Icon scale theo zoom
-    const scale = Math.max(1, Math.min(1 + (z - threshold) * 1.0, maxScale));
-    const size = Math.round(24 * scale);
-
-    // Hiện label khi zoom đủ gần
-    const alwaysShowLabel: boolean = (window as any).CONNECTION_SHOW_LABEL_ALWAYS ?? true;
-    const showLabel = alwaysShowLabel ? true : z >= threshold + labelOffset;
-
-    return `<div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
-    <div style="width:${size + 12}px;height:${size + 12}px;display:flex;align-items:center;justify-content:center;background:#fff;border-radius:50%;box-shadow:0 3px 6px rgba(0,0,0,0.15);border:1.5px solid #fff;">
-      <img src="${icon}" alt="${text}" style="width:${size}px;height:${size}px;object-fit:contain;" />
-    </div>
-      ${showLabel
-        ? `<div style="font-size:13px;line-height:1.2;font-weight:600;color:#333;text-shadow:0 0 4px rgba(255,255,255,0.9), 0 0 8px rgba(255, 255, 255, 0.8);white-space:nowrap;">
-              ${text}
-            </div>`
-        : ""
-      }
-    </div>`;
+    return `
+      <div style="display:flex;flex-direction:column;align-items:center;gap:3px;">
+        <div style="width:34px;height:34px;display:flex;align-items:center;justify-content:center;background:#fff;border-radius:50%;box-shadow:0 3px 6px rgba(0,0,0,0.15);border:1.5px solid #fff;">
+          <img src="${icon}" alt="${text}" style="width:${size}px;height:${size}px;object-fit:contain;" />
+        </div>
+        <div style="font-size:13px;line-height:1.2;font-weight:600;color:#333;text-shadow:0 0 4px rgba(255,255,255,0.9), 0 0 8px rgba(255, 255, 255, 0.8);white-space:nowrap;">
+          ${text}
+        </div>
+      </div>
+    `;
   };
 
   /**
@@ -2306,7 +2303,7 @@ async function init() {
         try {
           const marker = mapView.Markers.add(
             coord,
-            getConnectionMarkerHtml(icon, text, currentZoom),
+            getConnectionMarkerHtml(icon, text),
             { interactive: true } as any
           );
 
@@ -3651,10 +3648,12 @@ async function init() {
       updateUIVisibility();
 
       // LAZY LOADING: Load models cho tầng mới nếu chưa load
-      if (_allModelMetadata.length > 0 && !_loadedFloors.has(id)) {
-        console.log(`🔄 Lazy loading models for floor: ${id}`);
+      if (_allModelMetadata.length > 0) {
         _loadModelsForFloor(id);
       }
+
+      // Hook camera-change cho streaming
+      mapView.on("camera-change", (window as any).updateModelStreaming);
 
       // BƯỚC 5: Comment vô hiệu hóa hàm tạo Clone Model 3D (Shadow copies)
       // Hàm này đang gây bão Error 404 do file GLB không tồn tại làm đứt mạng & kẹt GPU!
@@ -9064,6 +9063,193 @@ async function init() {
     toolbar.style.display = count > 0 ? 'block' : 'none';
   };
 
+  // ============================================
+  // PROFESSIONAL MODEL STREAMING ARCHITECTURE
+  // ============================================
+
+  /**
+   * Entry point để kích hoạt stream models cho một tầng
+   */
+  const _loadModelsForFloor = async (floorId: string) => {
+    console.log(`🌐 [STREAMING] Activating model stream for floor: ${floorId}`);
+    _loadedFloors.add(floorId);
+    (window as any).updateModelStreaming(); // Kích hoạt ngay lập tức
+  };
+
+  /**
+   * Helper để load từng model vào Map (Dùng nội bộ cho Streaming)
+   */
+  const _addSingleModelToMap = async (m: any) => {
+    if (MODEL_INSTANCE_REGISTRY.has(m.uuid)) return;
+
+    // 1. CHUẨN HÓA SỐ ĐỂ TRÁNH LỖI UNDEFINED
+    const lat = Number(m.latitude);
+    const lon = Number(m.longitude);
+    if (isNaN(lat) || isNaN(lon)) return;
+
+    const floors = mapData.getByType("floor");
+    let targetFloor = floors.find((f: any) => f.id === m.floorId);
+    if (!targetFloor) return;
+
+    try {
+      const coord = mapView.createCoordinate(lat, lon, targetFloor);
+      if (!coord) return;
+
+      // 2. PARSE SCALE/ROTATION
+      let s = m.scale;
+      if (typeof s === 'string') try { s = JSON.parse(s); } catch (e) { }
+      let r = m.rotation;
+      if (typeof r === 'string') try { r = JSON.parse(r); } catch (e) { }
+
+      const modelAssetMap: Record<string, any> = { "car": car, "tree_palm": tree_palm, "three_palm": tree_palm };
+      let finalUrl = m.url;
+      if (!finalUrl) return;
+
+      if (modelAssetMap[finalUrl]) {
+        finalUrl = modelAssetMap[finalUrl];
+      } else if (finalUrl.startsWith("./")) {
+        finalUrl = finalUrl.replace("./", `${SERVER_URL}/`);
+      } else if (!finalUrl.startsWith("http")) {
+        finalUrl = `${SERVER_URL}${finalUrl.startsWith("/") ? "" : "/"}${finalUrl}`;
+      }
+
+      // 3. CHỐNG CACHE FILE LỖI
+      const cacheBustedUrl = `${finalUrl}?v=${Date.now()}`;
+
+      // 4. CHỐNG TRÀN BUFFER GPU: Tắt tương tác cho cây cối
+      const modelName = (m.name || "").toLowerCase();
+      const isDeco = modelName.includes('cây') || modelName.includes('vườn') || modelName.includes('thảm') || modelName.includes('tree') || modelName.includes('plant') || modelName.includes('palm') || modelName.includes('floral') || modelName.includes('cỏ');
+
+      console.log(`📡 [STREAMING] Loading: ${m.name || m.uuid}`);
+
+      const model = await mapView.Models.add(coord, cacheBustedUrl, {
+        rotation: r || [0, 0, 0],
+        scale: s || [1, 1, 1],
+        interactive: !isDeco, // Cây cối không cần click
+        verticalOffset: Number(m.elevation) || 0
+      });
+
+      MODEL_ID_REGISTRY.set(model.id, {
+        url: m.url, uuid: m.uuid, name: m.name, desc: m.desc || "",
+        rotation: r, scale: s,
+        originalCoordinate: coord,
+        floorId: m.floorId,
+        elevation: m.elevation || 0
+      });
+
+      MODEL_INSTANCE_REGISTRY.set(m.uuid, model);
+      return model;
+    } catch (err) {
+      console.error(`❌ [STREAMING] Failed to load model ${m.uuid}:`, err);
+    }
+  };
+
+  /**
+   * Cập nhật hiển thị models dựa trên khoảng cách Camera (Streaming)
+   * Thuật toán tải động giúp hiển thị được cả 166 models mà không sập WebGL
+   */
+  const updateModelStreaming = debounce(async () => {
+    const currentFloor = mapView.currentFloor;
+    if (!currentFloor) return;
+
+    const floorName = (currentFloor.name || "").toLowerCase();
+    const focalPoint = (mapView.Camera as any).center;
+    if (!focalPoint) return;
+
+    const currentZoom = getCameraZoom() || 0;
+
+    // THIẾT LẬP NGƯỠNG (Nâng lên 19 theo yêu cầu)
+    const ZOOM_LOAD_THRESHOLD = 19.0;
+    const ZOOM_UNLOAD_THRESHOLD = 18.0; // Đệm 1 đơn vị zoom
+    const LOAD_RADIUS = 300;
+    const UNLOAD_RADIUS = 320;
+    const MAX_CONCURRENT_MODELS = 150;
+
+    console.log(`📡 [STREAMING] Current Zoom: ${currentZoom.toFixed(2)} (Target > ${ZOOM_LOAD_THRESHOLD})`);
+
+    // Xác định tầng dưới để giữ Thang máy/Thang cuốn liên thông
+    const sortedFloors = [...mapData.getByType("floor")].sort((a, b) => (a as any).elevation - (b as any).elevation);
+    const currentIndex = sortedFloors.findIndex(f => f.id === currentFloor.id);
+    const floorBelowId = currentIndex > 0 ? sortedFloors[currentIndex - 1].id : null;
+
+    const isThang = (name: string) => {
+      const s = (name || "").toLowerCase();
+      return s.includes("thang máy") || s.includes("thang cuốn") || s.includes("thang bộ") || s.includes("thang ");
+    };
+
+    // 1. Tự động dọn dẹp các model xa hoặc sai tầng
+    for (const [uuid, instance] of MODEL_INSTANCE_REGISTRY.entries()) {
+      const meta = [...MODEL_ID_REGISTRY.values()].find(m => m.uuid === uuid);
+      if (!meta || !meta.originalCoordinate) {
+        try { mapView.Models.remove(instance); MODEL_INSTANCE_REGISTRY.delete(uuid); } catch (e) { }
+        continue;
+      }
+
+      const dist = calculateDistance(focalPoint, { latitude: meta.originalCoordinate.latitude, longitude: meta.originalCoordinate.longitude });
+      const isCurrentFloor = meta.floorId === currentFloor.id;
+      const isVerticalBelow = floorBelowId && meta.floorId === floorBelowId && isThang(meta.name);
+
+      // LOGIC XÓA MẠNH TAY:
+      const shouldUnloadDueToZoom = currentZoom < ZOOM_UNLOAD_THRESHOLD && !isThang(meta.name);
+      const shouldUnloadDueToDist = dist > UNLOAD_RADIUS && (!isThang(meta.name) || dist > 500);
+
+      if (!isCurrentFloor && !isVerticalBelow || shouldUnloadDueToZoom || shouldUnloadDueToDist) {
+        try { mapView.Models.remove(instance); MODEL_INSTANCE_REGISTRY.delete(uuid); } catch (e) { }
+      }
+    }
+
+    if (currentZoom < ZOOM_LOAD_THRESHOLD) {
+      console.log(`🚫 [STREAMING] Hidden all models (Zoom ${currentZoom.toFixed(2)} < ${ZOOM_LOAD_THRESHOLD})`);
+      return;
+    }
+
+    // 2. LỌC DANH SÁCH TIỀM NĂNG
+    const candidateModels = _allModelMetadata.filter((m: any) => {
+      if (isViewOnly) {
+        const shouldShow = m.displayWebsite == 1 || m.displayWebsite === true;
+        if (!shouldShow) return false;
+      }
+      const isCurrent = m.floorId === currentFloor.id;
+      const isVerticalBelow = floorBelowId && m.floorId === floorBelowId && isThang(m.name);
+      return isCurrent || isVerticalBelow;
+    });
+
+    console.log(`📦 [STREAMING] Found ${candidateModels.length} candidates for floor ${floorName} (ViewOnly: ${isViewOnly})`);
+
+    const modelsToLoad: any[] = [];
+    candidateModels.forEach((m: any) => {
+      const dist = calculateDistance(focalPoint, { latitude: Number(m.latitude), longitude: Number(m.longitude) });
+      const isLoaded = MODEL_INSTANCE_REGISTRY.has(m.uuid);
+      if (dist <= LOAD_RADIUS && !isLoaded) {
+        modelsToLoad.push(m);
+      }
+    });
+
+    if (modelsToLoad.length > 0) {
+      console.log(`📦 [STREAMING] Queueing ${modelsToLoad.length} new models to load...`);
+    }
+
+    // 4. Thực hiện Load mới theo thứ tự ưu tiên gần nhất
+    if (modelsToLoad.length > 0) {
+      modelsToLoad.sort((a, b) => {
+        const dA = calculateDistance(focalPoint, { latitude: Number(a.latitude), longitude: Number(a.longitude) });
+        const dB = calculateDistance(focalPoint, { latitude: Number(b.latitude), longitude: Number(b.longitude) });
+        return dA - dB;
+      });
+
+      const BATCH_SIZE = 3;
+      for (let i = 0; i < modelsToLoad.length; i += BATCH_SIZE) {
+        if (MODEL_INSTANCE_REGISTRY.size >= MAX_CONCURRENT_MODELS) break;
+        const batch = modelsToLoad.slice(i, i + BATCH_SIZE);
+        await Promise.all(batch.map(m => _addSingleModelToMap(m)));
+        await new Promise(r => setTimeout(r, 50));
+      }
+    }
+  }, 300);
+
+  (window as any).updateModelStreaming = updateModelStreaming;
+  mapView.on("camera-change", updateModelStreaming);
+
   /** Nudge selected models in a direction */
   const nudgeMultiSelectModels = async (direction: 'up' | 'down' | 'left' | 'right') => {
     if (multiSelectedModels.size === 0) return;
@@ -9326,115 +9512,8 @@ async function init() {
     }
   };
 
-  // ============================================
-  // LOAD MODELS CHO 1 TẦNG CỤ THỂ (Batch loading)
-  // ============================================
-  const _loadModelsForFloor = async (floorId: string) => {
-    // CHẾ ĐỘ GIỮ LẠI MODEL: Không xóa model cũ để quay lại tầng cũ nhanh hơn
-    // Ưu tiên nạp tiếp các model chưa có
-    const floorModels = _allModelMetadata.filter((m: any) => {
-      if (isViewOnly) {
-        const shouldShow = m.displayWebsite == 1 || m.displayWebsite === true;
-        if (!shouldShow) return false;
-      }
-      return m.floorId === floorId;
-    });
-
-    if (floorModels.length === 0) return;
-
-    // Chỉ load tiếp nếu thực sự có model mới chưa được add
-    const newModelsForFloor = floorModels.filter((m: any) => !MODEL_INSTANCE_REGISTRY.has(m.uuid));
-    if (newModelsForFloor.length === 0) return;
-
-    console.log(`🚀 Adding ${newModelsForFloor.length} new models to memory for floor: ${floorId}`);
-
-    const floors = mapData.getByType("floor");
-    const BATCH_SIZE = 1;
-    const BATCH_DELAY = 1000;
-
-    for (let i = 0; i < floorModels.length; i += BATCH_SIZE) {
-      const batch = floorModels.slice(i, i + BATCH_SIZE);
-
-      const batchPromises = batch.map(async (m: any) => {
-        if (MODEL_INSTANCE_REGISTRY.has(m.uuid)) return;
-
-        // ÉP KIỂU NUMBER NGHIÊM NGẶT
-        const lat = Number(m.latitude);
-        const lon = Number(m.longitude);
-        if (isNaN(lat) || isNaN(lon)) return;
-
-        let targetFloor = floors.find((f: any) => f.id === m.floorId);
-        if (!targetFloor && m.floorId === "m_d4b5674c0b15e099") {
-          targetFloor = floors.find((f: any) => (f.name || "").toLowerCase().includes("tầng 2"));
-        }
-        targetFloor = targetFloor || mapView.currentFloor;
-        if (!targetFloor) return;
-
-        try {
-          const coord = mapView.createCoordinate(lat, lon, targetFloor);
-          if (!coord) return;
-
-          // Xử lý Scale/Rotation (nếu là string thì parse)
-          let s = m.scale;
-          if (typeof s === 'string') try { s = JSON.parse(s); } catch (e) { }
-          let r = m.rotation;
-          if (typeof r === 'string') try { r = JSON.parse(r); } catch (e) { }
-
-          const modelAssetMap: Record<string, any> = { "car": car, "three_palm": tree_palm, "tree_palm": tree_palm };
-          let finalUrl = m.url;
-          if (!finalUrl) return;
-
-          if (modelAssetMap[finalUrl]) {
-            finalUrl = modelAssetMap[finalUrl];
-          } else if (finalUrl.startsWith("./")) {
-            finalUrl = finalUrl.replace("./", `${SERVER_URL}/`);
-          } else if (!finalUrl.startsWith("http")) {
-            finalUrl = `${SERVER_URL}/${finalUrl}`;
-          }
-
-          // Force cache busting for testing
-          const cacheBustedUrl = `${finalUrl}?v=${Date.now()}`;
-
-          // CHẾ ĐỘ OPTIMIZATION: Tắt tính năng tương tác cho các model cây cối/thảm thực vật
-          // Giúp GPU giảm tải tính toán va chạm (Collision Detection)
-          const modelName = (m.name || "").toLowerCase();
-          const isDeco = modelName.includes('cây') || modelName.includes('vườn') || modelName.includes('thảm') || modelName.includes('tree') || modelName.includes('plant') || modelName.includes('palm') || modelName.includes('floral') || modelName.includes('cỏ');
-
-          const model = await mapView.Models.add(coord, cacheBustedUrl, {
-            interactive: !isDeco, // Cây cối thì không cần tương tác
-            scale: s || [1, 1, 1],
-            rotation: r || [0, 0, 0],
-            verticalOffset: Number(m.elevation) || 0
-          });
-
-          (model as any).url = finalUrl;
-          (model as any).uuid = m.uuid;
-          (model as any).originalCoordinate = coord;
-
-          MODEL_ID_REGISTRY.set(model.id, {
-            url: m.url, uuid: m.uuid, name: m.name, desc: m.desc,
-            rotation: r, scale: s,
-            originalCoordinate: coord,
-            floorId: targetFloor?.id || m.floorId,
-            displayWebsite: m.displayWebsite,
-            thumb: m.thumb || m.thumbnail,
-            elevation: m.elevation || 0
-          });
-
-          MODEL_INSTANCE_REGISTRY.set(m.uuid, model);
-          console.log(`✅ Successfully added: ${m.name || m.uuid}`);
-        } catch (modelError) {
-          console.error(`❌ Failed to add model ${m.uuid}:`, modelError);
-        }
-      });
-
-      await Promise.all(batchPromises);
-      await new Promise(resolve => setTimeout(resolve, BATCH_DELAY));
-    }
-
-    _loadedFloors.add(floorId);
-    showOverviewModelsOnAllFloors();
-  };
+  // HỆ THỐNG MODEL STREAMING ĐÃ ĐƯỢC KÍCH HOẠT Ở TRÊN
+  // ĐOẠN CODE CŨ ĐÃ ĐƯỢC LOẠI BỎ ĐỂ TRÁNH TRÙNG LẶP BIẾN.
 
   // ============================================
   // OVERVIEW MODELS PERSISTENCE ACROSS FLOORS
