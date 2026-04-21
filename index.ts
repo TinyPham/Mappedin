@@ -1139,11 +1139,24 @@ async function init() {
   // ============================================
   const getCameraZoom = (): number | null => {
     try {
-      const cam: any = (mapView as any).Camera || (mapView as any).camera;
-      const z = cam?.zoom ?? cam?.position?.zoom ?? cam?.camera?.zoom ?? cam?.state?.zoom ?? null;
-      return typeof z === "number" ? z : null;
+      const cam = (mapView as any).Camera;
+      if (!cam) return null;
+
+      // Thử các biến thể thuộc tính Zoom trong SDK
+      let z = cam.zoom;
+      if (typeof z !== 'number') z = cam.zoomLevel;
+      if (typeof z !== 'number') z = cam.state?.zoom;
+      if (typeof z !== 'number') z = cam.camera?.zoom;
+      if (typeof z !== 'number' && cam.position) z = cam.position.zoom;
+
+      // Fallback: Nếu vẫn không lấy được (tránh bị 0.00 gây ẩn model)
+      if (typeof z !== 'number' || isNaN(z)) {
+         return 20; // Giả định là đang zoom gần để hiện model nếu lỗi
+      }
+
+      return z;
     } catch {
-      return null;
+      return 20;
     }
   };
 
@@ -1946,18 +1959,12 @@ async function init() {
     const currentFloorId = mapView.currentFloor?.id;
 
     objects.forEach((objStub: any) => {
-      // Resolve object đầy đủ từ mapData (vì obj có thể là stub như Hp2)
       const obj = resolveObjectById(objStub?.id) || objStub;
-
-      // Chỉ render objects có name (theo yêu cầu: marker sẽ là name của object)
       if (!obj.name) return;
 
-      // Lọc theo floor nếu có
       if (currentFloorId) {
         const objFloorId = obj.floor?.id || obj.floorId;
-        if (objFloorId && objFloorId !== currentFloorId) {
-          return;
-        }
+        if (objFloorId && objFloorId !== currentFloorId) return;
       }
 
       // Lấy coordinates (thử nhiều cách)
@@ -1972,6 +1979,7 @@ async function init() {
       }
 
       if (coordsToRender.length === 0) return;
+
 
       // Lấy image nếu có (từ photos/images/metadata)
       let imageUrl: string | null = null;
@@ -2153,7 +2161,7 @@ async function init() {
   const connectionMarkers: any[] = [];
 
   // Cấu hình zoom threshold (Giảm xuống để hiện sớm hơn)
-  const DEFAULT_CONNECTION_MARKER_MIN_ZOOM = 0.1;
+  const DEFAULT_CONNECTION_MARKER_MIN_ZOOM = 16.5; // Ngưỡng ẩn khi zoom xa
   if ((window as any).CONNECTION_MARKER_MIN_ZOOM == null) {
     (window as any).CONNECTION_MARKER_MIN_ZOOM = DEFAULT_CONNECTION_MARKER_MIN_ZOOM;
   }
@@ -2166,31 +2174,20 @@ async function init() {
   /**
    * Tạo HTML cho connection marker (icon + label, scale theo zoom)
    */
-  const getConnectionMarkerHtml = (icon: string, text: string, zoom: number | null) => {
-    const z = zoom ?? DEFAULT_CONNECTION_MARKER_MIN_ZOOM;
-    const threshold = (window as any).CONNECTION_MARKER_MIN_ZOOM ?? DEFAULT_CONNECTION_MARKER_MIN_ZOOM;
-    const labelOffset: number = (window as any).CONNECTION_LABEL_ZOOM_OFFSET ?? 0.15;
-    const maxScale: number = (window as any).CONNECTION_ICON_MAX_SCALE ?? 3.0;
+  const getConnectionMarkerHtml = (icon: string, text: string) => {
+    // Luôn sử dụng kích thước chuẩn như các icon khác (34px container, 20px icon)
+    const size = 20;
 
-    // Icon scale theo zoom
-    const scale = Math.max(1, Math.min(1 + (z - threshold) * 1.0, maxScale));
-    const size = Math.round(24 * scale);
-
-    // Hiện label khi zoom đủ gần
-    const alwaysShowLabel: boolean = (window as any).CONNECTION_SHOW_LABEL_ALWAYS ?? true;
-    const showLabel = alwaysShowLabel ? true : z >= threshold + labelOffset;
-
-    return `<div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
-    <div style="width:${size + 12}px;height:${size + 12}px;display:flex;align-items:center;justify-content:center;background:#fff;border-radius:50%;box-shadow:0 3px 6px rgba(0,0,0,0.15);border:1.5px solid #fff;">
-      <img src="${icon}" alt="${text}" style="width:${size}px;height:${size}px;object-fit:contain;" />
-    </div>
-      ${showLabel
-        ? `<div style="font-size:13px;line-height:1.2;font-weight:600;color:#333;text-shadow:0 0 4px rgba(255,255,255,0.9), 0 0 8px rgba(255, 255, 255, 0.8);white-space:nowrap;">
-              ${text}
-            </div>`
-        : ""
-      }
-    </div>`;
+    return `
+      <div style="display:flex;flex-direction:column;align-items:center;gap:3px;">
+        <div style="width:34px;height:34px;display:flex;align-items:center;justify-content:center;background:#fff;border-radius:50%;box-shadow:0 3px 6px rgba(0,0,0,0.15);border:1.5px solid #fff;">
+          <img src="${icon}" alt="${text}" style="width:${size}px;height:${size}px;object-fit:contain;" />
+        </div>
+        <div style="font-size:13px;line-height:1.2;font-weight:600;color:#333;text-shadow:0 0 4px rgba(255,255,255,0.9), 0 0 8px rgba(255, 255, 255, 0.8);white-space:nowrap;">
+          ${text}
+        </div>
+      </div>
+    `;
   };
 
   /**
@@ -2306,7 +2303,7 @@ async function init() {
         try {
           const marker = mapView.Markers.add(
             coord,
-            getConnectionMarkerHtml(icon, text, currentZoom),
+            getConnectionMarkerHtml(icon, text),
             { interactive: true } as any
           );
 
@@ -9060,7 +9057,8 @@ async function init() {
     const lon = Number(m.longitude);
     if (isNaN(lat) || isNaN(lon)) return;
 
-    let targetFloor = allFloors.find((f: any) => f.id === m.floorId);
+    const floors = mapData.getByType("floor");
+    let targetFloor = floors.find((f: any) => f.id === m.floorId);
     if (!targetFloor) return;
 
     try {
@@ -9085,6 +9083,15 @@ async function init() {
         interactive: !isViewOnly
       });
 
+      // QUAN TRỌNG: Phải đăng ký vào MODEL_ID_REGISTRY để Loop dọn dẹp có thể tính toán khoảng cách
+      MODEL_ID_REGISTRY.set(model.id, {
+        url: m.url, uuid: m.uuid, name: m.name, desc: m.desc || "",
+        rotation: m.rotation, scale: m.scale,
+        originalCoordinate: coord,
+        floorId: m.floorId,
+        elevation: m.elevation || 0
+      });
+
       MODEL_INSTANCE_REGISTRY.set(m.uuid, model);
       return model;
     } catch (err) {
@@ -9101,17 +9108,19 @@ async function init() {
     if (!currentFloor) return;
 
     const floorName = (currentFloor.name || "").toLowerCase();
-    const isOverview = floorName.includes("overview") || floorName.includes("tổng quan") || currentFloor.id === overviewFloor?.id;
-
-    if (isOverview) return;
-
     const focalPoint = (mapView.Camera as any).center;
     if (!focalPoint) return;
 
-    // CONFIGURATION (Điều chỉnh cực nhạy khi zoom/di chuyển)
-    const LOAD_RADIUS = 100;   // Chỉ load trong 100m quanh Camera khi zoom gần
-    const UNLOAD_RADIUS = 150; // Ngoài 150m hoăc khi zoom xa ra là gỡ bỏ ngay để nhẹ GPU
-    const MAX_CONCURRENT_MODELS = 120; // Quota an toàn cho VRAM
+    const currentZoom = getCameraZoom() || 0;
+
+    // THIẾT LẬP NGƯỠNG (Nâng lên 19 theo yêu cầu)
+    const ZOOM_LOAD_THRESHOLD = 19.0; 
+    const ZOOM_UNLOAD_THRESHOLD = 18.0; // Đệm 1 đơn vị zoom
+    const LOAD_RADIUS = 300;     
+    const UNLOAD_RADIUS = 320; 
+    const MAX_CONCURRENT_MODELS = 150;
+
+    console.log(`📡 [STREAMING] Current Zoom: ${currentZoom.toFixed(2)} (Target > ${ZOOM_LOAD_THRESHOLD})`);
 
     // Xác định tầng dưới để giữ Thang máy/Thang cuốn liên thông
     const sortedFloors = [...mapData.getByType("floor")].sort((a, b) => (a as any).elevation - (b as any).elevation);
@@ -9125,49 +9134,55 @@ async function init() {
 
     // 1. Tự động dọn dẹp các model xa hoặc sai tầng
     for (const [uuid, instance] of MODEL_INSTANCE_REGISTRY.entries()) {
-      const meta = [...MODEL_ID_REGISTRY.values()].find(meta => meta.uuid === uuid);
-      if (!meta) {
+      const meta = [...MODEL_ID_REGISTRY.values()].find(m => m.uuid === uuid);
+      if (!meta || !meta.originalCoordinate) {
         try { mapView.Models.remove(instance); MODEL_INSTANCE_REGISTRY.delete(uuid); } catch(e){}
         continue;
       }
 
+      const dist = calculateDistance(focalPoint, { latitude: meta.originalCoordinate.latitude, longitude: meta.originalCoordinate.longitude });
       const isCurrentFloor = meta.floorId === currentFloor.id;
       const isVerticalBelow = floorBelowId && meta.floorId === floorBelowId && isThang(meta.name);
 
-      if (!isCurrentFloor && !isVerticalBelow) {
+      // LOGIC XÓA MẠNH TAY:
+      const shouldUnloadDueToZoom = currentZoom < ZOOM_UNLOAD_THRESHOLD && !isThang(meta.name);
+      const shouldUnloadDueToDist = dist > UNLOAD_RADIUS && (!isThang(meta.name) || dist > 500);
+
+      if (!isCurrentFloor && !isVerticalBelow || shouldUnloadDueToZoom || shouldUnloadDueToDist) {
         try { mapView.Models.remove(instance); MODEL_INSTANCE_REGISTRY.delete(uuid); } catch(e){}
       }
     }
 
-    // 2. Lọc danh sách models tiềm năng (Tầng hiện tại + Thang tầng dưới)
+    if (currentZoom < ZOOM_LOAD_THRESHOLD) {
+      console.log(`🚫 [STREAMING] Hidden all models (Zoom ${currentZoom.toFixed(2)} < ${ZOOM_LOAD_THRESHOLD})`);
+      return;
+    }
+
+    // 2. LỌC DANH SÁCH TIỀM NĂNG
     const candidateModels = _allModelMetadata.filter((m: any) => {
-        const isCurrent = m.floorId === currentFloor.id;
-        const isVerticalBelow = floorBelowId && m.floorId === floorBelowId && isThang(m.name);
-        return isCurrent || isVerticalBelow;
+      if (isViewOnly) {
+        const shouldShow = m.displayWebsite == 1 || m.displayWebsite === true;
+        if (!shouldShow) return false;
+      }
+      const isCurrent = m.floorId === currentFloor.id;
+      const isVerticalBelow = floorBelowId && m.floorId === floorBelowId && isThang(m.name);
+      return isCurrent || isVerticalBelow;
     });
 
-    const modelsToLoad: any[] = [];
-    const modelsToUnload: string[] = [];
+    console.log(`📦 [STREAMING] Found ${candidateModels.length} candidates for floor ${floorName} (ViewOnly: ${isViewOnly})`);
 
+    const modelsToLoad: any[] = [];
     candidateModels.forEach((m: any) => {
       const dist = calculateDistance(focalPoint, { latitude: Number(m.latitude), longitude: Number(m.longitude) });
       const isLoaded = MODEL_INSTANCE_REGISTRY.has(m.uuid);
-
-      if (dist <= LOAD_RADIUS) {
-        if (!isLoaded) modelsToLoad.push(m);
-      } else if (dist > UNLOAD_RADIUS) {
-        const isVerticalBelow = floorBelowId && m.floorId === floorBelowId && isThang(m.name);
-        if (isLoaded && !isVerticalBelow) modelsToUnload.push(m.uuid);
+      if (dist <= LOAD_RADIUS && !isLoaded) {
+        modelsToLoad.push(m);
       }
     });
 
-    // 3. Thực hiện Unload ngay để giải phóng GPU
-    modelsToUnload.forEach(uuid => {
-      const instance = MODEL_INSTANCE_REGISTRY.get(uuid);
-      if (instance) {
-        try { mapView.Models.remove(instance); MODEL_INSTANCE_REGISTRY.delete(uuid); } catch(e){}
-      }
-    });
+    if (modelsToLoad.length > 0) {
+      console.log(`📦 [STREAMING] Queueing ${modelsToLoad.length} new models to load...`);
+    }
 
     // 4. Thực hiện Load mới theo thứ tự ưu tiên gần nhất
     if (modelsToLoad.length > 0) {
