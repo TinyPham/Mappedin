@@ -131,15 +131,41 @@ function safeDelete(filePath) {
 // NÉN FILE GLB
 // ============================================
 function optimizeFile(inputPath, outputPath) {
-    // CHỈ CHẠY CÁC BƯỚC NÉN AN TOÀN - TUYỆT ĐỐI KHÔNG DÙNG DRACO
-    // dedup: xóa dữ liệu trùng
-    // simplify: giảm polygon
-    // webp: nén ảnh sang webp
-    // prune: dọn dẹp node thừa
+    const rawFileName = path.basename(inputPath).toLowerCase();
+    // Loại bỏ dấu tiếng Việt để so sánh an toàn
+    const fileName = rawFileName.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d");
 
+    const isPlant = fileName.includes('cay') || fileName.includes('vuon') || fileName.includes('tham') || fileName.includes('co') || fileName.includes('tree') || fileName.includes('palm') || fileName.includes('floral');
+
+    // NẾU LÀ CÂY CỐI: KHÔNG NÉN, KHÔNG TỐI ƯU, KHÔNG CHỈNH SỬA
+    // COPY NGUYÊN BẢN 100% ĐỂ TRÁNH LỖI SHADER
+    if (isPlant) {
+        console.log(`    🎨 TỐI ƯU TEXTURE (512px): ${path.basename(inputPath)}`);
+        try {
+            // Chỉ resize và dọn dẹp, không simplify/draco
+            const cmd = [
+                'gltf-transform',
+                'cp', `"${inputPath}"`, `"${outputPath}"`,
+                '&&',
+                'gltf-transform',
+                'resize', `"${outputPath}"`, `"${outputPath}"`, '--width 512 --height 512',
+                '&&',
+                'gltf-transform',
+                'prune', `"${outputPath}"`, `"${outputPath}"`
+            ].join(' ');
+            execSync(cmd, { stdio: 'pipe' });
+            return true;
+        } catch (e) {
+            // Fallback nếu resize lỗi thì copy nguyên bản
+            execSync(`gltf-transform cp "${inputPath}" "${outputPath}"`, { stdio: 'pipe' });
+            return true;
+        }
+    }
+
+    // CÁC MODEL KHÁC: Nén WebP + Simplify để nhẹ máy
     const cmd = [
         'gltf-transform',
-        'cp', // cp làm gốc
+        'cp',
         `"${inputPath}"`,
         `"${outputPath}"`,
         '&&',
@@ -163,11 +189,11 @@ function optimizeFile(inputPath, outputPath) {
     try {
         execSync(cmd, {
             stdio: 'pipe',
-            timeout: 300000 // Tăng timeout cho chuỗi lệnh
+            timeout: 300000
         });
         return true;
     } catch (err) {
-        console.error(`    ⚠️ Lỗi nén chuỗi: ${err.message}`);
+        console.error(`    ⚠️ Lỗi nén: ${err.message}`);
         return false;
     }
 }

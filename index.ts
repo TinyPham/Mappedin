@@ -2837,13 +2837,14 @@ async function init() {
     return 'neutral_support';
   };
 
-  // === HỆ THỐNG MÀU MASTER (MASTER TOKEN SYSTEM) - Chuẩn sân bay quốc tế (Changi/Incheon Style) ===
+  // === HỆ THỐNG MÀU MASTER (MASTER TOKEN SYSTEM) - Chuẩn sân bay quốc tế ===
   const MASTER_PALETTE: Record<string, { fill: string; hover: string }> = {
-    // 1. MACRO ZONES (Khu vực nền lưu thông - Hiệu ứng xuyên thấu Changi Style)
-    international: { fill: '#4A90E244', hover: '#4A90E244' }, // Xanh dương trong suốt
-    domestic: { fill: '#50E3C244', hover: '#50E3C244' },      // Xanh ngọc trong suốt
-    restricted: { fill: '#7B1FA233', hover: '#7B1FA233' },    // Khu cách ly/Transit (Tím thạch anh xuyên thấu - 20% Alpha)
-    public: { fill: '#F5A62333', hover: '#F5A62333' },        // Khu công cộng (Cam hổ phách xuyên thấu - 20% Alpha)
+    // 1. MACRO ZONES (Khu vực nền lưu thông - Hiệu ứng Pastel)
+    // Thay thế Alpha Hex bằng mã màu Pastel chuẩn để tránh Warning Three.js
+    international: { fill: '#B5D1F1', hover: '#B5D1F1' }, // Xanh dương nhạt (thay cho #4A90E244)
+    domestic: { fill: '#B8F1E5', hover: '#B8F1E5' },      // Xanh ngọc nhạt (thay cho #50E3C244)
+    restricted: { fill: '#EBD6F1', hover: '#EBD6F1' },    // Tím nhạt (thay cho #7B1FA233)
+    public: { fill: '#FDEBD0', hover: '#FDEBD0' },        // Cam hổ phách nhạt (thay cho #F5A62333)
 
     // 2. MICRO ZONES (Khu vực chức năng - GIỮ NGUYÊN MÀU ĐẬM ĐỂ NỔI BẬT DƯỚI LỚP XUYÊN THẤU)
     retail: { fill: '#F3E5F5', hover: '#F3E5F5' },        // Bán lẻ, Miễn thuế (Tím Lavender hoàng gia)
@@ -2962,7 +2963,21 @@ async function init() {
       }
     } catch (e) { }
 
-    return { color: bgColor, hoverColor: hoverColor };
+    // Hàm hỗ trợ làm sạch mã màu (loại bỏ Alpha) để tránh Warning Three.js
+    const cleanColor = (color: string): string => {
+      if (!color) return "#F8FAFC";
+      if (color.startsWith("rgba")) {
+        // Convert rgba(r,g,b,a) to rgb(r,g,b)
+        return color.replace("rgba", "rgb").replace(/,[^,]*\)$/, ")");
+      }
+      if (color.startsWith("#") && color.length > 7) {
+        // Convert #RRGGBBAA to #RRGGBB
+        return color.substring(0, 7);
+      }
+      return color;
+    };
+
+    return { color: cleanColor(bgColor), hoverColor: cleanColor(hoverColor) };
   };
 
 
@@ -3273,16 +3288,30 @@ async function init() {
             </div>`;
           }
 
-          const marker = mapView.Markers.add(obj, markerHtml, { interactive: true } as any);
+          // SAFETY CHECK: Ensure the object has a valid coordinate before adding a marker
+          // Some objects like elevators/escalators might not have a center coordinate in certain SDK versions
+          let hasCoordinate = false;
+          try {
+            const coord = (obj as any).coordinate || (obj as any).center || mapView.createCoordinate(0, 0);
+            // In Mappedin Web SDK, the Markers.add internally calls getCoordinate. 
+            // We can't always check easily before call, but we can prevent the crash from being noisy.
+            hasCoordinate = !!coord;
+          } catch (e) {
+            hasCoordinate = false;
+          }
 
-          currentLocationMarkers.push(marker); // Track it
+          if (hasCoordinate) {
+            const marker = mapView.Markers.add(obj, markerHtml, { interactive: true } as any);
+            currentLocationMarkers.push(marker); // Track it
 
-          const markerId = (marker as any)?.id;
-          if (markerId) {
-            markerIdToObject.set(markerId, obj);
+            const markerId = (marker as any)?.id;
+            if (markerId) {
+              markerIdToObject.set(markerId, obj);
+            }
           }
         } catch (e) {
-          console.warn("Error adding marker for object:", name, e);
+          // If it still fails (e.g. internal getCoordinate fails), log it only in debug
+          // console.warn("Skipping marker for object without valid coordinate:", name);
         }
       }
     });
@@ -9301,8 +9330,8 @@ async function init() {
   // LOAD MODELS CHO 1 TẦNG CỤ THỂ (Batch loading)
   // ============================================
   const _loadModelsForFloor = async (floorId: string) => {
-    if (_loadedFloors.has(floorId)) return;
-
+    // CHẾ ĐỘ GIỮ LẠI MODEL: Không xóa model cũ để quay lại tầng cũ nhanh hơn
+    // Ưu tiên nạp tiếp các model chưa có
     const floorModels = _allModelMetadata.filter((m: any) => {
       if (isViewOnly) {
         const shouldShow = m.displayWebsite == 1 || m.displayWebsite === true;
@@ -9311,16 +9340,17 @@ async function init() {
       return m.floorId === floorId;
     });
 
-    if (floorModels.length === 0) {
-      _loadedFloors.add(floorId);
-      return;
-    }
+    if (floorModels.length === 0) return;
 
-    console.log(`🚀 Loading ${floorModels.length} models for floor: ${floorId}`);
+    // Chỉ load tiếp nếu thực sự có model mới chưa được add
+    const newModelsForFloor = floorModels.filter((m: any) => !MODEL_INSTANCE_REGISTRY.has(m.uuid));
+    if (newModelsForFloor.length === 0) return;
+
+    console.log(`🚀 Adding ${newModelsForFloor.length} new models to memory for floor: ${floorId}`);
 
     const floors = mapData.getByType("floor");
-    const BATCH_SIZE = 3; // Load 3 model mỗi batch
-    const BATCH_DELAY = 200; // Delay 200ms
+    const BATCH_SIZE = 1;
+    const BATCH_DELAY = 1000;
 
     for (let i = 0; i < floorModels.length; i += BATCH_SIZE) {
       const batch = floorModels.slice(i, i + BATCH_SIZE);
@@ -9362,8 +9392,16 @@ async function init() {
             finalUrl = `${SERVER_URL}/${finalUrl}`;
           }
 
-          const model = await mapView.Models.add(coord, finalUrl, {
-            interactive: true,
+          // Force cache busting for testing
+          const cacheBustedUrl = `${finalUrl}?v=${Date.now()}`;
+
+          // CHẾ ĐỘ OPTIMIZATION: Tắt tính năng tương tác cho các model cây cối/thảm thực vật
+          // Giúp GPU giảm tải tính toán va chạm (Collision Detection)
+          const modelName = (m.name || "").toLowerCase();
+          const isDeco = modelName.includes('cây') || modelName.includes('vườn') || modelName.includes('thảm') || modelName.includes('tree') || modelName.includes('plant') || modelName.includes('palm') || modelName.includes('floral') || modelName.includes('cỏ');
+
+          const model = await mapView.Models.add(coord, cacheBustedUrl, {
+            interactive: !isDeco, // Cây cối thì không cần tương tác
             scale: s || [1, 1, 1],
             rotation: r || [0, 0, 0],
             verticalOffset: Number(m.elevation) || 0
@@ -9384,7 +9422,7 @@ async function init() {
           });
 
           MODEL_INSTANCE_REGISTRY.set(m.uuid, model);
-          console.log(`✅ Loaded model: ${m.name || m.uuid} on ${targetFloor.name}`);
+          console.log(`✅ Successfully added: ${m.name || m.uuid}`);
         } catch (modelError) {
           console.error(`❌ Failed to add model ${m.uuid}:`, modelError);
         }

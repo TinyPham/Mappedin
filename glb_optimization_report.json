@@ -1,11 +1,11 @@
 {
-  "timestamp": "2026-04-20T08:59:04.206Z",
+  "timestamp": "2026-04-21T02:22:04.442Z",
   "totalFiles": 153,
   "successCount": 153,
   "failCount": 0,
   "totalOriginalMB": 283.06,
-  "totalOptimizedMB": 161.28,
-  "reductionPercent": 43,
+  "totalOptimizedMB": 168.5,
+  "reductionPercent": 40.5,
   "details": [
     {
       "file": "ATM.glb",
@@ -34,14 +34,14 @@
     {
       "file": "Cây cau cảnh.glb",
       "originalSize": 3525056,
-      "optimizedSize": 412800,
-      "reduction": 88.3
+      "optimizedSize": 1235060,
+      "reduction": 65
     },
     {
       "file": "Cây cọ cảnh.glb",
       "originalSize": 2439372,
-      "optimizedSize": 353588,
-      "reduction": 85.5
+      "optimizedSize": 1199528,
+      "reduction": 50.8
     },
     {
       "file": "Cây cọ nhiệt đới.glb",
@@ -52,8 +52,8 @@
     {
       "file": "Cây dương xỉ.glb",
       "originalSize": 944020,
-      "optimizedSize": 362148,
-      "reduction": 61.6
+      "optimizedSize": 546656,
+      "reduction": 42.1
     },
     {
       "file": "Cây lưỡi hổ.glb",
@@ -64,20 +64,20 @@
     {
       "file": "Cây thiên điểu.glb",
       "originalSize": 4552452,
-      "optimizedSize": 1861204,
-      "reduction": 59.1
+      "optimizedSize": 3552548,
+      "reduction": 22
     },
     {
       "file": "Cây trầu bà.glb",
       "originalSize": 7673472,
-      "optimizedSize": 1063572,
-      "reduction": 86.1
+      "optimizedSize": 710312,
+      "reduction": 90.7
     },
     {
       "file": "Cổng từ.glb",
       "originalSize": 19056,
-      "optimizedSize": 16180,
-      "reduction": 15.1
+      "optimizedSize": 18560,
+      "reduction": 2.6
     },
     {
       "file": "Cửa kính.glb",
@@ -694,14 +694,14 @@
     {
       "file": "Icon Men.glb",
       "originalSize": 45208,
-      "optimizedSize": 27860,
-      "reduction": 38.4
+      "optimizedSize": 45208,
+      "reduction": 0
     },
     {
       "file": "Icon Women.glb",
       "originalSize": 67612,
-      "optimizedSize": 36752,
-      "reduction": 45.6
+      "optimizedSize": 67612,
+      "reduction": 0
     },
     {
       "file": "Kiosk Check-in.glb",
@@ -838,8 +838,8 @@
     {
       "file": "Thảm thực vật.glb",
       "originalSize": 4170424,
-      "optimizedSize": 1160968,
-      "reduction": 72.2
+      "optimizedSize": 3478432,
+      "reduction": 16.6
     },
     {
       "file": "Trạm sạc điện thoại.glb",
@@ -874,8 +874,8 @@
     {
       "file": "Vườn cây xanh.glb",
       "originalSize": 35927564,
-      "optimizedSize": 5957140,
-      "reduction": 83.4
+      "optimizedSize": 7963516,
+      "reduction": 77.8
     },
     {
       "file": "Xe bus.glb",
