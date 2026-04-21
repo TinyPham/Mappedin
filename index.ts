@@ -9265,11 +9265,11 @@ async function init() {
     // Xác định tầng dưới để giữ Thang máy/Thang cuốn liên thông
     const sortedFloors = [...mapData.getByType("floor")].sort((a, b) => (a as any).elevation - (b as any).elevation);
     const currentIndex = sortedFloors.findIndex(f => f.id === currentFloor.id);
-    const floorBelowId = currentIndex > 0 ? sortedFloors[currentIndex - 1].id : null;
+    const lowerFloorIds = new Set(currentIndex > 0 ? sortedFloors.slice(0, currentIndex).map(f => f.id) : []);
 
     const isThang = (name: string) => {
       const s = (name || "").toLowerCase();
-      return s.includes("thang máy") || s.includes("thang cuốn") || s.includes("thang bộ") || s.includes("thang ");
+      return s.includes("thang") || s.includes("escalator") || s.includes("elevator");
     };
 
     // 1. Tự động dọn dẹp các model xa hoặc sai tầng
@@ -9282,20 +9282,15 @@ async function init() {
 
       const dist = calculateDistance(focalPoint, { latitude: meta.originalCoordinate.latitude, longitude: meta.originalCoordinate.longitude });
       const isCurrentFloor = meta.floorId === currentFloor.id;
-      const isVerticalBelow = floorBelowId && meta.floorId === floorBelowId && isThang(meta.name);
+      const isVerticalOnLowerFloor = lowerFloorIds.has(meta.floorId) && isThang(meta.name);
 
       // LOGIC XÓA MẠNH TAY:
       const shouldUnloadDueToZoom = currentZoom < ZOOM_UNLOAD_THRESHOLD && !isThang(meta.name);
-      const shouldUnloadDueToDist = dist > UNLOAD_RADIUS && (!isThang(meta.name) || dist > 500);
+      const shouldUnloadDueToDist = !isThang(meta.name) && dist > UNLOAD_RADIUS;
 
-      if (!isCurrentFloor && !isVerticalBelow || shouldUnloadDueToZoom || shouldUnloadDueToDist) {
+      if (!isCurrentFloor && !isVerticalOnLowerFloor || shouldUnloadDueToZoom || shouldUnloadDueToDist) {
         try { mapView.Models.remove(instance); MODEL_INSTANCE_REGISTRY.delete(uuid); } catch (e) { }
       }
-    }
-
-    if (currentZoom < ZOOM_LOAD_THRESHOLD) {
-      console.log(`🚫 [STREAMING] Hidden all models (Zoom ${currentZoom.toFixed(2)} < ${ZOOM_LOAD_THRESHOLD})`);
-      return;
     }
 
     // 2. LỌC DANH SÁCH TIỀM NĂNG
@@ -9305,23 +9300,28 @@ async function init() {
         if (!shouldShow) return false;
       }
       const isCurrent = m.floorId === currentFloor.id;
-      const isVerticalBelow = floorBelowId && m.floorId === floorBelowId && isThang(m.name);
-      return isCurrent || isVerticalBelow;
+      const isVerticalOnLowerFloor = lowerFloorIds.has(m.floorId) && isThang(m.name);
+      return isCurrent || isVerticalOnLowerFloor;
     });
-
-    console.log(`📦 [STREAMING] Found ${candidateModels.length} candidates for floor ${floorName} (ViewOnly: ${isViewOnly})`);
 
     const modelsToLoad: any[] = [];
     candidateModels.forEach((m: any) => {
+      const isVertical = isThang(m.name);
       const dist = calculateDistance(focalPoint, { latitude: Number(m.latitude), longitude: Number(m.longitude) });
       const isLoaded = MODEL_INSTANCE_REGISTRY.has(m.uuid);
-      if (dist <= LOAD_RADIUS && !isLoaded) {
+
+      // Thang luôn load (bất chấp zoom/distance), model khác thì theo luật
+      const shouldLoad = isVertical || (currentZoom >= ZOOM_LOAD_THRESHOLD && dist <= LOAD_RADIUS);
+
+      if (shouldLoad && !isLoaded) {
         modelsToLoad.push(m);
       }
     });
 
-    if (modelsToLoad.length > 0) {
+    if (modelsToLoad.length > 0 && currentZoom >= ZOOM_LOAD_THRESHOLD) {
       console.log(`📦 [STREAMING] Queueing ${modelsToLoad.length} new models to load...`);
+    } else if (modelsToLoad.length > 0) {
+      console.log(`📡 [STREAMING] Priority load: ${modelsToLoad.length} vertical assets`);
     }
 
     // 4. Thực hiện Load mới theo thứ tự ưu tiên gần nhất
