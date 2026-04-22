@@ -87,8 +87,8 @@ class TranslationManager {
         // Chỉ lấy theo trình duyệt nếu là các ngôn ngữ được hỗ trợ, còn lại mặc định vn
         const mappedBrowserLang = browserLang === 'vi' ? 'vn' : browserLang;
         if (['vn', 'en', 'zh', 'ja', 'ko'].includes(mappedBrowserLang)) {
-           // this.currentLang = mappedBrowserLang; 
-           // Tạm thời comment để ưu tiên VN tuyệt đối như yêu cầu
+          // this.currentLang = mappedBrowserLang; 
+          // Tạm thời comment để ưu tiên VN tuyệt đối như yêu cầu
         }
       }
     } catch (e) {
@@ -120,9 +120,9 @@ class TranslationManager {
       if (selector) {
         // Nếu selector đã có giá trị (do browser cache hoặc SSR), ưu tiên nó
         if (selector.value && ['vn', 'en', 'zh', 'ja', 'ko'].includes(selector.value)) {
-           this.currentLang = selector.value;
+          this.currentLang = selector.value;
         } else {
-           selector.value = this.currentLang;
+          selector.value = this.currentLang;
         }
 
         // RE-ADD MISSING EVENT LISTENER
@@ -1140,7 +1140,7 @@ async function init() {
 
   // Tự động chuyển đổi URL API giữa Local và Production (Render)
   const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
-  const API_BASE_URL = isLocal ? "http://localhost:3002/api" : `${window.location.origin}/api`;
+  const API_BASE_URL = isLocal ? "http://127.0.0.1:3002/api" : `${window.location.origin}/api`;
   const SERVER_URL = API_BASE_URL.replace("/api", "");
 
 
@@ -9501,7 +9501,7 @@ async function init() {
 
     const isThang = (obj: any) => {
       if (!obj) return false;
-      
+
       // 1. Kiểm tra tên Tiếng Việt (VN) gốc trong Database (Nguồn dữ liệu tin cậy nhất)
       const id = obj.uuid || obj.id || obj.mappedinId;
       if (id) {
@@ -9515,7 +9515,7 @@ async function init() {
       const name = (typeof obj === 'string') ? obj : (obj.name || "");
       const s = name.toLowerCase();
       if (s.includes("thang") || s.includes("escalator") || s.includes("elevator") || s.includes("stair")) return true;
-      
+
       return false;
     };
 

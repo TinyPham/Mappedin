@@ -5,7 +5,15 @@
   <meta charset="UTF-8" />
   <meta name="viewport"
     content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>Asset Management Map</title>
+  <title>ACV Map - 3D Wayfinding</title>
+
+  <!-- PWA Meta Tags -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#214ca6">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="ACV Map">
+  <link rel="apple-touch-icon" href="ACV-logo.png">
 
   <style>
     body {
@@ -1500,6 +1508,23 @@
             vực</button>
           <button id="btn-open-area-color" class="modern-btn-outline" data-i18n="area_color_btn">Màu nền khu
             vực</button>
+          <!-- PWA Install Button (Được kích hoạt khi trình duyệt hỗ trợ cài đặt) -->
+          <div id="pwa-install-container"
+            style="display: none; flex-direction: column; gap: 8px; margin-top: 15px; padding: 15px; background: #f0f4ff; border-radius: 12px; border: 1px dashed #214ca6;">
+            <div style="font-size: 13px; font-weight: 600; color: #214ca6; text-align: center;">Trải nghiệm tốt hơn với
+              ứng dụng</div>
+            <button id="pwa-install-btn" class="modern-btn-primary"
+              style="background: #214ca6; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              Cài đặt ACV Map
+            </button>
+          </div>
+
         </div>
 
       </div>
@@ -1569,7 +1594,7 @@
               stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="12" cy="12" r="10"></circle>
               <line x1="2" y1="12" x2="22" y2="12"></line>
-              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z">
+              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1 4-10z">
               </path>
             </svg>
             <span id="custom-lang-text">...</span>
@@ -2177,7 +2202,78 @@
       }
     });
   </script>
-  <script type="module" src="./index.ts"></script>
+  <script type="module" src="/index.ts"></script>
+
+  <!-- PWA Registration & Install Handling -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then(reg => console.log('SW Registered!', reg))
+          .catch(err => console.log('SW Reg error:', err));
+      });
+    }
+
+    // Handle Install Prompt
+    let deferredPrompt;
+    const installContainer = document.getElementById('pwa-install-container');
+    const installBtn = document.getElementById('pwa-install-btn');
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      // Prevent the mini-infobar from appearing on mobile
+      e.preventDefault();
+      // Stash the event so it can be triggered later.
+      deferredPrompt = e;
+      // Update UI notify the user they can install the PWA
+      if (installContainer) installContainer.style.display = 'flex';
+    });
+
+    if (installBtn) {
+      installBtn.addEventListener('click', async () => {
+        if (!deferredPrompt) return;
+        // Show the install prompt
+        deferredPrompt.prompt();
+        // Wait for the user to respond to the prompt
+        const { outcome } = await deferredPrompt.userChoice;
+        console.log(`User response to install prompt: ${outcome}`);
+
+        if (outcome === 'accepted') {
+          // Yêu cầu quyền tự động khởi chạy (Chỉ hoạt động trên Chrome/Edge mới nhất)
+          if ('runOnOsLogin' in navigator && navigator.runOnOsLogin.set) {
+            try {
+              await navigator.runOnOsLogin.set({ mode: 'windowed' });
+              console.log('✅ Auto-start requested and approved.');
+            } catch (err) {
+              console.warn('❌ Auto-start request failed:', err);
+            }
+          }
+        }
+
+        // We've used the prompt, and can't use it again, throw it away
+        deferredPrompt = null;
+        // Hide the install button
+        if (installContainer) installContainer.style.display = 'none';
+      });
+    }
+
+    // Kiểm tra và hiển thị lại yêu cầu khởi động nếu chưa được bật (Cho người dùng đã cài đặt)
+    async function checkAutoStart() {
+      if ('runOnOsLogin' in navigator && navigator.runOnOsLogin.get) {
+        const state = await navigator.runOnOsLogin.get();
+        if (state === 'not-allowed') {
+          console.log('💡 Tip: You can enable auto-start in App Settings.');
+        }
+      }
+    }
+    checkAutoStart();
+
+
+    // Hide if already installed
+    window.addEventListener('appinstalled', (evt) => {
+      console.log('App was installed');
+      if (installContainer) installContainer.style.display = 'none';
+    });
+  </script>
 </body>
 
 </html>
