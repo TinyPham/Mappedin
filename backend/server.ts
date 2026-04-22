@@ -134,8 +134,14 @@ app.post('/api/translate', async (req, res) => {
 // POST: Update Area Information
 app.post('/api/update-area-info', async (req, res) => {
     try {
-        const { id, vn, en, zh, ja, ko, imageUrl, mappedinImageUrl } = req.body;
-        // id is MappedinID (e.g. m_...)
+        const {
+            id,
+            name_vi, name_en, name_zh, name_ja, name_ko,
+            vn, en, zh, ja, ko,
+            imageUrl, mappedinImageUrl,
+            phone, openingHours,
+            detail_vn, detail_en, detail_zh, detail_ja, detail_ko
+        } = req.body;
 
         if (!id) return res.status(400).json({ error: 'Missing ID' });
 
@@ -143,6 +149,11 @@ app.post('/api/update-area-info', async (req, res) => {
 
         await db.request()
             .input('MappedinId', sql.NVarChar(100), id)
+            .input('NameVN', sql.NVarChar(200), name_vi)
+            .input('NameEN', sql.NVarChar(200), name_en)
+            .input('NameZH', sql.NVarChar(200), name_zh)
+            .input('NameJA', sql.NVarChar(200), name_ja)
+            .input('NameKO', sql.NVarChar(200), name_ko)
             .input('VN', sql.NVarChar(sql.MAX), vn)
             .input('EN', sql.NVarChar(sql.MAX), en)
             .input('ZH', sql.NVarChar(sql.MAX), zh)
@@ -150,6 +161,13 @@ app.post('/api/update-area-info', async (req, res) => {
             .input('KO', sql.NVarChar(sql.MAX), ko)
             .input('ImageUrl', sql.NVarChar(500), imageUrl)
             .input('MappedinImageUrl', sql.NVarChar(500), mappedinImageUrl || null)
+            .input('Phone', sql.NVarChar(50), phone)
+            .input('OpeningHours', sql.NVarChar(100), openingHours)
+            .input('LocationDetail_VN', sql.NVarChar(sql.MAX), detail_vn)
+            .input('LocationDetail_EN', sql.NVarChar(sql.MAX), detail_en)
+            .input('LocationDetail_ZH', sql.NVarChar(sql.MAX), detail_zh)
+            .input('LocationDetail_JA', sql.NVarChar(sql.MAX), detail_ja)
+            .input('LocationDetail_KO', sql.NVarChar(sql.MAX), detail_ko)
             .execute('SP_UpsertAreaInformation');
 
         res.json({ success: true });
@@ -1056,6 +1074,15 @@ async function start() {
                         zh: row.InformationZH,
                         ja: row.InformationJA,
                         ko: row.InformationKO
+                    },
+                    phone: row.Phone,
+                    openingHours: row.OpeningHours,
+                    locationDetail: {
+                        vn: row.LocationDetail_VN,
+                        en: row.LocationDetail_EN,
+                        zh: row.LocationDetail_ZH,
+                        ja: row.LocationDetail_JA,
+                        ko: row.LocationDetail_KO
                     }
                 };
             });

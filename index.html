@@ -1250,8 +1250,12 @@
 
         <!-- NEW: Sidebar Info Panel (Replaces Popup) -->
         <!-- Moved UP as requested: Below Search, Above Categories -->
-        <div id="sidebar-info-panel" class="modern-info-panel"
-          style="display:none; flex-direction: column; flex: 1; margin-bottom: 20px;">
+        <div id="sidebar-info-panel" class="modern-info-panel" style="display:none; flex-direction: column; flex: 1;">
+
+          <!-- Mobile Drag Handle -->
+          <div class="mobile-drag-handle"
+            style="display: none; width: 40px; height: 5px; background: #ccc; border-radius: 10px; margin: 10px auto; flex-shrink: 0;">
+          </div>
 
           <!-- Image Section with Overlay Close Button -->
           <div class="popup-header" style="position: relative; margin-bottom: 15px; width: 100%;">
@@ -1291,7 +1295,58 @@
                   style="display: none; background: #f4f7fa; border: 1px solid #e0e0e0; padding: 6px; border-radius: 8px; cursor: pointer; transition: all 0.2s;"
                   title="Đổi màu nền khu vực">🎨</button>
               </div>
-              <p id="area-description" style="margin-bottom: 20px; color: #555; line-height: 1.6; font-size: 15px;"></p>
+              <p id="area-description" style="margin-bottom: 15px; color: #555; line-height: 1.6; font-size: 15px;"></p>
+
+              <!-- Premium Meta Info (Changi/Incheon Style) -->
+              <div id="area-meta-info"
+                style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #f1f5f9; display: none;">
+                <!-- Hours -->
+                <div id="meta-hours-row"
+                  style="display: flex; align-items: center; margin-bottom: 12px; font-size: 14.5px;">
+                  <span
+                    style="color: #64748b; margin-right: 12px; display: flex; align-items: center; width: 20px; justify-content: center;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                      stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="12" cy="12" r="10" />
+                      <polyline points="12 6 12 12 16 14" />
+                    </svg>
+                  </span>
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <span id="meta-status" style="color: #3b82f6; font-weight: 500;">Open</span>
+                    <span style="color: #cbd5e1;">|</span>
+                    <span id="meta-hours" style="color: #334155;">00:00 ~ 24:00</span>
+                  </div>
+                </div>
+
+                <!-- Location Detail -->
+                <div id="meta-location-row"
+                  style="display: flex; align-items: flex-start; margin-bottom: 12px; font-size: 14.5px;">
+                  <span
+                    style="color: #64748b; margin-right: 12px; display: flex; align-items: center; width: 20px; justify-content: center; margin-top: 2px;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                      stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </svg>
+                  </span>
+                  <div id="meta-location" style="color: #334155; line-height: 1.4;">Near Gate 235 on 3F, Terminal 2
+                  </div>
+                </div>
+
+                <!-- Phone -->
+                <div id="meta-phone-row" style="display: flex; align-items: center; font-size: 14.5px;">
+                  <span
+                    style="color: #64748b; margin-right: 12px; display: flex; align-items: center; width: 20px; justify-content: center;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                      stroke-linecap="round" stroke-linejoin="round">
+                      <path
+                        d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l2.25-2.25a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+                    </svg>
+                  </span>
+                  <a id="meta-phone" href="tel:15772600" style="color: #334155; text-decoration: none;">1577-2600</a>
+                </div>
+              </div>
+
               <div id="routing-actions" style="display:none; gap: 10px; margin-top: 20px;">
                 <button id="btn-route-start" data-i18n="route_start"
                   style="flex:1; padding: 10px 0; border:none; border-radius:30px; background: #214ca6; color: white; font-weight: 700; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(33,76,166,0.25); transition: all 0.2s;">Start</button>
@@ -1451,15 +1506,27 @@
 
       <!-- Bottom Action Bar (Route Preview) - Fixed at the bottom of sidebar but outside scrollable area -->
       <div id="route-preview-bar"
-        style="display: none; width: 100%; border-top: 1px solid #eee; background: white; z-index: 1000;">
-        <button id="wayfinding-preview-btn-main"
-          style="width: 100%; background: #214ca6; color: white; border: none; padding: 20px; font-size: 18px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 12px; transition: background 0.2s;">
-          <span data-i18n="route_preview">Route Preview</span>
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"
-            stroke-linecap="round" stroke-linejoin="round">
-            <polygon points="5 3 19 12 5 21 5 3"></polygon>
-          </svg>
-        </button>
+        style="display: none; width: 100%; border-top: 1px solid #eee; background: white; z-index: 4500;">
+        <div style="display: flex; width: 100%;">
+          <button id="wayfinding-preview-btn-main"
+            style="flex: 1; background: #214ca6; color: white; border: none; padding: 16px; font-size: 16px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: background 0.2s;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"
+              stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="5 3 19 12 5 21 5 3"></polygon>
+            </svg>
+            <span data-i18n="route_preview">Route preview</span>
+          </button>
+
+          <button id="mobile-full-route-btn" class="mobile-only-action"
+            onclick="const list = document.getElementById('instructions-list'); if(list) { list.classList.toggle('show-on-mobile'); this.classList.toggle('expanded'); }"
+            style="display: none; flex: 1; background: white; color: #214ca6; border: none; border-left: 1px solid #e0e0e0; padding: 16px; font-size: 16px; font-weight: 700; cursor: pointer; align-items: center; justify-content: center; gap: 8px; transition: background 0.2s;">
+            <span data-i18n="full_route">Full route</span>
+            <svg class="chevron-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.3s ease;">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </button>
+        </div>
       </div>
     </div>
 
@@ -1747,6 +1814,32 @@
                     Hàn</button>
                 </div>
 
+                <div
+                  style="margin-bottom: 20px; padding: 15px; background: #fbfcfe; border: 1px solid #e2e8f0; border-radius: 8px;">
+                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                      <span style="font-size: 18px;">📞</span>
+                      <div style="flex: 1;">
+                        <label
+                          style="display:block; font-weight:600; font-size:13px; color:#1e293b; margin-bottom:3px;">Số
+                          điện thoại (Chung)</label>
+                        <input type="text" id="phone-global" placeholder="Ví dụ: 1577-2600"
+                          style="width:100%; padding:8px; border-radius:4px; border:1px solid #cbd5e1; font-size:14px;">
+                      </div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                      <span style="font-size: 18px;">🕒</span>
+                      <div style="flex: 1;">
+                        <label
+                          style="display:block; font-weight:600; font-size:13px; color:#1e293b; margin-bottom:3px;">Giờ
+                          mở cửa (Chung)</label>
+                        <input type="text" id="hours-global" placeholder="Ví dụ: 00:00 ~ 24:00"
+                          style="width:100%; padding:8px; border-radius:4px; border:1px solid #cbd5e1; font-size:14px;">
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 <!-- VI Tab -->
                 <div id="tab-content-vi" class="tab-content">
                   <div
@@ -1758,9 +1851,16 @@
                   <div
                     style="background:#f0f4f9; padding:8px 12px; border-left:4px solid #085ebb; margin-bottom:8px; font-weight:600; color:#085ebb;">
                     Mô tả khu vực (Tiếng Việt)</div>
-                  <textarea id="info-vi" rows="6"
-                    style="width:100%; padding:10px; border-radius:4px; border:1px solid #ccc; font-family:inherit; resize:vertical;"
+                  <textarea id="info-vi" rows="4"
+                    style="width:100%; padding:10px; border-radius:4px; border:1px solid #ccc; font-family:inherit; resize:vertical; margin-bottom:12px;"
                     placeholder="Nhập thông tin mô tả tiếng Việt..."></textarea>
+
+                  <div
+                    style="background:#f8fafc; padding:6px 10px; border-left:3px solid #64748b; margin-bottom:5px; font-weight:600; font-size:12px; color:#475569;">
+                    Vị trí cụ thể (VI)</div>
+                  <input type="text" id="detail-vi"
+                    style="width:100%; padding:8px; border-radius:4px; border:1px solid #ccc; font-size:13px;"
+                    placeholder="Gần cổng 235...">
                 </div>
                 <!-- EN Tab -->
                 <div id="tab-content-en" class="tab-content" style="display:none;">
@@ -1770,12 +1870,16 @@
                   <input type="text" id="name-en"
                     style="width:100%; padding:10px; border-radius:4px; border:1px solid #ccc; font-size:14px; margin-bottom:12px;"
                     placeholder="Area name in English...">
-                  <div
-                    style="background:#f0f4f9; padding:8px 12px; border-left:4px solid #085ebb; margin-bottom:8px; font-weight:600; color:#085ebb;">
-                    Description (English)</div>
-                  <textarea id="info-en" rows="6"
-                    style="width:100%; padding:10px; border-radius:4px; border:1px solid #ccc; font-family:inherit; resize:vertical;"
+                  <textarea id="info-en" rows="4"
+                    style="width:100%; padding:10px; border-radius:4px; border:1px solid #ccc; font-family:inherit; resize:vertical; margin-bottom:12px;"
                     placeholder="Enter English description..."></textarea>
+
+                  <div
+                    style="background:#f8fafc; padding:6px 10px; border-left:3px solid #64748b; margin-bottom:5px; font-weight:600; font-size:12px; color:#475569;">
+                    Specific Location (EN)</div>
+                  <input type="text" id="detail-en"
+                    style="width:100%; padding:8px; border-radius:4px; border:1px solid #ccc; font-size:13px;"
+                    placeholder="Near Gate 235...">
                 </div>
                 <!-- ZH Tab -->
                 <div id="tab-content-zh" class="tab-content" style="display:none;">
@@ -1785,12 +1889,16 @@
                   <input type="text" id="name-zh"
                     style="width:100%; padding:10px; border-radius:4px; border:1px solid #ccc; font-size:14px; margin-bottom:12px;"
                     placeholder="中文区域名称...">
-                  <div
-                    style="background:#f0f4f9; padding:8px 12px; border-left:4px solid #085ebb; margin-bottom:8px; font-weight:600; color:#085ebb;">
-                    区域描述（中文）</div>
-                  <textarea id="info-zh" rows="6"
-                    style="width:100%; padding:10px; border-radius:4px; border:1px solid #ccc; font-family:inherit; resize:vertical;"
+                  <textarea id="info-zh" rows="4"
+                    style="width:100%; padding:10px; border-radius:4px; border:1px solid #ccc; font-family:inherit; resize:vertical; margin-bottom:12px;"
                     placeholder="请输入中文描述..."></textarea>
+
+                  <div
+                    style="background:#f8fafc; padding:6px 10px; border-left:3px solid #64748b; margin-bottom:5px; font-weight:600; font-size:12px; color:#475569;">
+                    具体位置 (ZH)</div>
+                  <input type="text" id="detail-zh"
+                    style="width:100%; padding:8px; border-radius:4px; border:1px solid #ccc; font-size:13px;"
+                    placeholder="靠近 235 号登机口...">
                 </div>
                 <!-- JA Tab -->
                 <div id="tab-content-ja" class="tab-content" style="display:none;">
@@ -1800,12 +1908,16 @@
                   <input type="text" id="name-ja"
                     style="width:100%; padding:10px; border-radius:4px; border:1px solid #ccc; font-size:14px; margin-bottom:12px;"
                     placeholder="日本語のエリア名...">
-                  <div
-                    style="background:#f0f4f9; padding:8px 12px; border-left:4px solid #085ebb; margin-bottom:8px; font-weight:600; color:#085ebb;">
-                    エリア説明（日本語）</div>
-                  <textarea id="info-ja" rows="6"
-                    style="width:100%; padding:10px; border-radius:4px; border:1px solid #ccc; font-family:inherit; resize:vertical;"
+                  <textarea id="info-ja" rows="4"
+                    style="width:100%; padding:10px; border-radius:4px; border:1px solid #ccc; font-family:inherit; resize:vertical; margin-bottom:12px;"
                     placeholder="日本語の説明を入力してください..."></textarea>
+
+                  <div
+                    style="background:#f8fafc; padding:6px 10px; border-left:3px solid #64748b; margin-bottom:5px; font-weight:600; font-size:12px; color:#475569;">
+                    詳細な場所 (JA)</div>
+                  <input type="text" id="detail-ja"
+                    style="width:100%; padding:8px; border-radius:4px; border:1px solid #ccc; font-size:13px;"
+                    placeholder="ゲート235の近く...">
                 </div>
                 <!-- KO Tab -->
                 <div id="tab-content-ko" class="tab-content" style="display:none;">
@@ -1815,12 +1927,16 @@
                   <input type="text" id="name-ko"
                     style="width:100%; padding:10px; border-radius:4px; border:1px solid #ccc; font-size:14px; margin-bottom:12px;"
                     placeholder="한국어 지역 이름...">
-                  <div
-                    style="background:#f0f4f9; padding:8px 12px; border-left:4px solid #085ebb; margin-bottom:8px; font-weight:600; color:#085ebb;">
-                    지역 설명 (한국어)</div>
-                  <textarea id="info-ko" rows="6"
-                    style="width:100%; padding:10px; border-radius:4px; border:1px solid #ccc; font-family:inherit; resize:vertical;"
+                  <textarea id="info-ko" rows="4"
+                    style="width:100%; padding:10px; border-radius:4px; border:1px solid #ccc; font-family:inherit; resize:vertical; margin-bottom:12px;"
                     placeholder="한국어 설명을 입력하세요..."></textarea>
+
+                  <div
+                    style="background:#f8fafc; padding:6px 10px; border-left:3px solid #64748b; margin-bottom:5px; font-weight:600; font-size:12px; color:#475569;">
+                    상세 위치 (KO)</div>
+                  <input type="text" id="detail-ko"
+                    style="width:100%; padding:8px; border-radius:4px; border:1px solid #ccc; font-size:13px;"
+                    placeholder="235번 게이트 근처...">
                 </div>
               </div>
 

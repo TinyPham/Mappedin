@@ -484,6 +484,13 @@ class TranslationManager {
       'ja': 'ルートプレビュー',
       'ko': '경로 미리보기'
     },
+    'full_route': {
+      'vn': 'Chi tiết',
+      'en': 'Full Route',
+      'zh': '完整路线',
+      'ja': '全ルート',
+      'ko': '전체 경로'
+    },
 
     'back_btn': {
       'vn': 'Quay lại danh mục',
@@ -755,6 +762,109 @@ class TranslationManager {
     }
 
     return "";
+  }
+
+  // Get Localized Opening Hours
+  static getOpeningHours(id: string, obj?: any): string {
+    const locData = this.getLocationContent(id, obj);
+    return locData?.openingHours || "";
+  }
+
+  // Get Dynamic Opening Status (Open/Closed) based on Time
+  static getOpeningStatus(hoursStr: string): { status: 'open' | 'closed' | '', label: string, color: string } {
+    if (!hoursStr || hoursStr === "NULL" || hoursStr.trim() === "") return { status: '', label: '', color: '' };
+
+    const now = new Date();
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    const lang = (this.currentLang || 'vn').toLowerCase();
+    const s = hoursStr.toLowerCase().trim();
+
+    const labels: any = {
+      open: {
+        vn: 'Mở cửa',
+        en: 'Open',
+        zh: '营业中',
+        ja: '営業中',
+        ko: '영업 중'
+      },
+      closed: {
+        vn: 'Đóng cửa',
+        en: 'Closed',
+        zh: '已打烊',
+        ja: '準備中',
+        ko: '영업 종료'
+      }
+    };
+
+    const getLabel = (type: 'open' | 'closed') => {
+      const l = labels[type];
+      return l[lang] || l['en'];
+    };
+
+    // 1. Check for 24h
+    if (s.includes("24/7") || s.includes("24h") || s.includes("24 giờ") || s.includes("24 hours")) {
+      return {
+        status: 'open',
+        label: getLabel('open'),
+        color: '#3b82f6'
+      };
+    }
+
+    // 2. Parse range HH:mm ~ HH:mm
+    const parts = s.split(/[~\-]/);
+    if (parts.length === 2) {
+      const parseTime = (t: string) => {
+        const match = t.trim().match(/(\d{1,2})[:h](\d{2})/);
+        if (match) return parseInt(match[1]) * 60 + parseInt(match[2]);
+        return null;
+      };
+
+      const start = parseTime(parts[0]);
+      const end = parseTime(parts[1]);
+
+      if (start !== null && end !== null) {
+        let isOpen = false;
+        if (start < end) {
+          // Normal case: 07:00 ~ 18:00
+          isOpen = (currentMinutes >= start && currentMinutes < end);
+        } else {
+          // Night shift: 22:00 ~ 06:00
+          isOpen = (currentMinutes >= start || currentMinutes < end);
+        }
+
+        if (isOpen) {
+          return {
+            status: 'open',
+            label: getLabel('open'),
+            color: '#3b82f6'
+          };
+        }
+      }
+    }
+
+    return {
+      status: 'closed',
+      label: getLabel('closed'),
+      color: '#ef4444'
+    };
+  }
+
+  // Get Localized Location Detail (e.g. Near Gate...)
+  static getLocationDetail(id: string, obj?: any): string {
+    const locData = this.getLocationContent(id, obj);
+    const lang = (this.currentLang || 'vn').toLowerCase();
+    return locData?.locationDetail?.[lang] || "";
+  }
+
+  // Get Localized Features (Amenities) - Reusing Description as requested
+  static getFeatures(id: string, obj?: any): string {
+    return this.getLocationDescription(id, obj);
+  }
+
+  // Get Phone
+  static getPhone(id: string, obj?: any): string {
+    const locData = this.getLocationContent(id, obj);
+    return locData?.phone || "";
   }
 
   static async setLanguage(lang: string) {
@@ -5606,7 +5716,11 @@ async function init() {
                 </div>
               </div>`;
           }
-          if (previewBar) previewBar.style.display = "block";
+          if (previewBar) {
+            previewBar.style.display = "block";
+            const dirContent = document.getElementById("directions-tab-content");
+            if (dirContent && window.innerWidth <= 768) dirContent.style.paddingBottom = "55px";
+          }
 
           (window as any).isNavigationActive = true;
           if (statusEl) statusEl.textContent = "";
@@ -5689,7 +5803,11 @@ async function init() {
     }
 
     const previewBar = document.getElementById("route-preview-bar");
-    if (previewBar) previewBar.style.display = "none";
+    if (previewBar) {
+      previewBar.style.display = "none";
+      const dirContent = document.getElementById("directions-tab-content");
+      if (dirContent) dirContent.style.paddingBottom = "30px";
+    }
     const summaryContainer = document.getElementById("wayfinding-summary-container");
     if (summaryContainer) summaryContainer.style.display = "none";
     // Re-highlight selection
@@ -5945,12 +6063,20 @@ async function init() {
           emptyStateEl.style.display = "flex";
           instructionsContainer.style.display = "none";
 
-          // NẾU HIỂN THỊ EMPTY STATE THÌ ẨN PANEL INFORMATION ĐI
+          // NẾU HIỂN THỊ EMPTY STATE THÌ ẨN PANEL INFORMATION ĐI (Trừ khi đang ở tab chỉ đường để hiện ô nhập liệu)
           const popupInfo = document.getElementById("sidebar-info-panel");
-          if (popupInfo) popupInfo.style.display = "none";
+          const tabDirections = document.getElementById("tab-directions");
+          const isDirectionsTabActive = tabDirections && tabDirections.classList.contains("active");
+
+          if (popupInfo && !isDirectionsTabActive) {
+            popupInfo.style.display = "none";
+          } else if (popupInfo && isDirectionsTabActive) {
+            popupInfo.style.display = "flex";
+          }
         }
       }
     }
+
 
     if (panelEl) {
       const tabDirections = document.getElementById("tab-directions");
@@ -6239,6 +6365,66 @@ async function init() {
       descriptionElement.style.whiteSpace = "pre-line";
     }
 
+    // ============================================
+    // PREMIUM METADATA POPULATION (Ảnh 2)
+    // ============================================
+    const metaPanel = document.getElementById("area-meta-info");
+    if (metaPanel) {
+      const hours = TranslationManager.getOpeningHours(space.id, space);
+      const detail = TranslationManager.getLocationDetail(space.id, space);
+      const phone = TranslationManager.getPhone(space.id, space);
+
+      let hasData = false;
+
+      // 1. Giờ mở cửa
+      const hRow = document.getElementById("meta-hours-row");
+      const hText = document.getElementById("meta-hours");
+      const hStatus = document.getElementById("meta-status");
+      if (hRow && hText && hStatus) {
+        if (hours && hours !== "NULL" && hours.trim() !== "") {
+          hText.textContent = hours;
+          const statusInfo = TranslationManager.getOpeningStatus(hours);
+          hStatus.textContent = statusInfo.label;
+          hStatus.style.color = statusInfo.color;
+          hRow.style.display = "flex";
+          hasData = true;
+        } else {
+          hRow.style.display = "none";
+        }
+      }
+
+      // 2. Vị trí chi tiết
+      const lRow = document.getElementById("meta-location-row");
+      const lText = document.getElementById("meta-location");
+      if (lRow && lText) {
+        if (detail && detail !== "NULL" && detail.trim() !== "") {
+          lText.textContent = detail;
+          lRow.style.display = "flex";
+          hasData = true;
+        } else {
+          lRow.style.display = "none";
+        }
+      }
+
+      // 3. Số điện thoại
+      const pRow = document.getElementById("meta-phone-row");
+      const pLink = document.getElementById("meta-phone") as HTMLAnchorElement;
+      if (pRow && pLink) {
+        if (phone && phone !== "NULL" && phone.trim() !== "") {
+          pLink.textContent = phone;
+          pLink.href = `tel:${phone.replace(/\s/g, '')}`;
+          pRow.style.display = "flex";
+          hasData = true;
+        } else {
+          pRow.style.display = "none";
+        }
+      }
+
+      if (metaPanel) {
+        metaPanel.style.display = hasData ? "block" : "none";
+      }
+    }
+
     // Image handling - SMART LATEST SOURCE WINS
     // locData comes from TranslationManager which now includes uiImage and editorImage
     let imageUrl = null;
@@ -6318,6 +6504,10 @@ async function init() {
         btnEnd.textContent = TranslationManager.t('route_end', 'End');
 
         const handleRoutingAction = () => {
+          // Chỉ đóng phần nội dung thông tin UI (Bottom Sheet) để không ảnh hưởng logic lưu giá trị và highlight
+          const popup = document.getElementById("sidebar-info-panel");
+          if (popup) popup.style.display = "none";
+
           const tabDirections = document.getElementById("tab-directions");
           if (tabDirections) (tabDirections as any).click();
 
@@ -8234,7 +8424,11 @@ async function init() {
 
     // Ẩn preview bar cố định ở dưới và hiển thị control bar mới
     const previewBar = document.getElementById("route-preview-bar");
-    if (previewBar) previewBar.style.display = "none";
+    if (previewBar) {
+      previewBar.style.display = "none";
+      const dirContent = document.getElementById("directions-tab-content");
+      if (dirContent && window.innerWidth <= 768) dirContent.style.paddingBottom = "0px";
+    }
 
     // Hiển thị video control bar
     const videoControlBar = document.getElementById("video-control-bar");
@@ -8300,7 +8494,21 @@ async function init() {
       alert(TranslationManager.t('select_destination_alert', "Chưa có điểm đích. Vui lòng chọn điểm đích trên bản đồ."));
       return;
     }
+    // Ẩn chi tiết lộ trình nếu đang mở (mobile)
+    const instructionsListEl = document.getElementById("instructions-list");
+    if (instructionsListEl) instructionsListEl.classList.remove("show-on-mobile");
+    const fullRouteBtn = document.getElementById("mobile-full-route-btn");
+    if (fullRouteBtn) fullRouteBtn.classList.remove("expanded");
+
     animateBlueDotFullPath();
+
+    // Trên mobile, không tự động chạy autoplay mà chờ người dùng nhấn Play
+
+    if (window.innerWidth <= 768) {
+      setTimeout(() => {
+        if (!isPaused) pauseResumeAnimation();
+      }, 50);
+    }
   };
 
   if (mainPreviewBtn) mainPreviewBtn.addEventListener("click", startPreviewHandler);
@@ -8345,6 +8553,8 @@ async function init() {
     const previewBar = document.getElementById("route-preview-bar");
     if (previewBar) {
       previewBar.style.display = "block";
+      const dirContent = document.getElementById("directions-tab-content");
+      if (dirContent && window.innerWidth <= 768) dirContent.style.paddingBottom = "55px";
     }
 
     // Reset camera về trạng thái trước preview (hoặc về start point với zoom 19x như yêu cầu)
@@ -11400,6 +11610,16 @@ function initAdminUI(allMapObjects: any[]) {
     (document.getElementById('info-ja') as HTMLTextAreaElement).value = descJA;
     (document.getElementById('info-ko') as HTMLTextAreaElement).value = descKO;
 
+    // Premium Metadata
+    (document.getElementById('phone-global') as HTMLInputElement).value = locData?.phone || "";
+    (document.getElementById('hours-global') as HTMLInputElement).value = locData?.openingHours || "";
+
+    (document.getElementById('detail-vi') as HTMLInputElement).value = locData?.locationDetail?.vn || "";
+    (document.getElementById('detail-en') as HTMLInputElement).value = locData?.locationDetail?.en || "";
+    (document.getElementById('detail-zh') as HTMLInputElement).value = locData?.locationDetail?.zh || "";
+    (document.getElementById('detail-ja') as HTMLInputElement).value = locData?.locationDetail?.ja || "";
+    (document.getElementById('detail-ko') as HTMLInputElement).value = locData?.locationDetail?.ko || "";
+
     imgInput.value = img;
     updateImagePreview(img);
   };
@@ -11543,7 +11763,14 @@ function initAdminUI(allMapObjects: any[]) {
         ja: (document.getElementById('info-ja') as HTMLTextAreaElement).value,
         ko: (document.getElementById('info-ko') as HTMLTextAreaElement).value,
         imageUrl: imgInput.value,
-        mappedinImageUrl: currentMappedinImg
+        mappedinImageUrl: currentMappedinImg,
+        phone: (document.getElementById('phone-global') as HTMLInputElement).value,
+        openingHours: (document.getElementById('hours-global') as HTMLInputElement).value,
+        detail_vn: (document.getElementById('detail-vi') as HTMLInputElement).value,
+        detail_en: (document.getElementById('detail-en') as HTMLInputElement).value,
+        detail_zh: (document.getElementById('detail-zh') as HTMLInputElement).value,
+        detail_ja: (document.getElementById('detail-ja') as HTMLInputElement).value,
+        detail_ko: (document.getElementById('detail-ko') as HTMLInputElement).value
       };
 
       try {

@@ -42,7 +42,9 @@
     }
 
     #sidebar-content {
-        display: none !important;
+        pointer-events: none !important;
+        background: transparent !important;
+        display: block !important;
     }
 
     /* 3. Ẩn các thành phần không cần thiết theo yêu cầu */
@@ -57,6 +59,154 @@
     /* 4. Ẩn danh mục khu vực trên Mobile để tiết kiệm diện tích */
     #category-section {
         display: none !important;
+    }
+
+    #directions-empty-state {
+        display: none !important;
+    }
+
+    /* 4.1. Biến Info Panel thành Bottom Sheet */
+    #sidebar-info-panel {
+        position: fixed !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        width: 100% !important;
+        height: auto !important;
+        max-height: 80vh !important;
+        z-index: 5000 !important;
+        pointer-events: auto !important;
+        margin-bottom: 0 !important;
+        background: white !important;
+        border-top-left-radius: 24px !important;
+        border-top-right-radius: 24px !important;
+        box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.2) !important;
+        padding-bottom: 5px !important;
+        overflow-y: auto !important;
+        animation: mobileSlideUp 0.4s cubic-bezier(0, 0, 0.2, 1);
+    }
+
+    #sidebar-info-panel .popup-content>div:first-child {
+        padding: 10px 15px !important;
+    }
+
+    #routing-actions {
+        margin-top: 10px !important;
+    }
+
+
+    #directions-tab-content {
+        position: fixed !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        width: 100% !important;
+        max-height: 60vh !important;
+        z-index: 4000 !important;
+        border-top-left-radius: 24px !important;
+        border-top-right-radius: 24px !important;
+        overflow-y: auto !important;
+        display: none;
+        /* Trạng thái mặc định */
+
+        /* Ẩn ui khi thùng chứa rỗng */
+        background: transparent !important;
+        box-shadow: none !important;
+        pointer-events: none !important;
+        padding: 0;
+    }
+
+    /* Hiển thị nền trắng chỉ khi có kết quả tìm đường hoặc video */
+    #directions-tab-content:has(#wayfinding-summary-container[style*="display: block"]),
+    #directions-tab-content:has(#video-control-bar[style*="display: block"]) {
+        background: white !important;
+        box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.15) !important;
+        pointer-events: auto !important;
+        padding: 15px 0 30px 0;
+        /* Bỏ !important để JS điều chỉnh được */
+    }
+
+    /* Khi tab chỉ đường được kích hoạt */
+    .modern-tab-btn.active#tab-directions+#tab-content-container #directions-tab-content,
+    #directions-tab-content[style*="display: block"] {
+        display: block !important;
+    }
+
+    /* Tối ưu các thành phần bên trong Directions trên mobile */
+    #wayfinding-panel {
+        display: none;
+        margin: 0 !important;
+        padding: 0 15px !important;
+        box-shadow: none !important;
+    }
+
+    #wayfinding-panel.active {
+        display: block !important;
+    }
+
+
+    #video-control-bar {
+        margin: 10px 15px 5px !important;
+        padding: 15px !important;
+    }
+
+    #wayfinding-summary-container {
+        padding: 10px 20px !important;
+    }
+
+    #wayfinding-summary-container div[style*="font-size: 32px"] {
+        font-size: 24px !important;
+        /* Thu nhỏ text thời gian */
+    }
+
+    #sidebar-info-panel .mobile-drag-handle {
+        display: block !important;
+    }
+
+    /* Fix image on mobile info */
+    #sidebar-info-panel #area-image {
+        height: 180px !important;
+        border-radius: 24px 24px 0 0 !important;
+    }
+
+    /* 4.3. Hide instructions on mobile by default and style new buttons */
+    #instructions-list {
+        display: none !important;
+    }
+
+    #instructions-list.show-on-mobile {
+        display: block !important;
+        max-height: 40vh;
+        overflow-y: auto;
+    }
+
+    .mobile-only-action {
+        display: flex !important;
+    }
+
+    #mobile-full-route-btn.expanded .chevron-icon {
+        transform: rotate(180deg);
+    }
+
+    #route-preview-bar {
+        position: fixed !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        z-index: 5500 !important;
+        pointer-events: auto !important;
+        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
+    }
+
+
+    @keyframes mobileSlideUp {
+        from {
+            transform: translateY(100%);
+        }
+
+        to {
+            transform: translateY(0);
+        }
     }
 
     /* 5. Tinh chỉnh các cụm điều khiển (Tầng/Ngôn ngữ) xuống Bottom (Incheon Style) */
