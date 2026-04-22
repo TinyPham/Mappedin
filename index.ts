@@ -76,12 +76,20 @@ class TranslationManager {
       const detectedBrowserLang = browserLang === 'vi' ? 'vn' : (['vn', 'en', 'zh', 'ja', 'ko'].includes(browserLang) ? browserLang : 'vn');
       const langSegment = (path.split('/')[1] || "").toLowerCase();
 
+      // Ưu tiên Tiếng Việt (vn) làm mặc định nếu không có tham số URL
+      this.currentLang = 'vn';
+
       if (langParam && ['vn', 'en', 'zh', 'ja', 'ko'].includes(langParam.toLowerCase())) {
         this.currentLang = langParam.toLowerCase();
       } else if (['vn', 'en', 'zh', 'ja', 'ko'].includes(langSegment)) {
         this.currentLang = langSegment;
       } else {
-        this.currentLang = detectedBrowserLang;
+        // Chỉ lấy theo trình duyệt nếu là các ngôn ngữ được hỗ trợ, còn lại mặc định vn
+        const mappedBrowserLang = browserLang === 'vi' ? 'vn' : browserLang;
+        if (['vn', 'en', 'zh', 'ja', 'ko'].includes(mappedBrowserLang)) {
+           // this.currentLang = mappedBrowserLang; 
+           // Tạm thời comment để ưu tiên VN tuyệt đối như yêu cầu
+        }
       }
     } catch (e) {
       this.currentLang = 'vn';
@@ -110,7 +118,12 @@ class TranslationManager {
       // Set initial dropdown value
       const selector = document.getElementById('language-selector') as HTMLSelectElement;
       if (selector) {
-        selector.value = this.currentLang;
+        // Nếu selector đã có giá trị (do browser cache hoặc SSR), ưu tiên nó
+        if (selector.value && ['vn', 'en', 'zh', 'ja', 'ko'].includes(selector.value)) {
+           this.currentLang = selector.value;
+        } else {
+           selector.value = this.currentLang;
+        }
 
         // RE-ADD MISSING EVENT LISTENER
         selector.onchange = (e) => {
@@ -124,6 +137,12 @@ class TranslationManager {
 
       // Apply initial translations
       this.applyTranslations();
+
+      // NEW: Force sync with actual selector value if it differs from detected (Fixes JA/VN mismatch)
+      if (selector && selector.value && selector.value !== this.currentLang) {
+        console.log(`🔌 Initial Language Mismatch: Detected ${this.currentLang}, UI says ${selector.value}. Syncing...`);
+        this.setLanguage(selector.value);
+      }
 
     } catch (e) {
       console.warn('Failed to load init-data', e);
@@ -2217,7 +2236,10 @@ async function init() {
       // Render marker cho mỗi coordinate (tham khảo connection markers style)
       coordsToRender.forEach((coord: any) => {
         try {
-          const label = obj.name;
+          // Ưu tiên lấy tên từ Database thông qua TranslationManager để đồng bộ ngôn ngữ
+          const localizedName = TranslationManager.getName(obj);
+          const label = (localizedName && localizedName !== obj.id) ? localizedName : obj.name;
+
           let markerHtml: string;
 
           // 1. Force ATM Icon override
@@ -2427,8 +2449,8 @@ async function init() {
       icon = escalatorIconUrl;
     }
 
-    // If we have a custom name in DB that isn't just the ID, prefer it
-    if (dbName && dbName !== conn.id) {
+    // Nếu có tên tùy chỉnh trong DB (và không phải là tên tiếng Nhật chung chung), ưu tiên dùng nó
+    if (dbName && dbName !== conn.id && dbName !== 'エスカレーター' && dbName !== 'エレベーター') {
       text = dbName;
     }
 
@@ -9475,11 +9497,26 @@ async function init() {
     // Xác định tầng dưới để giữ Thang máy/Thang cuốn liên thông
     const sortedFloors = [...mapData.getByType("floor")].sort((a, b) => (a as any).elevation - (b as any).elevation);
     const currentIndex = sortedFloors.findIndex(f => f.id === currentFloor.id);
-    const floorBelowId = currentIndex > 0 ? sortedFloors[currentIndex - 1].id : null;
+    const lowerFloorIds = new Set(currentIndex > 0 ? sortedFloors.slice(0, currentIndex).map(f => f.id) : []);
 
-    const isThang = (name: string) => {
-      const s = (name || "").toLowerCase();
-      return s.includes("thang máy") || s.includes("thang cuốn") || s.includes("thang bộ") || s.includes("thang ");
+    const isThang = (obj: any) => {
+      if (!obj) return false;
+      
+      // 1. Kiểm tra tên Tiếng Việt (VN) gốc trong Database (Nguồn dữ liệu tin cậy nhất)
+      const id = obj.uuid || obj.id || obj.mappedinId;
+      if (id) {
+        const locData = TranslationManager.data.locations?.[id];
+        const vnName = (locData?.names?.['vn'] || "").toLowerCase();
+        // Kiểm tra từ khóa "thang" để bao quát thang máy, thang cuốn, thang bộ...
+        if (vnName.includes("thang") || vnName.includes("elevator") || vnName.includes("escalator")) return true;
+      }
+
+      // 2. Kiểm tra tên hiện tại (Dự phòng)
+      const name = (typeof obj === 'string') ? obj : (obj.name || "");
+      const s = name.toLowerCase();
+      if (s.includes("thang") || s.includes("escalator") || s.includes("elevator") || s.includes("stair")) return true;
+      
+      return false;
     };
 
     // 1. Tự động dọn dẹp các model xa hoặc sai tầng
@@ -9492,20 +9529,15 @@ async function init() {
 
       const dist = calculateDistance(focalPoint, { latitude: meta.originalCoordinate.latitude, longitude: meta.originalCoordinate.longitude });
       const isCurrentFloor = meta.floorId === currentFloor.id;
-      const isVerticalBelow = floorBelowId && meta.floorId === floorBelowId && isThang(meta.name);
+      const isVerticalOnLowerFloor = lowerFloorIds.has(meta.floorId) && isThang(meta);
 
       // LOGIC XÓA MẠNH TAY:
-      const shouldUnloadDueToZoom = currentZoom < ZOOM_UNLOAD_THRESHOLD && !isThang(meta.name);
-      const shouldUnloadDueToDist = dist > UNLOAD_RADIUS && (!isThang(meta.name) || dist > 500);
+      const shouldUnloadDueToZoom = currentZoom < ZOOM_UNLOAD_THRESHOLD && !isThang(meta);
+      const shouldUnloadDueToDist = !isThang(meta) && dist > UNLOAD_RADIUS;
 
-      if (!isCurrentFloor && !isVerticalBelow || shouldUnloadDueToZoom || shouldUnloadDueToDist) {
+      if (!isCurrentFloor && !isVerticalOnLowerFloor || shouldUnloadDueToZoom || shouldUnloadDueToDist) {
         try { mapView.Models.remove(instance); MODEL_INSTANCE_REGISTRY.delete(uuid); } catch (e) { }
       }
-    }
-
-    if (currentZoom < ZOOM_LOAD_THRESHOLD) {
-      console.log(`🚫 [STREAMING] Hidden all models (Zoom ${currentZoom.toFixed(2)} < ${ZOOM_LOAD_THRESHOLD})`);
-      return;
     }
 
     // 2. LỌC DANH SÁCH TIỀM NĂNG
@@ -9515,23 +9547,28 @@ async function init() {
         if (!shouldShow) return false;
       }
       const isCurrent = m.floorId === currentFloor.id;
-      const isVerticalBelow = floorBelowId && m.floorId === floorBelowId && isThang(m.name);
-      return isCurrent || isVerticalBelow;
+      const isVerticalOnLowerFloor = lowerFloorIds.has(m.floorId) && isThang(m);
+      return isCurrent || isVerticalOnLowerFloor;
     });
-
-    console.log(`📦 [STREAMING] Found ${candidateModels.length} candidates for floor ${floorName} (ViewOnly: ${isViewOnly})`);
 
     const modelsToLoad: any[] = [];
     candidateModels.forEach((m: any) => {
+      const isVertical = isThang(m);
       const dist = calculateDistance(focalPoint, { latitude: Number(m.latitude), longitude: Number(m.longitude) });
       const isLoaded = MODEL_INSTANCE_REGISTRY.has(m.uuid);
-      if (dist <= LOAD_RADIUS && !isLoaded) {
+
+      // Thang luôn load (bất chấp zoom/distance), model khác thì theo luật
+      const shouldLoad = isVertical || (currentZoom >= ZOOM_LOAD_THRESHOLD && dist <= LOAD_RADIUS);
+
+      if (shouldLoad && !isLoaded) {
         modelsToLoad.push(m);
       }
     });
 
-    if (modelsToLoad.length > 0) {
+    if (modelsToLoad.length > 0 && currentZoom >= ZOOM_LOAD_THRESHOLD) {
       console.log(`📦 [STREAMING] Queueing ${modelsToLoad.length} new models to load...`);
+    } else if (modelsToLoad.length > 0) {
+      console.log(`📡 [STREAMING] Priority load: ${modelsToLoad.length} vertical assets`);
     }
 
     // 4. Thực hiện Load mới theo thứ tự ưu tiên gần nhất
