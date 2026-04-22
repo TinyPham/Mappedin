@@ -9252,7 +9252,9 @@ async function init() {
   const addMultiSelectHighlight = (modelInstance: any) => {
     try {
       // Create a highlight marker at the model's position
-      const coord = (modelInstance as any).originalCoordinate || (modelInstance as any).coordinate;
+      // Fallback: look up coordinate from registry metadata if not on instance
+      const meta = MODEL_ID_REGISTRY.get(modelInstance.id);
+      const coord = (modelInstance as any).originalCoordinate || (modelInstance as any).coordinate || meta?.originalCoordinate;
       if (coord && mapView.Markers) {
         const markerHtml = `<div class="multi-select-indicator" style="
           width: 24px; height: 24px; 
