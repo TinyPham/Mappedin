@@ -1463,6 +1463,7 @@ async function init() {
   // 2. THIẾT LẬP FLOOR SELECTOR
   // ============================================
   // Populate dropdown với danh sách các tầng
+  if (floorSelector) floorSelector.innerHTML = "";
   mapData
     .getByType("floor")
     .sort((b, a) => a.elevation - b.elevation)
@@ -9456,11 +9457,11 @@ async function init() {
       if (typeof r === 'string') try { r = JSON.parse(r); } catch (e) { }
 
       const modelAssetMap: Record<string, any> = { "car": car, "tree_palm": tree_palm, "three_palm": tree_palm };
-      const finalUrl = resolveUrl(m.url);
+      let finalUrl = modelAssetMap[m.url] || resolveUrl(m.url);
       if (!finalUrl) return;
 
       // 3. CHỐNG CACHE FILE LỖI
-      const cacheBustedUrl = `${finalUrl}?v=${Date.now()}`;
+      const cacheBustedUrl = finalUrl.startsWith("data:") ? finalUrl : `${finalUrl}?v=${Date.now()}`;
 
       // 4. CHỐNG TRÀN BUFFER GPU: Tắt tương tác cho cây cối
       const modelName = (m.name || "").toLowerCase();
@@ -9548,7 +9549,7 @@ async function init() {
 
       const dist = calculateDistance(focalPoint, { latitude: meta.originalCoordinate.latitude, longitude: meta.originalCoordinate.longitude });
       const isCurrentFloor = meta.floorId === currentFloor.id;
-      const isVerticalOnLowerFloor = lowerFloorIds.has(meta.floorId) && isThang(meta);
+      const isVerticalOnLowerFloor = lowerFloorIds.has(meta.floorId || "") && isThang(meta);
 
       // LOGIC XÓA MẠNH TAY:
       const shouldUnloadDueToZoom = currentZoom < ZOOM_UNLOAD_THRESHOLD && !isThang(meta);
@@ -9566,7 +9567,7 @@ async function init() {
         if (!shouldShow) return false;
       }
       const isCurrent = m.floorId === currentFloor.id;
-      const isVerticalOnLowerFloor = lowerFloorIds.has(m.floorId) && isThang(m);
+      const isVerticalOnLowerFloor = lowerFloorIds.has(m.floorId || "") && isThang(m);
       return isCurrent || isVerticalOnLowerFloor;
     });
 
@@ -11874,7 +11875,7 @@ function initAdminUI(allMapObjects: any[]) {
 }
 
 // Init Search Clear Button logic
-init();
+// init(); // Removed duplicate call
 
 // Hook helper to run after init
 const originalInit = (window as any).debugLogAllNames;
@@ -12151,3 +12152,8 @@ if (speedDisplay && speedMenu) {
     });
   });
 }
+
+// KHỞI CHẠY HỆ THỐNG
+init().catch(err => {
+  console.error("❌ Critical initialization error:", err);
+});

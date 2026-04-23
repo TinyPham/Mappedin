@@ -76,23 +76,37 @@ if (!config) {
 let pool: sql.ConnectionPool | null = null;
 
 export const getDbConnection = async () => {
+    // If already connected, return pool
     if (pool && pool.connected) return pool;
 
+    // If configuration is missing, we can't connect
     if (!config) {
-        console.warn("⚠️ Database configuration missing.");
+        console.warn("⚠️ [DB-ERROR] Database configuration is missing. Environment variables might not be set.");
         return null;
     }
 
     try {
-        const infoMsg = `🔌 [DB-DEBUG] Connecting to: ${config.server} (DB: ${config.database}, Encrypt: ${config.options.encrypt})`;
+        const infoMsg = `🔌 [DB-DEBUG] Attempting connection to: ${config.server} (DB: ${config.database})`;
         console.log(infoMsg);
 
-        pool = await sql.connect(config);
-        console.log('✅ Connected to SQL Server successfully!');
+        // Ensure we have a reasonable timeout to prevent hanging the whole node process
+        const connectionConfig = {
+            ...config,
+            connectionTimeout: config.connectionTimeout || 30000,
+            requestTimeout: config.requestTimeout || 30000
+        };
+
+        pool = await sql.connect(connectionConfig);
+        console.log('✅ [DB-SUCCESS] Connected to SQL Server successfully!');
         return pool;
-    } catch (err) {
-        console.error('❌ Database Connection Failed (Server will continue running):', err);
-        pool = null; // Reset pool to try again next time
+    } catch (err: any) {
+        console.error('❌ [DB-FATAL] Connection Failed!');
+        console.error(`   Error Message: ${err.message}`);
+        console.error(`   Error Code: ${err.code}`);
+        console.error(`   Server: ${config.server}`);
+
+        // Reset pool so we can retry on next request
+        pool = null;
         return null;
     }
 };

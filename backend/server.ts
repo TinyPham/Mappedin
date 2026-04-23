@@ -54,18 +54,6 @@ app.use('/', express.static(ROOT_DIR));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-// CATCH-ALL ROUTE: Hỗ trợ SPA (Sửa lỗi 404 khi truy cập /vn/...)
-app.get('*', (req, res) => {
-    const indexPath = fs.existsSync(path.join(FRONTEND_DIST, 'index.html'))
-        ? path.join(FRONTEND_DIST, 'index.html')
-        : path.join(ROOT_DIR, 'index.html');
-
-    if (fs.existsSync(indexPath)) {
-        res.sendFile(indexPath);
-    } else {
-        res.status(404).send('Not Found');
-    }
-});
 
 
 // Initialize database connection
@@ -422,8 +410,23 @@ app.get('/api/available-models', async (req, res) => {
 });
 
 // Health check
-app.get('/health', (req, res) => {
-    res.json({ status: 'OK', timestamp: new Date().toISOString() });
+app.get('/health', async (req, res) => {
+    let dbStatus = "Disconnected";
+    try {
+        const db = await getDbConnection();
+        if (db && (db as any).connected) {
+            dbStatus = "Connected";
+        }
+    } catch (e) {
+        dbStatus = "Error: " + (e as any).message;
+    }
+
+    res.json({
+        status: 'OK',
+        database: dbStatus,
+        timestamp: new Date().toISOString(),
+        env: process.env.NODE_ENV || 'development'
+    });
 });
 
 // =============================================
@@ -986,240 +989,270 @@ app.get('/api/available-models', async (req, res) => {
 
 // Start server
 async function start() {
-    await initDB();
     await syncCategories(); // Sync Categories from icon-category
     await scanAndSyncModels(); // Initial Sync Models
-
-    // =============================================
-    // I18N & CMS API ENDPOINTS
-    // =============================================
-
-    // GET /api/init-data -> Fetch EVERYTHING needed for the app
-    // Returns: { languages, ui, categories, subcategories, floors, locations }
-    // Uses NEW COLUMN-BASED TRANSLATION TABLES
-    app.get('/api/init-data', async (req, res) => {
-        try {
-            const db = await getDbConnection();
-            if (!db) {
-                console.warn("⚠️ [Offline Mode] Database connection failed for init-data. Returning minimal fallback data.");
-                return res.json({
-                    languages: [{ LanguageId: 'vi', LanguageName: 'Tiếng Việt' }, { LanguageId: 'en', LanguageName: 'English' }],
-                    ui: {},
-                    categories: [],
-                    subcategories: [],
-                    floors: [],
-                    locations: {}
-                });
-            }
-            const result = await db.request().execute('SP_GetInitialData');
-
-            // 1. Languages (Result 0)
-            const languages = result.recordsets[0];
-
-            // 2. UI Translations (Result 1)
-            const uiTranslations: any = {};
-            result.recordsets[1].forEach((row: any) => {
-                const key = (row.KeyCode || '').toLowerCase();
-                uiTranslations[key] = {
-                    vn: row.VN,
-                    vi: row.VN,
-                    en: row.EN,
-                    zh: row.ZH,
-                    ja: row.JA,
-                    ko: row.KO
-                };
-            });
-
-            // 3. Categories (Result 2)
-            const categories = result.recordsets[2].map((row: any) => ({
-                id: row.CategoryID,
-                icon: row.IconPath,
-                names: {
-                    vn: row.VN,
-                    vi: row.VN,
-                    en: row.EN,
-                    zh: row.ZH,
-                    ja: row.JA,
-                    ko: row.KO
-                }
-            }));
-
-            // 4. SubCategories (Result 3)
-            const subcategories = result.recordsets[3].map((row: any) => ({
-                id: row.SubCategoryID,
-                categoryId: row.CategoryID,
-                icon: row.IconPath,
-                names: {
-                    vn: row.VN,
-                    vi: row.VN,
-                    en: row.EN,
-                    zh: row.ZH,
-                    ja: row.JA,
-                    ko: row.KO
-                }
-            }));
-
-            // 5. Floors (Result 4)
-            const floors = result.recordsets[4].map((row: any) => ({
-                id: row.FloorId,
-                mappedinId: row.MappedinId,
-                code: row.FloorCode,
-                sortOrder: row.SortOrder,
-                names: {
-                    vn: row.VN,
-                    vi: row.VN,
-                    en: row.EN,
-                    zh: row.ZH,
-                    ja: row.JA,
-                    ko: row.KO
-                }
-            }));
-
-            // 6. Locations (Result 5)
-            const locations: any = {};
-            result.recordsets[5].forEach((row: any) => {
-                const mid = row.MappedinID;
-                if (!mid) return;
-
-                locations[mid] = {
-                    id: row.AreaListID,
-                    categoryId: row.CategoryID,
-                    subCategoryIcon: row.IconPath,
-                    names: {
-                        vn: row.VN,
-                        vi: row.VN,
-                        en: row.EN,
-                        zh: row.ZH,
-                        ja: row.JA,
-                        ko: row.KO
-                    },
-                    image: row.UIImageUrl || row.MappedinImageUrl || row.RunUrl,
-                    uiImage: row.UIImageUrl,
-                    editorImage: row.MappedinImageUrl,
-                    descriptions: {
-                        vn: row.InformationVI,
-                        vi: row.InformationVI,
-                        en: row.InformationEN,
-                        zh: row.InformationZH,
-                        ja: row.InformationJA,
-                        ko: row.InformationKO
-                    },
-                    phone: row.Phone,
-                    openingHours: row.OpeningHours,
-                    locationDetail: {
-                        vn: row.LocationDetail_VN,
-                        en: row.LocationDetail_EN,
-                        zh: row.LocationDetail_ZH,
-                        ja: row.LocationDetail_JA,
-                        ko: row.LocationDetail_KO
-                    }
-                };
-            });
-
-            res.json({
-                languages,
-                ui: uiTranslations,
-                categories,
-                subcategories,
-                floors,
-                locations
-            });
-
-        } catch (err: any) {
-            console.error('Error fetching init data:', err);
-            res.status(500).json({ error: err.message });
-        }
-    });
-
-    // ADMIN: CREATE/UPDATE LOCATION
-    app.post('/api/admin/locations', async (req, res) => {
-        try {
-            const { mappedinId, categoryId, slug, logo, image, phone, website, socials, hours, translations } = req.body;
-            const db = await getDbConnection();
-
-            const vn = translations['vn']?.name || null;
-            const en = translations['en']?.name || null;
-            const zh = translations['zh']?.name || null;
-            const ja = translations['ja']?.name || null;
-            const ko = translations['ko']?.name || null;
-
-            const result = await db.request()
-                .input('MappedinId', sql.NVarChar(100), mappedinId)
-                .input('CategoryId', sql.Int, categoryId)
-                .input('SlugKey', sql.VarChar(255), slug)
-                .input('LogoUrl', sql.VarChar(500), logo)
-                .input('CoverImageUrl', sql.VarChar(500), image)
-                .input('PhoneNumber', sql.VarChar(50), phone)
-                .input('WebsiteLink', sql.VarChar(500), website)
-                .input('SocialMediaLinks', sql.NVarChar(sql.MAX), JSON.stringify(socials))
-                .input('OperatingHours', sql.NVarChar(sql.MAX), JSON.stringify(hours))
-                .input('VN', sql.NVarChar(255), vn)
-                .input('EN', sql.NVarChar(255), en)
-                .input('ZH', sql.NVarChar(255), zh)
-                .input('JA', sql.NVarChar(255), ja)
-                .input('KO', sql.NVarChar(255), ko)
-                .execute('SP_Admin_UpsertLocation');
-
-            const locId = result.recordset[0].LocationId;
-            res.json({ success: true, locationId: locId });
-        } catch (err: any) {
-            console.error('Error saving location:', err);
-            res.status(500).json({ error: err.message });
-        }
-    });
-
-    // BULK SYNC: Push Mappedin locations from frontend to DB
-    // Implements logic: Only overwrite if Mappedin actually changed, preserving manual UI edits.
-    app.post('/api/sync-locations', async (req, res) => {
-        try {
-            const { locations } = req.body; // Array of { id, name, description, imageUrl }
-            if (!Array.isArray(locations) || locations.length === 0) {
-                return res.status(400).json({ error: 'No locations provided' });
-            }
-
-            const db = await getDbConnection();
-            let updated = 0;
-            let inserted = 0;
-
-            for (const loc of locations) {
-                const mappedinId = loc.id;
-                const name = loc.name || '';
-                const incomingImg = loc.imageUrl || '';
-                const description = loc.description || '';
-
-                if (!mappedinId) continue;
-
-                try {
-                    await db.request()
-                        .input('MappedinId', sql.NVarChar(100), mappedinId)
-                        .input('Name', sql.NVarChar(200), name)
-                        .input('Description', sql.NVarChar(sql.MAX), description)
-                        .input('ImageUrl', sql.NVarChar(500), incomingImg)
-                        .execute('SP_SyncMappedinLocation');
-
-                    updated++; // SP handles insert or update logic
-                } catch (e) {
-                    console.error(`Error syncing location ${mappedinId}:`, e);
-                }
-            }
-
-            res.json({ success: true, inserted, updated });
-        } catch (err: any) {
-            console.error('Sync Error:', err);
-            res.status(500).json({ error: err.message });
-        }
-    });
 }
 
-// Global start calling
-start();
+// =============================================
+// I18N & CMS API ENDPOINTS
+// =============================================
 
-// Start server immediately, THEN init DB
-app.listen(Number(PORT), '0.0.0.0', () => {
+// GET /api/init-data -> Fetch EVERYTHING needed for the app
+// Returns: { languages, ui, categories, subcategories, floors, locations }
+// Uses NEW COLUMN-BASED TRANSLATION TABLES
+app.get('/api/init-data', async (req, res) => {
+    try {
+        const db = await getDbConnection();
+        if (!db) {
+            console.warn("⚠️ [Offline Mode] Database connection failed for init-data. Returning minimal fallback data.");
+            return res.json({
+                languages: [{ LanguageId: 'vi', LanguageName: 'Tiếng Việt' }, { LanguageId: 'en', LanguageName: 'English' }],
+                ui: {},
+                categories: [],
+                subcategories: [],
+                floors: [],
+                locations: {}
+            });
+        }
+        const result = await db.request().execute('SP_GetInitialData');
+
+        // 1. Languages (Result 0)
+        const languages = result.recordsets[0];
+
+        // 2. UI Translations (Result 1)
+        const uiTranslations: any = {};
+        result.recordsets[1].forEach((row: any) => {
+            const key = (row.KeyCode || '').toLowerCase();
+            uiTranslations[key] = {
+                vn: row.VN,
+                vi: row.VN,
+                en: row.EN,
+                zh: row.ZH,
+                ja: row.JA,
+                ko: row.KO
+            };
+        });
+
+        // 3. Categories (Result 2)
+        const categories = result.recordsets[2].map((row: any) => ({
+            id: row.CategoryID,
+            icon: row.IconPath,
+            names: {
+                vn: row.VN,
+                vi: row.VN,
+                en: row.EN,
+                zh: row.ZH,
+                ja: row.JA,
+                ko: row.KO
+            }
+        }));
+
+        // 4. SubCategories (Result 3)
+        const subcategories = result.recordsets[3].map((row: any) => ({
+            id: row.SubCategoryID,
+            categoryId: row.CategoryID,
+            icon: row.IconPath,
+            names: {
+                vn: row.VN,
+                vi: row.VN,
+                en: row.EN,
+                zh: row.ZH,
+                ja: row.JA,
+                ko: row.KO
+            }
+        }));
+
+        // 5. Floors (Result 4)
+        const floors = result.recordsets[4].map((row: any) => ({
+            id: row.FloorId,
+            mappedinId: row.MappedinId,
+            code: row.FloorCode,
+            sortOrder: row.SortOrder,
+            names: {
+                vn: row.VN,
+                vi: row.VN,
+                en: row.EN,
+                zh: row.ZH,
+                ja: row.JA,
+                ko: row.KO
+            }
+        }));
+
+        // 6. Locations (Result 5)
+        const locations: any = {};
+        result.recordsets[5].forEach((row: any) => {
+            const mid = row.MappedinID;
+            if (!mid) return;
+
+            locations[mid] = {
+                id: row.AreaListID,
+                categoryId: row.CategoryID,
+                subCategoryIcon: row.IconPath,
+                names: {
+                    vn: row.VN,
+                    vi: row.VN,
+                    en: row.EN,
+                    zh: row.ZH,
+                    ja: row.JA,
+                    ko: row.KO
+                },
+                image: row.UIImageUrl || row.MappedinImageUrl || row.RunUrl,
+                uiImage: row.UIImageUrl,
+                editorImage: row.MappedinImageUrl,
+                descriptions: {
+                    vn: row.InformationVI,
+                    vi: row.InformationVI,
+                    en: row.InformationEN,
+                    zh: row.InformationZH,
+                    ja: row.InformationJA,
+                    ko: row.InformationKO
+                },
+                phone: row.Phone,
+                openingHours: row.OpeningHours,
+                locationDetail: {
+                    vn: row.LocationDetail_VN,
+                    en: row.LocationDetail_EN,
+                    zh: row.LocationDetail_ZH,
+                    ja: row.LocationDetail_JA,
+                    ko: row.LocationDetail_KO
+                }
+            };
+        });
+
+        res.json({
+            languages,
+            ui: uiTranslations,
+            categories,
+            subcategories,
+            floors,
+            locations
+        });
+
+    } catch (err: any) {
+        console.error('Error fetching init data:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ADMIN: CREATE/UPDATE LOCATION
+app.post('/api/admin/locations', async (req, res) => {
+    try {
+        const { mappedinId, categoryId, slug, logo, image, phone, website, socials, hours, translations } = req.body;
+        const db = await getDbConnection();
+
+        const vn = translations['vn']?.name || null;
+        const en = translations['en']?.name || null;
+        const zh = translations['zh']?.name || null;
+        const ja = translations['ja']?.name || null;
+        const ko = translations['ko']?.name || null;
+
+        const result = await db.request()
+            .input('MappedinId', sql.NVarChar(100), mappedinId)
+            .input('CategoryId', sql.Int, categoryId)
+            .input('SlugKey', sql.VarChar(255), slug)
+            .input('LogoUrl', sql.VarChar(500), logo)
+            .input('CoverImageUrl', sql.VarChar(500), image)
+            .input('PhoneNumber', sql.VarChar(50), phone)
+            .input('WebsiteLink', sql.VarChar(500), website)
+            .input('SocialMediaLinks', sql.NVarChar(sql.MAX), JSON.stringify(socials))
+            .input('OperatingHours', sql.NVarChar(sql.MAX), JSON.stringify(hours))
+            .input('VN', sql.NVarChar(255), vn)
+            .input('EN', sql.NVarChar(255), en)
+            .input('ZH', sql.NVarChar(255), zh)
+            .input('JA', sql.NVarChar(255), ja)
+            .input('KO', sql.NVarChar(255), ko)
+            .execute('SP_Admin_UpsertLocation');
+
+        const locId = result.recordset[0].LocationId;
+        res.json({ success: true, locationId: locId });
+    } catch (err: any) {
+        console.error('Error saving location:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// BULK SYNC: Push Mappedin locations from frontend to DB
+// Implements logic: Only overwrite if Mappedin actually changed, preserving manual UI edits.
+app.post('/api/sync-locations', async (req, res) => {
+    try {
+        const { locations } = req.body; // Array of { id, name, description, imageUrl }
+        if (!Array.isArray(locations) || locations.length === 0) {
+            return res.status(400).json({ error: 'No locations provided' });
+        }
+
+        const db = await getDbConnection();
+        let updated = 0;
+        let inserted = 0;
+
+        for (const loc of locations) {
+            const mappedinId = loc.id;
+            const name = loc.name || '';
+            const incomingImg = loc.imageUrl || '';
+            const description = loc.description || '';
+
+            if (!mappedinId) continue;
+
+            try {
+                await db.request()
+                    .input('MappedinId', sql.NVarChar(100), mappedinId)
+                    .input('Name', sql.NVarChar(200), name)
+                    .input('Description', sql.NVarChar(sql.MAX), description)
+                    .input('ImageUrl', sql.NVarChar(500), incomingImg)
+                    .execute('SP_SyncMappedinLocation');
+
+                updated++; // SP handles insert or update logic
+            } catch (e) {
+                console.error(`Error syncing location ${mappedinId}:`, e);
+            }
+        }
+
+        res.json({ success: true, inserted, updated });
+    } catch (err: any) {
+        console.error('Sync Error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// CATCH-ALL ROUTE: Hỗ trợ SPA (Sửa lỗi 404 khi truy cập /vn/...)
+// Chặn cuối cùng để nếu không khớp API hay file tĩnh thì mới trả về index.html
+app.get('*', (req, res) => {
+    const indexPath = fs.existsSync(path.join(FRONTEND_DIST, 'index.html'))
+        ? path.join(FRONTEND_DIST, 'index.html')
+        : path.join(ROOT_DIR, 'index.html');
+
+    if (fs.existsSync(indexPath)) {
+        res.sendFile(indexPath);
+    } else {
+        res.status(404).send('Not Found');
+    }
+});
+
+// =============================================
+// START SERVER
+// =============================================
+app.listen(Number(PORT), '0.0.0.0', async () => {
     console.log(`🚀 Server is flying at http://0.0.0.0:${PORT}`);
     console.log(`📊 API Base URL: /api`);
-    // Khởi tạo DB một cách âm thầm, không chặn việc Server lắng nghe
-    initDB().catch(err => console.error("Initial DB connection failed, will retry on request."));
+
+    // 1. Khởi tạo Database
+    try {
+        console.log("🔌 Initializing database connection...");
+        const db = await getDbConnection();
+        if (db) {
+            console.log("✅ Database connection established.");
+
+            // 2. Chạy việc đồng bộ file (Categories & Models) ở chế độ chạy ngầm
+            start().then(() => {
+                console.log("✅ Background synchronization (Categories & Models) completed.");
+            }).catch(err => {
+                console.error("❌ Error during background sync:", err);
+            });
+        } else {
+            console.warn("⚠️ Server started but Database is NOT connected (Offline Mode).");
+        }
+    } catch (err) {
+        console.error("❌ Critical error during database initialization:", err);
+    }
 });
 
 // Graceful shutdown
