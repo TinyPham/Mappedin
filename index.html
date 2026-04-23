@@ -8,7 +8,7 @@
   <title>ACV Map - 3D Wayfinding</title>
 
   <!-- PWA Meta Tags -->
-  <link rel="manifest" href="manifest.json">
+  <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#214ca6">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -2220,12 +2220,16 @@
     const installBtn = document.getElementById('pwa-install-btn');
 
     window.addEventListener('beforeinstallprompt', (e) => {
+      console.log('📢 PWA: beforeinstallprompt event fired!');
       // Prevent the mini-infobar from appearing on mobile
       e.preventDefault();
       // Stash the event so it can be triggered later.
       deferredPrompt = e;
       // Update UI notify the user they can install the PWA
-      if (installContainer) installContainer.style.display = 'flex';
+      if (installContainer) {
+        installContainer.style.display = 'flex';
+        console.log('✅ PWA: Install button shown.');
+      }
     });
 
     if (installBtn) {

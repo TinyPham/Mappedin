@@ -1143,6 +1143,28 @@ async function init() {
   const API_BASE_URL = isLocal ? "http://127.0.0.1:3002/api" : `${window.location.origin}/api`;
   const SERVER_URL = API_BASE_URL.replace("/api", "");
 
+  // Hàm hỗ trợ giải quyết URL động (Sửa lỗi CORS localhost trên Render)
+  const resolveUrl = (url: string): string => {
+    if (!url) return "";
+    if (url.startsWith("data:")) return url; // Base64
+
+    // Nếu đang chạy trên web (Render) mà link lại là localhost -> đổi sang SERVER_URL
+    if (!isLocal && (url.includes("localhost:3002") || url.includes("127.0.0.1:3002"))) {
+      const parts = url.split("/Model3D/");
+      if (parts.length > 1) {
+        return `${SERVER_URL}/Model3D/${parts[1]}`;
+      }
+      return url.replace(/http:\/\/(localhost|127\.0\.0\.1):3002/g, SERVER_URL);
+    }
+
+    if (url.startsWith("./")) return url.replace("./", `${SERVER_URL}/`);
+    if (!url.startsWith("http")) {
+      if (url.includes("Model3D/")) return `${SERVER_URL}/${url}`;
+      return `${SERVER_URL}/Model3D/${url}`;
+    }
+    return url;
+  };
+
 
   // Load map data từ Mappedin API
   const MAP_ID = "693687f4f176dd000ba13a3b";
@@ -9431,16 +9453,8 @@ async function init() {
       if (typeof r === 'string') try { r = JSON.parse(r); } catch (e) { }
 
       const modelAssetMap: Record<string, any> = { "car": car, "tree_palm": tree_palm, "three_palm": tree_palm };
-      let finalUrl = m.url;
+      const finalUrl = resolveUrl(m.url);
       if (!finalUrl) return;
-
-      if (modelAssetMap[finalUrl]) {
-        finalUrl = modelAssetMap[finalUrl];
-      } else if (finalUrl.startsWith("./")) {
-        finalUrl = finalUrl.replace("./", `${SERVER_URL}/`);
-      } else if (!finalUrl.startsWith("http")) {
-        finalUrl = `${SERVER_URL}${finalUrl.startsWith("/") ? "" : "/"}${finalUrl}`;
-      }
 
       // 3. CHỐNG CACHE FILE LỖI
       const cacheBustedUrl = `${finalUrl}?v=${Date.now()}`;
@@ -9914,20 +9928,8 @@ async function init() {
           currentFloor
         );
 
-        // Resolve URL (same as original)
-        let shadowUrl = (instance as any).url || meta.url;
-        const modelAssetMap: Record<string, any> = {
-          "car": car,
-          "three_palm": tree_palm,
-          "tree_palm": tree_palm
-        };
-        if (modelAssetMap[shadowUrl]) {
-          shadowUrl = modelAssetMap[shadowUrl];
-        } else if (shadowUrl && shadowUrl.startsWith("./")) {
-          shadowUrl = shadowUrl.replace("./", `${SERVER_URL}/`);
-        } else if (shadowUrl && !shadowUrl.startsWith("http")) {
-          shadowUrl = `${SERVER_URL}/${shadowUrl}`;
-        }
+        // Resolve URL (Sử dụng hàm resolveUrl mới)
+        const shadowUrl = resolveUrl((instance as any).url || meta.url);
 
         const shadowModel = await mapView.Models.add(shadowCoord, shadowUrl, {
           interactive: false, // Shadow copies are NOT interactive (prevents click conflicts)
@@ -10351,7 +10353,7 @@ async function init() {
         thumbName = model.file.replace(/\.(glb|gltf|json)$/i, '.jpg');
       }
 
-      const thumbSrc = thumbName ? `${SERVER_URL}/Model3D/thumbnail/${thumbName}` : "";
+      const thumbSrc = thumbName ? resolveUrl(`Model3D/thumbnail/${thumbName}`) : "";
 
       item.innerHTML = `
         <div class="model-item-preview" style="width:100%; height:90px; display:flex; align-items:center; justify-content:center; background:#ffffff; border:1px solid #f0f0f0; border-radius:8px; overflow:hidden; padding:5px;">
@@ -10444,15 +10446,7 @@ async function init() {
       const coord = event.coordinate;
 
       if (coord) {
-        let previewUrl = placingModelConfig.file || placingModelConfig.url;
-        // AGGRESSIVE URL RESOLUTION
-        if (previewUrl && previewUrl.startsWith("./")) {
-          previewUrl = previewUrl.replace("./", `${SERVER_URL}/`);
-        } else if (previewUrl && !previewUrl.startsWith("http") && !previewUrl.includes("Model3D/")) {
-          previewUrl = `${SERVER_URL}/Model3D/${previewUrl}`;
-        } else if (previewUrl && !previewUrl.startsWith("http")) {
-          previewUrl = `${SERVER_URL}/${previewUrl}`;
-        }
+        const previewUrl = resolveUrl(placingModelConfig.file || placingModelConfig.url);
 
         if (isAddingPreview) return;
 

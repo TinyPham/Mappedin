@@ -23,10 +23,21 @@ self.addEventListener('activate', (event) => {
 
 // Fetch Event (Required for PWA)
 self.addEventListener('fetch', (event) => {
-    // Simple pass-through fetch logic
+    // Chỉ xử lý các yêu cầu GET
+    if (event.request.method !== 'GET') return;
+
     event.respondWith(
-        fetch(event.request).catch(() => {
-            return caches.match(event.request);
-        })
+        fetch(event.request)
+            .catch(async () => {
+                const cachedResponse = await caches.match(event.request);
+                if (cachedResponse) return cachedResponse;
+
+                // Nếu là lỗi CORS hoặc mạng, và không có trong cache, 
+                // trả về một Response lỗi hợp lệ thay vì undefined để tránh crash SW
+                return new Response('Network error occurred', {
+                    status: 408,
+                    statusText: 'Network Error'
+                });
+            })
     );
 });
