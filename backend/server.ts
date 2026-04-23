@@ -59,6 +59,19 @@ if (fs.existsSync(FRONTEND_DIST)) {
 }
 app.use('/', express.static(ROOT_DIR));
 
+// CATCH-ALL ROUTE: Hỗ trợ SPA (Sửa lỗi 404 khi truy cập /vn/...)
+app.get('*', (req, res) => {
+    const indexPath = fs.existsSync(path.join(FRONTEND_DIST, 'index.html'))
+        ? path.join(FRONTEND_DIST, 'index.html')
+        : path.join(ROOT_DIR, 'index.html');
+
+    if (fs.existsSync(indexPath)) {
+        res.sendFile(indexPath);
+    } else {
+        res.status(404).send('Not Found');
+    }
+});
+
 
 // Initialize database connection
 async function initDB() {
