@@ -23,6 +23,12 @@ if (fs.existsSync(appSettingsPath)) {
 
 const PORT = appSettings.AppSettings?.Port || process.env.PORT || 3002;
 
+// Determine root and dist directories
+const ROOT_DIR = __filename.endsWith('.js')
+    ? path.join(__dirname, '../..')
+    : path.join(__dirname, '..');
+const FRONTEND_DIST = path.join(ROOT_DIR, 'dist');
+
 // Middleware
 // Bật nén Gzip/Brotli tự động cho mọi response HTTP (giảm ~30% bandwidth)
 app.use(compression());
@@ -31,20 +37,7 @@ app.use(cors({
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
-
-// Serve Static Files
-// When running compiled: backend/dist/server.js -> root is ../../
-// When running ts-node:  backend/server.ts -> root is ../
-const ROOT_DIR = __filename.endsWith('.js')
-    ? path.join(__dirname, '../..')
-    : path.join(__dirname, '..');
-const FRONTEND_DIST = path.join(ROOT_DIR, 'dist');
-
 app.use('/icon-category', express.static(path.join(ROOT_DIR, 'icon-category')));
-// Cache headers cho Model3D: trình duyệt giữ cache 30 ngày, không tải lại file GLB
-// Cache headers cho Model3D: trình duyệt giữ cache 30 ngày để load cực nhanh
 app.use('/Model3D', express.static(path.join(ROOT_DIR, 'Model3D'), {
     maxAge: '30d',
     immutable: true,
@@ -53,11 +46,13 @@ app.use('/Model3D', express.static(path.join(ROOT_DIR, 'Model3D'), {
 }));
 app.use('/uploads', express.static(path.join(ROOT_DIR, 'uploads')));
 
-// Serve Vite-built frontend
 if (fs.existsSync(FRONTEND_DIST)) {
     app.use(express.static(FRONTEND_DIST));
 }
 app.use('/', express.static(ROOT_DIR));
+
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // CATCH-ALL ROUTE: Hỗ trợ SPA (Sửa lỗi 404 khi truy cập /vn/...)
 app.get('*', (req, res) => {
@@ -1214,14 +1209,18 @@ async function start() {
             res.status(500).json({ error: err.message });
         }
     });
-
-    app.listen(Number(PORT), '0.0.0.0', () => {
-        console.log(`🚀 Server running on port ${PORT}`);
-        console.log(`📊 API Base URL: /api`);
-    });
 }
 
+// Global start calling
 start();
+
+// Start server immediately, THEN init DB
+app.listen(Number(PORT), '0.0.0.0', () => {
+    console.log(`🚀 Server is flying at http://0.0.0.0:${PORT}`);
+    console.log(`📊 API Base URL: /api`);
+    // Khởi tạo DB một cách âm thầm, không chặn việc Server lắng nghe
+    initDB().catch(err => console.error("Initial DB connection failed, will retry on request."));
+});
 
 // Graceful shutdown
 process.on('SIGINT', async () => {

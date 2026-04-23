@@ -8,17 +8,26 @@ const ASSETS = [
 
 // Install Event
 self.addEventListener('install', (event) => {
-    event.waitUntil(
-        caches.open(CACHE_NAME).then((cache) => {
-            console.log('Service Worker: Caching essential assets');
-            return cache.addAll(ASSETS);
-        })
-    );
+    console.log('Service Worker: Installing...');
+    self.skipWaiting(); // Kích hoạt ngay lập tức bản mới
 });
 
 // Activate Event
 self.addEventListener('activate', (event) => {
     console.log('Service Worker: Activated');
+    // Xóa toàn bộ cache cũ để nạp URL mới chuẩn xác
+    event.waitUntil(
+        caches.keys().then((cacheNames) => {
+            return Promise.all(
+                cacheNames.map((cache) => {
+                    if (cache !== CACHE_NAME) {
+                        console.log('Service Worker: Clearing Old Cache...', cache);
+                        return caches.delete(cache);
+                    }
+                })
+            );
+        })
+    );
 });
 
 // Fetch Event (Required for PWA)
