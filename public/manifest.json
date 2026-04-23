@@ -1,6 +1,6 @@
 {
     "name": "ACV Airport Map",
-    "short_name": "ACV Map",
+    "short_name": "3D Map",
     "description": "Bản đồ 3D Cảng hàng không - ACV Wayfinding",
     "start_url": "./",
     "display": "standalone",

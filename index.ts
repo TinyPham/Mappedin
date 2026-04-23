@@ -1104,14 +1104,17 @@ async function init() {
 
   // Track shift key globally since SDK might not pass originalEvent reliably
   let isShiftPressed = false;
+  let isAltPressed = false;
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Shift') isShiftPressed = true;
+    if (e.key === 'Alt') isAltPressed = true;
   });
   document.addEventListener('keyup', (e) => {
     if (e.key === 'Shift') isShiftPressed = false;
+    if (e.key === 'Alt') isAltPressed = false;
   });
-  // Also clear shift on window blur to prevent it gracefully sticking
-  window.addEventListener('blur', () => { isShiftPressed = false; });
+  // Also clear on window blur to prevent keys sticking
+  window.addEventListener('blur', () => { isShiftPressed = false; isAltPressed = false; });
 
   // UI Elements
   // UI Elements
@@ -6989,19 +6992,19 @@ async function init() {
     }
 
     // ============================================
-    // 1. SELECT EXISTING 3D MODEL (with Shift+Click multi-select)
+    // 1. SELECT EXISTING 3D MODEL (Alt+Click or Shift+Click only)
+    // Normal click → skip models, fall through to area/space selection
     // ============================================
     if (event.models && event.models.length > 0) {
       const clickedModel = event.models[0];
-      console.log("🎯 Clicked Model ID:", clickedModel.id);
-
       const meta = MODEL_ID_REGISTRY.get(clickedModel.id);
       const isShiftHeld = event.originalEvent?.shiftKey === true || isShiftPressed;
+      const isAltHeld = event.originalEvent?.altKey === true || isAltPressed;
 
       if (isShiftHeld && meta) {
         // SHIFT+CLICK: Toggle multi-selection
+        console.log("🔷 Shift+Click: Multi-select model", clickedModel.id);
         toggleMultiSelectModel(clickedModel, meta);
-        // Don't open single-model controls panel in multi-select mode
         if (multiSelectedModels.size > 0) {
           controlsPanel?.classList.add("hidden");
           activeModelInstance = null;
@@ -7009,21 +7012,21 @@ async function init() {
         return;
       }
 
-      // Normal click (no shift): clear multi-select if any, select single model
-      if (multiSelectedModels.size > 0) {
-        clearMultiSelect();
-      }
-
-      activeModelInstance = clickedModel;
-
-      // Hide space info box if open to avoid distraction
-      if (typeof hideInfo === 'function') hideInfo();
-
-      if (meta) {
+      if (isAltHeld && meta) {
+        // ALT+CLICK: Select single model (open controls panel)
+        console.log("🎯 Alt+Click: Select model", clickedModel.id);
+        if (multiSelectedModels.size > 0) {
+          clearMultiSelect();
+        }
+        activeModelInstance = clickedModel;
+        if (typeof hideInfo === 'function') hideInfo();
         syncUIFromModel(meta);
         controlsPanel?.classList.remove("hidden");
+        return;
       }
-      return; // Stop processing, we selected a model
+
+      // NORMAL CLICK on model → DO NOT select model, fall through to area/space below
+      console.log("📍 Normal click on model area → selecting space/area underneath");
     }
 
     // 2. CLOSE PANEL IF CLICKING EMPTY SPACE
