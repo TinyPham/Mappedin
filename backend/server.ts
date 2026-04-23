@@ -146,6 +146,7 @@ app.post('/api/update-area-info', async (req, res) => {
         if (!id) return res.status(400).json({ error: 'Missing ID' });
 
         const db = await getDbConnection();
+        if (!db) return res.status(503).json({ error: 'Database connection currently unavailable' });
 
         await db.request()
             .input('MappedinId', sql.NVarChar(100), id)
@@ -181,6 +182,10 @@ app.post('/api/update-area-info', async (req, res) => {
 app.get('/api/models', async (req, res) => {
     try {
         const db = await getDbConnection();
+        if (!db) {
+            console.warn("⚠️ [Offline Mode] Returning empty models list");
+            return res.json([]);
+        }
         const result = await db.request()
             .execute('SP_GetAllModels');
 
@@ -987,6 +992,17 @@ async function start() {
     app.get('/api/init-data', async (req, res) => {
         try {
             const db = await getDbConnection();
+            if (!db) {
+                console.warn("⚠️ [Offline Mode] Database connection failed for init-data. Returning minimal fallback data.");
+                return res.json({
+                    languages: [{ LanguageId: 'vi', LanguageName: 'Tiếng Việt' }, { LanguageId: 'en', LanguageName: 'English' }],
+                    ui: {},
+                    categories: [],
+                    subcategories: [],
+                    floors: [],
+                    locations: {}
+                });
+            }
             const result = await db.request().execute('SP_GetInitialData');
 
             // 1. Languages (Result 0)

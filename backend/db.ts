@@ -23,8 +23,10 @@ if (fs.existsSync(appSettingsPath)) {
         if (connectionString) {
             console.log('🏠 [Local] Using appsettings.json for DB');
             const getPart = (key: string) => {
-                const match = connectionString.match(new RegExp(`${key}=([^;]+)`, 'i'));
-                return match ? match[1] : null;
+                // Regex cải tiến: Bỏ qua khoảng trắng trước và sau dấu = và dấu ;
+                const regex = new RegExp(`${key}\\s*=\\s*([^;]+)`, 'i');
+                const match = connectionString.match(regex);
+                return match ? match[1].trim() : null;
             };
 
             config = {
@@ -35,7 +37,9 @@ if (fs.existsSync(appSettingsPath)) {
                 options: {
                     encrypt: getPart('Encrypt') === 'true',
                     trustServerCertificate: getPart('TrustServerCertificate') === 'true'
-                }
+                },
+                connectionTimeout: 30000, // 30 giây để đợi kết nối Online
+                requestTimeout: 30000     // 30 giây cho mỗi truy vấn
             };
         }
     } catch (e) {
@@ -72,18 +76,24 @@ if (!config) {
 let pool: sql.ConnectionPool | null = null;
 
 export const getDbConnection = async () => {
-    if (pool) return pool;
+    if (pool && pool.connected) return pool;
 
-    if (!config) throw new Error("Database configuration checking failed."); // Should not happen
+    if (!config) {
+        console.warn("⚠️ Database configuration missing.");
+        return null;
+    }
 
     try {
-        console.log(`🔌 Connecting to SQL Server: ${config.server}/${config.database}...`);
+        const infoMsg = `🔌 [DB-DEBUG] Connecting to: ${config.server} (DB: ${config.database}, Encrypt: ${config.options.encrypt})`;
+        console.log(infoMsg);
+
         pool = await sql.connect(config);
         console.log('✅ Connected to SQL Server successfully!');
         return pool;
     } catch (err) {
-        console.error('❌ Database Connection Failed:', err);
-        throw err;
+        console.error('❌ Database Connection Failed (Server will continue running):', err);
+        pool = null; // Reset pool to try again next time
+        return null;
     }
 };
 
