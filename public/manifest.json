@@ -1,5 +1,5 @@
 {
-    "name": "ACV Airport Map",
+    "name": "LTH Airport Map",
     "short_name": "3D Map",
     "description": "Bản đồ 3D Cảng hàng không - ACV Wayfinding",
     "start_url": "./",
@@ -8,14 +8,15 @@
     "theme_color": "#214ca6",
     "icons": [
         {
-            "src": "ACV-logo.png",
+            "src": "pwa-icon.png",
             "sizes": "192x192",
             "type": "image/png"
         },
         {
-            "src": "ACV-logo.png",
+            "src": "pwa-icon.png",
             "sizes": "512x512",
-            "type": "image/png"
+            "type": "image/png",
+            "purpose": "any maskable"
         }
     ],
     "display_override": [

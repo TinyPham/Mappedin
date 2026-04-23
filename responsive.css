@@ -11,10 +11,11 @@
         position: relative;
     }
 
-    /* 2. Biến Sidebar thành Floating Header */
+    /* 2. Biến Sidebar thành Floating Header (Tối ưu cho Safe Area) */
     #main-sidebar-left {
         position: absolute !important;
         top: 0 !important;
+        /* Vẫn giữ top 0 nhưng dùng padding để đẩy nội dung */
         left: 0 !important;
         right: 0 !important;
         height: auto !important;
@@ -27,7 +28,7 @@
         z-index: 2000 !important;
     }
 
-    /* Vùng chứa nội dung Header nổi (Tràn viền 100% theo yêu cầu) */
+    /* Vùng chứa nội dung Header nổi (Sử dụng Safe Area để không bị Notch che) */
     #sidebar-header {
         pointer-events: auto !important;
         background: rgba(255, 255, 255, 0.98) !important;
@@ -38,7 +39,8 @@
         box-shadow: 0 2px 15px rgba(0, 0, 0, 0.08);
         border: none !important;
         border-bottom: 1px solid rgba(0, 0, 0, 0.05) !important;
-        padding: 20px 15px 15px 15px !important;
+        /* Padding top tự động cộng thêm khoảng trống của Notch/Dynamic Island */
+        padding: calc(20px + env(safe-area-inset-top, 0px)) 15px 15px 15px !important;
     }
 
     #sidebar-content {
@@ -238,15 +240,16 @@
         display: none !important;
     }
 
-    /* Phản hồi khi chọn kết quả tìm kiếm */
+    /* Phản hồi khi chọn kết quả tìm kiếm (Tối ưu cho Safe Area) */
     #search-results {
         position: fixed !important;
-        top: 130px !important;
+        top: calc(125px + env(safe-area-inset-top, 0px)) !important;
         left: 20px !important;
         right: 20px !important;
         width: auto !important;
         max-height: 50vh !important;
         border-radius: 12px;
+        z-index: 2500 !important;
     }
 
     /* 6. Tối ưu hóa Màn hình Loading trên Mobile */
