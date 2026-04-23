@@ -6054,15 +6054,15 @@ async function init() {
       // ===================================
       // 4. RESET & SWAP BUTTONS (Right Column)
       // ===================================
-      // Reset Button (Circular Refresh Icon at the top)
+      // Reset Button (X Icon at the top to clear all)
       swapHtml += `<button id="wayfinding-reset-btn" title="Xóa tất cả" style="
         background:none; border:none;
         cursor:pointer; padding:6px;
-        color: #94a3b8; transition:all 0.2s;
+        color: #94a3b8; transition:all 0.3s ease;
         display:flex; align-items:center; justify-content:center;
         margin-bottom: 4px;
-      " onmouseenter="this.style.color='#214ca6'; this.style.transform='rotate(45deg)'" onmouseleave="this.style.color='#94a3b8'; this.style.transform='rotate(0)'">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+      " onmouseenter="this.style.color='#214ca6'; this.style.transform='rotate(90deg)'" onmouseleave="this.style.color='#94a3b8'; this.style.transform='rotate(0)'">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
       </button>`;
 
       for (let i = 0; i < totalNodes - 1; i++) {
@@ -6111,15 +6111,10 @@ async function init() {
           emptyStateEl.style.display = "flex";
           instructionsContainer.style.display = "none";
 
-          // NẾU HIỂN THỊ EMPTY STATE THÌ ẨN PANEL INFORMATION ĐI (Trừ khi đang ở tab chỉ đường để hiện ô nhập liệu)
+          // NẾU HIỂN THỊ EMPTY STATE THÌ ẨN PANEL INFORMATION ĐI
           const popupInfo = document.getElementById("sidebar-info-panel");
-          const tabDirections = document.getElementById("tab-directions");
-          const isDirectionsTabActive = tabDirections && tabDirections.classList.contains("active");
-
-          if (popupInfo && !isDirectionsTabActive) {
+          if (popupInfo) {
             popupInfo.style.display = "none";
-          } else if (popupInfo && isDirectionsTabActive) {
-            popupInfo.style.display = "flex";
           }
         }
       }
@@ -6314,11 +6309,13 @@ async function init() {
 
     // Show Info Panel
     if (popup) {
+      // Hiện bảng thông tin ở bất kể tab nào (Search hay Directions)
       popup.style.display = "flex";
       // Ensure vertical layout as per fix
       popup.style.flexDirection = "column";
 
-      // ĐẢM BẢO KHÔNG HIỂN THỊ CÙNG LÚC VỚI EMPTY STATE CỦA ĐIỀU HƯỚNG
+      // ĐẢM BẢO KHÔNG HIỂN THỊ CÙNG LÚC VỚI EMPTY STATE CỦA ĐIỀU HƯỚNG (Hoa sen)
+      // Khi đã có thông tin cụ thể thì ẩn "Bạn cần chỉ đường?" đi
       const emptyStateEl = document.getElementById("directions-empty-state");
       if (emptyStateEl) emptyStateEl.style.display = "none";
     }
@@ -6552,9 +6549,9 @@ async function init() {
         btnEnd.textContent = TranslationManager.t('route_end', 'End');
 
         const handleRoutingAction = () => {
-          // Chỉ đóng phần nội dung thông tin UI (Bottom Sheet) để không ảnh hưởng logic lưu giá trị và highlight
-          const popup = document.getElementById("sidebar-info-panel");
-          if (popup) popup.style.display = "none";
+          // KHÔNG đóng phần nội dung thông tin UI để giữ lại thông tin địa điểm đang chọn theo yêu cầu mới
+          // const popup = document.getElementById("sidebar-info-panel");
+          // if (popup) popup.style.display = "none";
 
           const tabDirections = document.getElementById("tab-directions");
           if (tabDirections) (tabDirections as any).click();
@@ -6577,7 +6574,8 @@ async function init() {
         btnStart.onclick = () => {
           wayfindingOrigin = space;
           isSelectingOrigin = false;
-          if (!wayfindingDestination) isSelectingDestination = true;
+          // Loại bỏ auto-selection mode để người dùng có thể xem info địa điểm tiếp theo
+          // if (!wayfindingDestination) isSelectingDestination = true; 
           handleRoutingAction();
         };
 
@@ -6593,7 +6591,8 @@ async function init() {
         btnEnd.onclick = () => {
           wayfindingDestination = space;
           isSelectingDestination = false;
-          if (!wayfindingOrigin) isSelectingOrigin = true;
+          // Loại bỏ auto-selection mode để người dùng có thể xem info địa điểm tiếp theo
+          // if (!wayfindingOrigin) isSelectingOrigin = true;
           handleRoutingAction();
         };
       }
@@ -6642,12 +6641,13 @@ async function init() {
       searchResults.innerHTML = "";
     }
 
-    // NEW: Full reset of wayfinding state when closing info (X button)
-    // Coi như tắt hết về trạng thái ban đầu (Initial State)
-    if ((isSelectingOrigin || isSelectingDestination || wayfindingOrigin || wayfindingDestination) && typeof resetWayfinding === 'function') {
-      resetWayfinding();
-    }
+    // NEW (Updated): We NO LONGER reset wayfinding when closing info panel.
+    // The wayfinding state should persist until the user clicks "Clear" in the directions tab.
+    // If we closed the info, we just update the sync URL to root state.
     syncURL(true); // Update URL to root/map state
+
+    // Refresh Wayfinding UI to show lotus if empty
+    if (typeof updateWayfindingUI === 'function') updateWayfindingUI();
   };
 
   // ============================================
@@ -7470,34 +7470,9 @@ async function init() {
         }
 
         // ============================================
-        // WAYFINDING: Khi đã có cả origin và destination, click vào khu vực khác → set làm destination mới
+        // NORMAL CLICK: Hiển thị info và zoom IN
+        // (Bỏ phần logic tự động set destination cũ để người dùng tự chọn hành động từ bảng thông tin)
         // ============================================
-        if (wayfindingOrigin && wayfindingDestination) {
-          // Reset highlight của điểm đến cũ trước khi set điểm mới
-          resetObjectHighlight(wayfindingDestination);
-
-          // Set điểm mới làm destination
-          wayfindingDestination = clickedObject;
-          (window as any).wayfindingDestination = wayfindingDestination;
-          selectedSpace = clickedObject; // Cập nhật selectedSpace để tránh highlight destination cũ
-          isSelectingDestination = false;
-          isSelectingOrigin = false;
-
-          // Cập nhật info box với điểm đến mới
-          updateInfo(clickedObject);
-
-          // Cập nhật highlights: chỉ highlight origin và destination (tối đa 2)
-          updateHighlights();
-
-          // Update UI và vẽ lại navigation
-          updateWayfindingUI();
-          drawNavigation();
-
-          // USER REQUEST: Click khu vực dẫn đường thì cần focus vào khu vực đó lên 19x
-          focusOnObject(clickedObject, 19.0);
-
-          return;
-        }
 
         // ============================================
         // NORMAL CLICK: Hiển thị info và zoom IN
@@ -7669,8 +7644,8 @@ async function init() {
         wayfindingPanel.classList.add("active");
       }
 
-      // Also hide info panel when switching to directions tab manually
-      // hideInfo();
+      // Call updateWayfindingUI instead of hideInfo to let it decide whether to show lotus or info
+      if (typeof updateWayfindingUI === 'function') updateWayfindingUI();
     }
   };
 
