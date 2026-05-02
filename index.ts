@@ -1580,6 +1580,23 @@ async function init() {
   }
 
   const allMapObjects = getAllMapObjects();
+  const getColorRenderObjects = () => {
+    const mergedObjects = new Map<string, any>();
+    allMapObjects.forEach((obj: any) => {
+      if (obj?.id) mergedObjects.set(obj.id, obj);
+    });
+
+    try {
+      const areas = mapData.getByType("area") || [];
+      areas.forEach((area: any) => {
+        if (!area?.id || mergedObjects.has(area.id)) return;
+        if (!area.name || !area.name.trim()) return;
+        mergedObjects.set(area.id, area);
+      });
+    } catch (e) { }
+
+    return Array.from(mergedObjects.values());
+  };
 
   // Log Mappedin CDN Image Links
   console.group("📍 Mappedin CDN Image Links");
@@ -3252,7 +3269,7 @@ async function init() {
    */
   const applyAreaColors = () => {
     const currentFloorId = mapView.currentFloor?.id;
-    allMapObjects.forEach((obj) => {
+    getColorRenderObjects().forEach((obj) => {
       // Filter: Only update objects on the current floor to avoid performance issues
       const objFloorId = obj.floor?.id || obj.floorId;
       if (objFloorId && objFloorId !== currentFloorId) return;
@@ -5097,7 +5114,7 @@ async function init() {
    */
   const updateHighlights = () => {
     // Reset tất cả objects trước
-    allMapObjects.forEach((obj: any) => {
+    getColorRenderObjects().forEach((obj: any) => {
       try {
         // Skip if object is currently a search result
         if (currentSearchResults.some((result: any) => result.id === obj.id)) {
@@ -11867,14 +11884,96 @@ export function initAreaColorUI(allMapObjects: any[], mapView: any, mapData: any
   const colorHex = document.getElementById("area-color-hex") as HTMLInputElement;
 
   let selectedAreaIds = new Set<string>();
+  const areaColorShapes = new Map<string, any>();
 
   if (!modal || !btnOpen || !listContainer) return;
 
+  const getNamedColorableObjects = () => {
+    const isNamedObject = (obj: any) =>
+      obj?.name &&
+      obj.name.trim() !== '' &&
+      !obj.name.toLowerCase().includes("khu vá»±c khÃ´ng tÃªn");
+
+    const spaces = (mapData.getByType('space') || []).filter(isNamedObject);
+    const areas = (mapData.getByType('area') || []).filter(isNamedObject);
+    const mergedObjects = new Map<string, any>();
+
+    spaces.forEach((obj: any) => {
+      if (obj?.id) mergedObjects.set(obj.id, obj);
+    });
+    areas.forEach((obj: any) => {
+      if (obj?.id && !mergedObjects.has(obj.id)) mergedObjects.set(obj.id, obj);
+    });
+
+    return Array.from(mergedObjects.values());
+  };
+
+  const syncAreaColorOverlays = () => {
+    const overlayAltitude = 0.05;
+    const areas = (mapData.getByType('area') || []).filter((area: any) => area?.name && area.name.trim() !== '');
+    const customColors = JSON.parse(localStorage.getItem('customAreaColors') || '{}');
+    const activeAreaIds = new Set<string>();
+
+    areas.forEach((area: any) => {
+      const color = customColors[area.id];
+      if (!color) return;
+
+      activeAreaIds.add(area.id);
+      const geometry = {
+        type: 'FeatureCollection',
+        features: [
+          {
+            type: 'Feature',
+            properties: { id: area.id, name: area.name },
+            geometry: area.geoJSON.geometry
+          }
+        ]
+      };
+
+      const existingShape = areaColorShapes.get(area.id);
+      if (existingShape) {
+        try {
+          mapView.updateState(existingShape, {
+            color,
+            opacity: 0.95,
+            visible: true,
+            altitude: overlayAltitude,
+            outline: false
+          });
+          return;
+        } catch (e) {
+          try { mapView.Shapes.remove(existingShape); } catch (removeErr) { }
+          areaColorShapes.delete(area.id);
+        }
+      }
+
+      try {
+        const shape = mapView.Shapes.add(geometry as any, {
+          color,
+          opacity: 0.95,
+          interactive: false,
+          altitude: overlayAltitude,
+          outline: false
+        } as any, area.floor);
+        if (shape) {
+          areaColorShapes.set(area.id, shape);
+        }
+      } catch (e) {
+        console.error("Error creating area color overlay", area.id, e);
+      }
+    });
+
+    Array.from(areaColorShapes.entries()).forEach(([areaId, shape]) => {
+      if (activeAreaIds.has(areaId)) return;
+      try { mapView.Shapes.remove(shape); } catch (e) { }
+      areaColorShapes.delete(areaId);
+    });
+  };
+
   // Render checkbox list
   const renderList = (filter = "") => {
-    let spaces = mapData.getByType('space');
+    let spaces = getNamedColorableObjects();
 
-    // Filter out unnamed spaces
     spaces = spaces.filter((s: any) => s.name && s.name.trim() !== '' && !s.name.toLowerCase().includes("khu vực không tên"));
 
     // Convert to arrays and sort
@@ -11982,6 +12081,7 @@ export function initAreaColorUI(allMapObjects: any[], mapView: any, mapData: any
     modal.classList.remove("hidden");
     selectedAreaIds.clear();
     searchInput.value = "";
+    syncAreaColorOverlays();
     renderList();
   });
 
@@ -11996,7 +12096,7 @@ export function initAreaColorUI(allMapObjects: any[], mapView: any, mapData: any
       return;
     }
     const color = colorHex.value;
-    const spaces = mapData.getByType('space');
+    const spaces = getNamedColorableObjects();
     let count = 0;
 
     const customColors = JSON.parse(localStorage.getItem('customAreaColors') || '{}');
@@ -12004,6 +12104,10 @@ export function initAreaColorUI(allMapObjects: any[], mapView: any, mapData: any
     for (const space of spaces) {
       if (selectedAreaIds.has(space.id)) {
         customColors[space.id] = color;
+        if (space?.__type === 'area') {
+          count++;
+          continue;
+        }
         try {
           mapView.updateState(space, { color: color });
           count++;
@@ -12011,6 +12115,7 @@ export function initAreaColorUI(allMapObjects: any[], mapView: any, mapData: any
       }
     }
     localStorage.setItem('customAreaColors', JSON.stringify(customColors));
+    syncAreaColorOverlays();
     if (typeof (window as any).refreshMapColors === 'function') {
       (window as any).refreshMapColors();
     }
@@ -12033,7 +12138,7 @@ export function initAreaColorUI(allMapObjects: any[], mapView: any, mapData: any
       alert("Vui lòng chọn ít nhất một khu vực!");
       return;
     }
-    const spaces = mapData.getByType('space');
+    const spaces = getNamedColorableObjects();
     let count = 0;
 
     const customColors = JSON.parse(localStorage.getItem('customAreaColors') || '{}');
@@ -12041,6 +12146,10 @@ export function initAreaColorUI(allMapObjects: any[], mapView: any, mapData: any
     for (const space of spaces) {
       if (selectedAreaIds.has(space.id)) {
         delete customColors[space.id];
+        if (space?.__type === 'area') {
+          count++;
+          continue;
+        }
         try {
           const defaultColor = space.name ? "#FFFFFF" : "#eeece7";
           mapView.updateState(space, { color: defaultColor });
@@ -12049,6 +12158,7 @@ export function initAreaColorUI(allMapObjects: any[], mapView: any, mapData: any
       }
     }
     localStorage.setItem('customAreaColors', JSON.stringify(customColors));
+    syncAreaColorOverlays();
     if (typeof (window as any).refreshMapColors === 'function') {
       (window as any).refreshMapColors();
     }
@@ -12082,6 +12192,8 @@ export function initAreaColorUI(allMapObjects: any[], mapView: any, mapData: any
 
     renderList(searchInput.value);
   };
+
+  syncAreaColorOverlays();
 }
 
 // Custom Speed Dropdown logic
