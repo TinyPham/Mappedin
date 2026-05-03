@@ -63,7 +63,8 @@ class TranslationManager {
     languages: [],
     ui: {},
     categories: [],
-    locations: {}
+    locations: {},
+    areaColors: {}
   };
 
   // NEW: Immediate detection logic to prevent UI flicker
@@ -103,7 +104,10 @@ class TranslationManager {
       const apiBase = isLocal ? "http://localhost:3002/api" : `${window.location.origin}/api`;
       const res = await fetch(`${apiBase}/init-data`);
       const json = await res.json();
-      this.data = json;
+      this.data = {
+        ...json,
+        areaColors: json?.areaColors || {}
+      };
       console.log('🌐 Init Data loaded:', json);
 
       // Populate Language Dropdown
@@ -981,6 +985,46 @@ class TranslationManager {
   static async saveTranslation(id: string, name: string) {
     alert("Use new Admin UI to edit content.");
   }
+}
+
+const AREA_COLOR_LOCAL_STORAGE_KEY = 'customAreaColors';
+const AREA_COLOR_MIGRATION_FLAG_KEY = 'customAreaColorsMigratedToServer';
+
+function getApiBaseUrl(): string {
+  const isLocalHost = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+  return isLocalHost ? "http://localhost:3002/api" : `${window.location.origin}/api`;
+}
+
+function safeParseAreaColorMap(rawValue: any): Record<string, string> {
+  if (!rawValue || rawValue === 'undefined') return {};
+  try {
+    const parsed = typeof rawValue === 'string' ? JSON.parse(rawValue) : rawValue;
+    if (!parsed || typeof parsed !== 'object') return {};
+    return parsed;
+  } catch (error) {
+    return {};
+  }
+}
+
+function normalizeAreaHexColor(value: any): string | null {
+  const normalized = String(value || '').trim().toUpperCase();
+  return /^#[0-9A-F]{6}$/.test(normalized) ? normalized : null;
+}
+
+function getServerAreaColors(): Record<string, string> {
+  return TranslationManager.data?.areaColors || {};
+}
+
+function setServerAreaColors(areaColors: Record<string, string>) {
+  TranslationManager.data = {
+    ...(TranslationManager.data || {}),
+    areaColors
+  };
+}
+
+function getAreaColorOverride(areaId: string): string | null {
+  const color = getServerAreaColors()[areaId];
+  return normalizeAreaHexColor(color);
 }
 
 // Expose to window for HTML onclick
@@ -3268,17 +3312,10 @@ async function init() {
     let bgColor = palette.fill;
     let hoverColor = palette.fill; // KHÓA HOVER: Gán hoverColor bằng chính màu nền tĩnh
 
-    // localStorage override vẫn hoạt động cho tất cả tầng
-    try {
-      const safeJSONParse = (val: any, fallback = {}) => {
-        if (!val || val === "undefined") return fallback;
-        try { return JSON.parse(val); } catch (e) { return fallback; }
-      };
-      const customColors = safeJSONParse(localStorage.getItem('customAreaColors'));
-      if (customColors[obj.id]) {
-        bgColor = customColors[obj.id];
-      }
-    } catch (e) { }
+    const areaColorOverride = getAreaColorOverride(obj.id);
+    if (areaColorOverride) {
+      bgColor = areaColorOverride;
+    }
 
     // Hàm hỗ trợ làm sạch mã màu (loại bỏ Alpha) để tránh Warning Three.js
     const cleanColor = (color: string): string => {
@@ -11931,6 +11968,7 @@ export function initAreaColorUI(allMapObjects: any[], mapView: any, mapData: any
 
   let selectedAreaIds = new Set<string>();
   const areaColorShapes = new Map<string, any>();
+  const apiBaseUrl = getApiBaseUrl();
 
   if (!modal || !btnOpen || !listContainer) return;
 
@@ -11957,7 +11995,7 @@ export function initAreaColorUI(allMapObjects: any[], mapView: any, mapData: any
   const syncAreaColorOverlays = () => {
     const overlayAltitude = 0.05;
     const areas = (mapData.getByType('area') || []).filter((area: any) => area?.name && area.name.trim() !== '');
-    const customColors = JSON.parse(localStorage.getItem('customAreaColors') || '{}');
+    const customColors = getServerAreaColors();
     const activeAreaIds = new Set<string>();
 
     areas.forEach((area: any) => {
@@ -12014,6 +12052,72 @@ export function initAreaColorUI(allMapObjects: any[], mapView: any, mapData: any
       try { mapView.Shapes.remove(shape); } catch (e) { }
       areaColorShapes.delete(areaId);
     });
+  };
+
+  const applyAreaColorsToMap = () => {
+    syncAreaColorOverlays();
+    if (typeof (window as any).refreshMapColors === 'function') {
+      (window as any).refreshMapColors();
+    }
+  };
+
+  const setAreaColorsOnServer = async (areaIds: string[], color: string) => {
+    const response = await fetch(`${apiBaseUrl}/area-colors`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ areaIds, color })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(data?.error || 'Không thể lưu màu khu vực');
+    }
+    setServerAreaColors(data.areaColors || {});
+  };
+
+  const clearAreaColorsOnServer = async (areaIds: string[]) => {
+    const response = await fetch(`${apiBaseUrl}/area-colors`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ areaIds })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(data?.error || 'Không thể xóa màu khu vực');
+    }
+    setServerAreaColors(data.areaColors || {});
+  };
+
+  const migrateLegacyLocalAreaColorsToServer = async () => {
+    if (isViewOnly) return;
+    if (localStorage.getItem(AREA_COLOR_MIGRATION_FLAG_KEY) === '1') return;
+
+    const localColors = safeParseAreaColorMap(localStorage.getItem(AREA_COLOR_LOCAL_STORAGE_KEY));
+    const serverColors = getServerAreaColors();
+    const colorsToMigrate = new Map<string, string[]>();
+
+    Object.entries(localColors).forEach(([areaId, rawColor]) => {
+      const normalizedColor = normalizeAreaHexColor(rawColor);
+      if (!normalizedColor) return;
+      if (getAreaColorOverride(areaId)) return;
+
+      const bucket = colorsToMigrate.get(normalizedColor) || [];
+      bucket.push(areaId);
+      colorsToMigrate.set(normalizedColor, bucket);
+    });
+
+    if (Object.keys(serverColors).length > 0 && colorsToMigrate.size === 0) {
+      localStorage.setItem(AREA_COLOR_MIGRATION_FLAG_KEY, '1');
+      return;
+    }
+
+    if (colorsToMigrate.size === 0) return;
+
+    for (const [color, areaIds] of colorsToMigrate.entries()) {
+      await setAreaColorsOnServer(areaIds, color);
+    }
+
+    localStorage.setItem(AREA_COLOR_MIGRATION_FLAG_KEY, '1');
+    applyAreaColorsToMap();
   };
 
   // Render checkbox list
@@ -12095,10 +12199,9 @@ export function initAreaColorUI(allMapObjects: any[], mapView: any, mapData: any
         // If exactly 1 item is selected, display its current color
         if (selectedAreaIds.size === 1) {
           try {
-            const customColors = JSON.parse(localStorage.getItem('customAreaColors') || '{}');
             const singleId = Array.from(selectedAreaIds)[0];
             const singleObj = spaces.find((s: any) => s.id === singleId);
-            const currentColor = customColors[singleId] || (singleObj?.name ? "#FFFFFF" : "#eeece7");
+            const currentColor = getAreaColorOverride(singleId) || (singleObj?.name ? "#FFFFFF" : "#eeece7");
             colorPicker.value = currentColor;
             colorHex.value = currentColor;
           } catch (e) { }
@@ -12136,20 +12239,21 @@ export function initAreaColorUI(allMapObjects: any[], mapView: any, mapData: any
   });
 
   // Apply colors
-  btnApply?.addEventListener("click", () => {
+  btnApply?.addEventListener("click", async () => {
     if (selectedAreaIds.size === 0) {
       alert("Vui lòng chọn ít nhất một khu vực!");
       return;
     }
-    const color = colorHex.value;
+    const color = normalizeAreaHexColor(colorHex.value);
+    if (!color) {
+      alert("MÃ u khÃ´ng há»£p lá»‡. Vui lÃ²ng nháº­p Ä‘á»‹nh dáº¡ng #RRGGBB.");
+      return;
+    }
     const spaces = getNamedColorableObjects();
     let count = 0;
 
-    const customColors = JSON.parse(localStorage.getItem('customAreaColors') || '{}');
-
     for (const space of spaces) {
       if (selectedAreaIds.has(space.id)) {
-        customColors[space.id] = color;
         if (space?.__type === 'area') {
           count++;
           continue;
@@ -12160,11 +12264,13 @@ export function initAreaColorUI(allMapObjects: any[], mapView: any, mapData: any
         } catch (e) { console.error("Error setting color", e); }
       }
     }
-    localStorage.setItem('customAreaColors', JSON.stringify(customColors));
-    syncAreaColorOverlays();
-    if (typeof (window as any).refreshMapColors === 'function') {
-      (window as any).refreshMapColors();
+    try {
+      await setAreaColorsOnServer(Array.from(selectedAreaIds), color);
+    } catch (error: any) {
+      alert(error?.message || "KhÃ´ng thá»ƒ lÆ°u mÃ u khu vá»±c lÃªn server");
+      return;
     }
+    applyAreaColorsToMap();
     const successPopup = document.getElementById("success-popup");
     const okBtn = document.getElementById("btn-success-ok");
     if (successPopup && okBtn) {
@@ -12179,7 +12285,7 @@ export function initAreaColorUI(allMapObjects: any[], mapView: any, mapData: any
   });
 
   // Clear colors
-  btnClear?.addEventListener("click", () => {
+  btnClear?.addEventListener("click", async () => {
     if (selectedAreaIds.size === 0) {
       alert("Vui lòng chọn ít nhất một khu vực!");
       return;
@@ -12187,11 +12293,8 @@ export function initAreaColorUI(allMapObjects: any[], mapView: any, mapData: any
     const spaces = getNamedColorableObjects();
     let count = 0;
 
-    const customColors = JSON.parse(localStorage.getItem('customAreaColors') || '{}');
-
     for (const space of spaces) {
       if (selectedAreaIds.has(space.id)) {
-        delete customColors[space.id];
         if (space?.__type === 'area') {
           count++;
           continue;
@@ -12203,11 +12306,13 @@ export function initAreaColorUI(allMapObjects: any[], mapView: any, mapData: any
         } catch (e) { }
       }
     }
-    localStorage.setItem('customAreaColors', JSON.stringify(customColors));
-    syncAreaColorOverlays();
-    if (typeof (window as any).refreshMapColors === 'function') {
-      (window as any).refreshMapColors();
+    try {
+      await clearAreaColorsOnServer(Array.from(selectedAreaIds));
+    } catch (error: any) {
+      alert(error?.message || "KhÃ´ng thá»ƒ xÃ³a mÃ u khu vá»±c trÃªn server");
+      return;
     }
+    applyAreaColorsToMap();
     const successPopup = document.getElementById("success-popup");
     const okBtn = document.getElementById("btn-success-ok");
     if (successPopup && okBtn) {
@@ -12230,8 +12335,7 @@ export function initAreaColorUI(allMapObjects: any[], mapView: any, mapData: any
 
     // Set the color picker to the current space's color
     try {
-      const customColors = JSON.parse(localStorage.getItem('customAreaColors') || '{}');
-      const currentColor = customColors[space.id] || (space.name ? "#FFFFFF" : "#eeece7");
+      const currentColor = getAreaColorOverride(space.id) || (space.name ? "#FFFFFF" : "#eeece7");
       colorPicker.value = currentColor;
       colorHex.value = currentColor;
     } catch (e) { }
@@ -12240,6 +12344,9 @@ export function initAreaColorUI(allMapObjects: any[], mapView: any, mapData: any
   };
 
   syncAreaColorOverlays();
+  void migrateLegacyLocalAreaColorsToServer().catch((error) => {
+    console.warn('Area color migration skipped:', error);
+  });
 }
 
 // Custom Speed Dropdown logic

@@ -8,6 +8,11 @@ import cors from 'cors';
 import compression from 'compression';
 import fs from 'fs';
 import path from 'path';
+import {
+    buildAreaColorMap,
+    parseAreaColorDeletePayload,
+    parseAreaColorUpsertPayload
+} from './areaColors';
 
 const app = express();
 
@@ -79,6 +84,27 @@ app.use('/uploads', express.static(UPLOADS_DIR));
 // =============================================
 // API Endpoints
 // =============================================
+
+async function fetchAreaColorMap(db: sql.ConnectionPool) {
+    const result = await db.request().query(`
+        IF OBJECT_ID(N'dbo.AreaColorOverrides', N'U') IS NULL
+            SELECT CAST(NULL AS NVARCHAR(100)) AS MappedinID, CAST(NULL AS NVARCHAR(7)) AS ColorHex WHERE 1 = 0;
+        ELSE
+            SELECT MappedinID, ColorHex FROM dbo.AreaColorOverrides;
+    `);
+
+    return buildAreaColorMap(result.recordset || []);
+}
+
+async function ensureAreaColorTableExists(db: sql.ConnectionPool) {
+    const result = await db.request().query(`
+        SELECT CASE WHEN OBJECT_ID(N'dbo.AreaColorOverrides', N'U') IS NULL THEN 0 ELSE 1 END AS ExistsFlag;
+    `);
+
+    if (!result.recordset?.[0]?.ExistsFlag) {
+        throw new Error('AreaColorOverrides table does not exist. Apply the database patch first.');
+    }
+}
 
 // POST: Upload Image (Base64)
 app.post('/api/upload-image', (req, res) => {
@@ -171,6 +197,60 @@ app.post('/api/update-area-info', async (req, res) => {
     } catch (err: any) {
         console.error('Update error:', err);
         res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.post('/api/area-colors', async (req, res) => {
+    try {
+        const { areaIds, color } = parseAreaColorUpsertPayload(req.body);
+        const db = await getDbConnection();
+        if (!db) return res.status(503).json({ error: 'Database connection currently unavailable' });
+
+        await ensureAreaColorTableExists(db);
+
+        for (const areaId of areaIds) {
+            await db.request()
+                .input('MappedinID', sql.NVarChar(100), areaId)
+                .input('ColorHex', sql.NVarChar(7), color)
+                .query(`
+                    MERGE dbo.AreaColorOverrides AS target
+                    USING (SELECT @MappedinID AS MappedinID, @ColorHex AS ColorHex) AS source
+                    ON target.MappedinID = source.MappedinID
+                    WHEN MATCHED THEN
+                        UPDATE SET ColorHex = source.ColorHex, UpdatedAt = SYSUTCDATETIME()
+                    WHEN NOT MATCHED THEN
+                        INSERT (MappedinID, ColorHex, UpdatedAt)
+                        VALUES (source.MappedinID, source.ColorHex, SYSUTCDATETIME());
+                `);
+        }
+
+        const areaColors = await fetchAreaColorMap(db);
+        res.json({ success: true, areaColors });
+    } catch (err: any) {
+        console.error('Area color upsert error:', err);
+        res.status(400).json({ error: err.message || 'Failed to save area colors' });
+    }
+});
+
+app.delete('/api/area-colors', async (req, res) => {
+    try {
+        const { areaIds } = parseAreaColorDeletePayload(req.body);
+        const db = await getDbConnection();
+        if (!db) return res.status(503).json({ error: 'Database connection currently unavailable' });
+
+        await ensureAreaColorTableExists(db);
+
+        for (const areaId of areaIds) {
+            await db.request()
+                .input('MappedinID', sql.NVarChar(100), areaId)
+                .query(`DELETE FROM dbo.AreaColorOverrides WHERE MappedinID = @MappedinID;`);
+        }
+
+        const areaColors = await fetchAreaColorMap(db);
+        res.json({ success: true, areaColors });
+    } catch (err: any) {
+        console.error('Area color delete error:', err);
+        res.status(400).json({ error: err.message || 'Failed to delete area colors' });
     }
 });
 
@@ -1011,10 +1091,12 @@ app.get('/api/init-data', async (req, res) => {
                 categories: [],
                 subcategories: [],
                 floors: [],
-                locations: {}
+                locations: {},
+                areaColors: {}
             });
         }
         const result = await db.request().execute('SP_GetInitialData');
+        const areaColors = await fetchAreaColorMap(db);
 
         // 1. Languages (Result 0)
         const languages = result.recordsets[0];
@@ -1125,7 +1207,8 @@ app.get('/api/init-data', async (req, res) => {
             categories,
             subcategories,
             floors,
-            locations
+            locations,
+            areaColors
         });
 
     } catch (err: any) {
