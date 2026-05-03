@@ -1978,7 +1978,17 @@ async function init() {
     'cay duong xi',
     'cay co canh',
     'cay cau canh',
-    'tham thuc vat'
+    'tham thuc vat',
+    'vietnam airlines',
+    'vietjetair',
+    'thai airlines',
+    'quatas airlines',
+    'lufthansa airlines',
+    'cathaypacific airlines',
+    'atlas air',
+    'airfrance',
+    'hawaiian airlines',
+    'northwest airlines'
   ]);
 
   const normalizeModelIdentity = (value: any) => String(value || '')
@@ -9530,11 +9540,11 @@ async function init() {
     const currentZoom = getCameraZoom() || 0;
 
     // THIẾT LẬP NGƯỠNG (Điều chỉnh Unload 18.5 theo yêu cầu)
-    const ZOOM_LOAD_THRESHOLD = 19.0;
-    const ZOOM_UNLOAD_THRESHOLD = 18.5; // Đệm 0.5 đơn vị zoom
+    const ZOOM_LOAD_THRESHOLD = 19.2;
+    const ZOOM_UNLOAD_THRESHOLD = 18.8; // Đệm 0.4 đơn vị zoom
     const LOAD_RADIUS = 300;
     const UNLOAD_RADIUS = 320;
-    const MAX_CONCURRENT_MODELS = 150;
+    const MAX_CONCURRENT_MODELS = 200;
 
     console.log(`📡 [STREAMING] Current Zoom: ${currentZoom.toFixed(2)} (Target > ${ZOOM_LOAD_THRESHOLD})`);
 
