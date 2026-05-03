@@ -1970,6 +1970,38 @@ async function init() {
     return null;
   };
 
+  const PERSISTENT_LOWER_FLOOR_MODEL_NAMES = new Set([
+    'cay dua',
+    'vuon cay xanh',
+    'cay trau ba',
+    'cay thien dieu',
+    'cay duong xi',
+    'cay co canh',
+    'cay cau canh',
+    'tham thuc vat'
+  ]);
+
+  const normalizeModelIdentity = (value: any) => String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\.(glb|gltf|json)$/i, '')
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+
+  const isPersistentLowerFloorModel = (obj: any) => {
+    if (!obj) return false;
+
+    const candidates = [obj.file, obj.url, obj.name, obj.desc];
+    return candidates.some((candidate) => {
+      const normalized = normalizeModelIdentity(candidate);
+      if (!normalized) return false;
+      const fileLike = normalized.split('/').pop() || normalized;
+      return PERSISTENT_LOWER_FLOOR_MODEL_NAMES.has(fileLike);
+    });
+  };
+
   /**
    * Tính centroid từ polygon ring (dùng làm fallback anchor)
    */
@@ -9542,12 +9574,14 @@ async function init() {
       const dist = calculateDistance(focalPoint, { latitude: meta.originalCoordinate.latitude, longitude: meta.originalCoordinate.longitude });
       const isCurrentFloor = meta.floorId === currentFloor.id;
       const isVerticalOnLowerFloor = lowerFloorIds.has(meta.floorId || "") && isThang(meta);
+      const isPersistentOnLowerFloor = lowerFloorIds.has(meta.floorId || "") && isPersistentLowerFloorModel(meta);
+      const keepAcrossLowerFloors = isVerticalOnLowerFloor || isPersistentOnLowerFloor;
 
       // LOGIC XÓA MẠNH TAY:
-      const shouldUnloadDueToZoom = currentZoom < ZOOM_UNLOAD_THRESHOLD && !isThang(meta);
-      const shouldUnloadDueToDist = !isThang(meta) && dist > UNLOAD_RADIUS;
+      const shouldUnloadDueToZoom = currentZoom < ZOOM_UNLOAD_THRESHOLD && !isThang(meta) && !isPersistentLowerFloorModel(meta);
+      const shouldUnloadDueToDist = !isThang(meta) && !isPersistentLowerFloorModel(meta) && dist > UNLOAD_RADIUS;
 
-      if (!isCurrentFloor && !isVerticalOnLowerFloor || shouldUnloadDueToZoom || shouldUnloadDueToDist) {
+      if (!isCurrentFloor && !keepAcrossLowerFloors || shouldUnloadDueToZoom || shouldUnloadDueToDist) {
         try { mapView.Models.remove(instance); MODEL_INSTANCE_REGISTRY.delete(uuid); } catch (e) { }
       }
     }
@@ -9560,17 +9594,19 @@ async function init() {
       }
       const isCurrent = m.floorId === currentFloor.id;
       const isVerticalOnLowerFloor = lowerFloorIds.has(m.floorId || "") && isThang(m);
-      return isCurrent || isVerticalOnLowerFloor;
+      const isPersistentOnLowerFloor = lowerFloorIds.has(m.floorId || "") && isPersistentLowerFloorModel(m);
+      return isCurrent || isVerticalOnLowerFloor || isPersistentOnLowerFloor;
     });
 
     const modelsToLoad: any[] = [];
     candidateModels.forEach((m: any) => {
       const isVertical = isThang(m);
+      const isPersistent = isPersistentLowerFloorModel(m);
       const dist = calculateDistance(focalPoint, { latitude: Number(m.latitude), longitude: Number(m.longitude) });
       const isLoaded = MODEL_INSTANCE_REGISTRY.has(m.uuid);
 
       // Thang luôn load (bất chấp zoom/distance), model khác thì theo luật
-      const shouldLoad = isVertical || (currentZoom >= ZOOM_LOAD_THRESHOLD && dist <= LOAD_RADIUS);
+      const shouldLoad = isVertical || isPersistent || (currentZoom >= ZOOM_LOAD_THRESHOLD && dist <= LOAD_RADIUS);
 
       if (shouldLoad && !isLoaded) {
         modelsToLoad.push(m);
