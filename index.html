@@ -152,6 +152,80 @@
       transform: translate(-50%, -52%);
     }
 
+    @media (max-width: 768px) {
+      #camera-controls {
+        position: fixed;
+        right: max(10px, env(safe-area-inset-right));
+        top: auto;
+        bottom: calc(84px + env(safe-area-inset-bottom));
+        transform: none;
+        gap: 10px;
+        align-items: flex-end;
+        z-index: 5000;
+      }
+
+      .camera-control-group {
+        padding: 6px;
+        border-radius: 14px;
+      }
+
+      .camera-control-group:first-child {
+        width: auto !important;
+        height: auto !important;
+        padding: 0;
+        background: transparent;
+        box-shadow: none;
+        border: none;
+      }
+
+      .camera-control-group.horizontal {
+        flex-direction: column;
+        width: 34px;
+        height: auto;
+        padding: 4px;
+      }
+
+      .mobile-camera-stack {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        padding: 4px;
+        background: rgba(255, 255, 255, 0.96);
+        border-radius: 12px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+        border: 1px solid rgba(0, 0, 0, 0.05);
+      }
+
+      .camera-btn {
+        width: 22px;
+        height: 22px;
+        font-size: 12px;
+      }
+
+      #btn-up,
+      #btn-down,
+      #btn-left,
+      #btn-right {
+        display: none !important;
+      }
+
+      .camera-btn.center {
+        position: static;
+        transform: none;
+        width: 24px;
+        height: 24px;
+      }
+
+      .camera-btn.center svg {
+        width: 12px;
+        height: 12px;
+      }
+
+      .camera-btn.center:hover {
+        transform: none;
+      }
+    }
+
     .modal-overlay {
       position: absolute;
       top: 0;
@@ -2214,6 +2288,82 @@
           .catch(err => console.log('SW Reg error:', err));
       });
     }
+
+    const forceMobileCameraControls = () => {
+      const cameraControls = document.getElementById('camera-controls');
+      const positionGroup = cameraControls?.querySelector('.camera-control-group');
+      const zoomGroup = cameraControls?.querySelector('.camera-control-group.horizontal');
+      const btnZoomIn = document.getElementById('btn-zoom-in');
+      const btnZoomOut = document.getElementById('btn-zoom-out');
+      const btnReset = document.getElementById('btn-reset');
+      if (!cameraControls) return;
+
+      cameraControls.hidden = false;
+      cameraControls.removeAttribute('hidden');
+
+      let mobileStack = document.getElementById('mobile-camera-stack');
+      if (!mobileStack) {
+        mobileStack = document.createElement('div');
+        mobileStack.id = 'mobile-camera-stack';
+        mobileStack.className = 'mobile-camera-stack';
+      }
+
+      if (window.innerWidth <= 768) {
+        cameraControls.style.setProperty('display', 'flex', 'important');
+        cameraControls.style.setProperty('position', 'fixed', 'important');
+        cameraControls.style.setProperty('right', '10px', 'important');
+        cameraControls.style.setProperty('top', 'auto', 'important');
+        cameraControls.style.setProperty('bottom', '84px', 'important');
+        cameraControls.style.setProperty('transform', 'none', 'important');
+        cameraControls.style.setProperty('z-index', '5000', 'important');
+        cameraControls.style.setProperty('align-items', 'flex-end', 'important');
+        cameraControls.style.setProperty('gap', '10px', 'important');
+
+        if (positionGroup) positionGroup.style.display = 'none';
+        if (zoomGroup) zoomGroup.style.display = 'none';
+
+        if (btnZoomIn && btnReset && btnZoomOut) {
+          mobileStack.appendChild(btnZoomIn);
+          mobileStack.appendChild(btnReset);
+          mobileStack.appendChild(btnZoomOut);
+        }
+
+        if (!cameraControls.contains(mobileStack)) {
+          cameraControls.appendChild(mobileStack);
+        }
+        mobileStack.style.display = 'flex';
+      } else {
+        cameraControls.style.setProperty('display', 'flex', 'important');
+        cameraControls.style.setProperty('position', 'absolute', 'important');
+        cameraControls.style.setProperty('right', '25px', 'important');
+        cameraControls.style.setProperty('bottom', '25px', 'important');
+        cameraControls.style.removeProperty('top');
+        cameraControls.style.removeProperty('transform');
+        cameraControls.style.setProperty('z-index', '1000', 'important');
+        cameraControls.style.setProperty('align-items', 'flex-end', 'important');
+        cameraControls.style.setProperty('gap', '15px', 'important');
+
+        if (positionGroup) positionGroup.style.display = 'flex';
+        if (zoomGroup) zoomGroup.style.display = 'flex';
+
+        if (positionGroup && btnReset && !positionGroup.contains(btnReset)) {
+          positionGroup.appendChild(btnReset);
+        }
+        if (zoomGroup && btnZoomOut && !zoomGroup.contains(btnZoomOut)) {
+          zoomGroup.appendChild(btnZoomOut);
+        }
+        if (zoomGroup && btnZoomIn && !zoomGroup.contains(btnZoomIn)) {
+          zoomGroup.appendChild(btnZoomIn);
+        }
+
+        if (mobileStack.parentElement === cameraControls) {
+          mobileStack.remove();
+        }
+      }
+    };
+
+    window.addEventListener('load', forceMobileCameraControls);
+    window.addEventListener('resize', forceMobileCameraControls);
 
     // Handle Install Prompt
     let deferredPrompt;
