@@ -1126,6 +1126,7 @@ async function init() {
   let _allModelMetadata: any[] = [];
   // Theo dõi tầng nào đã load models rồi (tránh load lại)
   const _loadedFloors: Set<string> = new Set();
+  let _hasSyncedOverviewModelFloor = false;
 
   // Placement Globals
   let placingModelConfig: any = null;
@@ -9105,6 +9106,26 @@ async function init() {
       }
     },
 
+    async syncOverviewFloor(overviewFloorId: string) {
+      try {
+        const res = await fetch(`${API_BASE_URL}/models/sync-overview-floor`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ overviewFloorId })
+        });
+
+        if (!res.ok) {
+          const payload = await res.json().catch(() => null);
+          throw new Error(payload?.error || "Failed to sync overview floor");
+        }
+
+        return await res.json();
+      } catch (err) {
+        console.error("API Overview Sync Error:", err);
+        return null;
+      }
+    },
+
     // NEW: Get Available Models for Picker
     async getAvailableModels() {
       try {
@@ -9923,6 +9944,11 @@ async function init() {
         console.warn("⚠️ MapView not ready, delaying model load...");
         setTimeout(loadModelsFromAPI, 1000);
         return;
+      }
+
+      if (!_hasSyncedOverviewModelFloor && overviewFloor?.id) {
+        await ApiService.syncOverviewFloor(overviewFloor.id);
+        _hasSyncedOverviewModelFloor = true;
       }
 
       console.log("📥 Loading model metadata from API...");

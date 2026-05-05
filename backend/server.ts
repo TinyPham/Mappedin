@@ -13,6 +13,7 @@ import {
     parseAreaColorDeletePayload,
     parseAreaColorUpsertPayload
 } from './areaColors';
+import { parseOverviewFloorSyncPayload } from './overviewFloorSync';
 
 const app = express();
 
@@ -292,6 +293,27 @@ app.get('/api/models', async (req, res) => {
     } catch (err: any) {
         console.error('Error fetching models:', err);
         res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.post('/api/models/sync-overview-floor', async (req, res) => {
+    try {
+        const { overviewFloorId } = parseOverviewFloorSyncPayload(req.body);
+
+        const db = await getDbConnection();
+        if (!db) {
+            return res.status(503).json({ error: 'Database unavailable' });
+        }
+
+        const result = await db.request()
+            .input('RuntimeOverviewFloorId', sql.NVarChar(100), overviewFloorId)
+            .execute('SP_UpdateOverviewModelFloorId');
+
+        const updatedRows = Number(result.recordset?.[0]?.UpdatedRows ?? 0);
+        res.json({ success: true, updatedRows });
+    } catch (err: any) {
+        console.error('Overview floor sync error:', err);
+        res.status(400).json({ error: err.message || 'Failed to sync overview floor id' });
     }
 });
 
