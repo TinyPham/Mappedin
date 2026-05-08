@@ -14,6 +14,10 @@ import {
     parseAreaColorUpsertPayload
 } from './areaColors';
 import { parseOverviewFloorSyncPayload } from './overviewFloorSync';
+import {
+    getFlightNavigationTargets,
+    getFlights
+} from './flights/flightRepository';
 
 const app = express();
 
@@ -314,6 +318,51 @@ app.post('/api/models/sync-overview-floor', async (req, res) => {
     } catch (err: any) {
         console.error('Overview floor sync error:', err);
         res.status(400).json({ error: err.message || 'Failed to sync overview floor id' });
+    }
+});
+
+app.get('/api/flights', async (req, res) => {
+    try {
+        const date = typeof req.query.date === 'string' ? req.query.date : null;
+        const arrDep = typeof req.query.arrDep === 'string' ? req.query.arrDep.trim().toUpperCase() : null;
+        const search = typeof req.query.search === 'string' ? req.query.search : null;
+
+        if (arrDep && arrDep !== 'A' && arrDep !== 'D') {
+            return res.status(400).json({ error: 'arrDep must be A or D' });
+        }
+
+        const flights = await getFlights({
+            date,
+            arrDep,
+            search
+        });
+
+        res.json(flights);
+    } catch (err: any) {
+        console.error('Flight list error:', err);
+        res.status(500).json({ error: err.message || 'Failed to fetch flights' });
+    }
+});
+
+app.get('/api/flights/:id/navigation-targets', async (req, res) => {
+    try {
+        const flightId = Number(req.params.id);
+        if (!Number.isInteger(flightId) || flightId <= 0) {
+            return res.status(400).json({ error: 'Invalid flight id' });
+        }
+
+        const payload = await getFlightNavigationTargets(flightId);
+        if (!payload.flight) {
+            return res.status(404).json({ error: 'Flight not found' });
+        }
+
+        res.json({
+            flight: payload.flight,
+            counters: payload.counters
+        });
+    } catch (err: any) {
+        console.error('Flight navigation target error:', err);
+        res.status(500).json({ error: err.message || 'Failed to fetch flight navigation targets' });
     }
 });
 

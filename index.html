@@ -1702,6 +1702,92 @@
 
       </div>
 
+      <button id="btn-open-flight-info" class="flight-info-trigger" type="button">
+        <span class="flight-info-trigger-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M22 16.92V19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-2.08"></path>
+            <path d="M22 16.92A2 2 0 0 0 20.14 15H3.86A2 2 0 0 0 2 16.92"></path>
+            <path d="M6 15v-2a6 6 0 0 1 12 0v2"></path>
+            <path d="M10 9l2-2 2 2"></path>
+          </svg>
+        </span>
+        <span data-i18n="flight_info_button">Thông tin chuyến bay</span>
+      </button>
+
+      <!-- Flight Information Modal -->
+      <div id="flight-modal" class="modal-overlay hidden">
+        <div class="flight-modal-shell">
+          <div class="flight-modal-header">
+            <h3 data-i18n="flight_info_title">Thông tin chuyến bay</h3>
+            <button id="btn-close-flight" class="close-btn" type="button">×</button>
+          </div>
+          <div class="flight-modal-body">
+            <!-- Sidebar: Filters -->
+            <div class="flight-modal-sidebar">
+              <div class="flight-mode-toggle">
+                <button id="flight-mode-dep" class="flight-mode-btn active" data-mode="D"
+                  data-i18n="flight_departure">Chuyến đi</button>
+                <button id="flight-mode-arr" class="flight-mode-btn" data-mode="A" data-i18n="flight_arrival">Chuyến
+                  đến</button>
+              </div>
+
+              <div class="flight-field-group">
+                <label data-i18n="flight_date_label">Ngày chuyến bay</label>
+                <div class="flight-date-wrapper">
+                  <input type="date" id="flight-date-input" class="flight-date-hidden">
+                  <div id="flight-date-display" class="flight-date-display">
+                    <span id="flight-date-text" data-i18n="today_label">Hôm nay</span>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                      stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                      <line x1="16" y1="2" x2="16" y2="6"></line>
+                      <line x1="8" y1="2" x2="8" y2="6"></line>
+                      <line x1="3" y1="10" x2="21" y2="10"></line>
+                    </svg>
+                  </div>
+                </div>
+              </div>
+
+              <div class="flight-field-group">
+                <label data-i18n="flight_search_label">Tìm kiếm</label>
+                <div class="flight-search-box">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                  </svg>
+                  <input type="text" id="flight-search-input" placeholder="Số hiệu, Hãng, Điểm đến..."
+                    data-i18n-placeholder="flight_search_placeholder">
+                </div>
+              </div>
+
+              <div id="flight-list-summary" class="flight-list-summary">
+                <span id="flight-count-val">0</span> <span data-i18n="flights_found">chuyến bay</span>
+              </div>
+            </div>
+
+            <!-- Main: Results List -->
+            <div class="flight-modal-results">
+              <div class="flight-results-toolbar">
+                <div class="flight-status-filter">
+                  <label data-i18n="flight_status_filter_label">Trạng thái</label>
+                  <select id="flight-status-select">
+                    <option value="ALL" data-i18n="flight_status_all">Tất cả trạng thái</option>
+                  </select>
+                </div>
+              </div>
+              <div id="flight-list-container" class="flight-list-container">
+                <!-- Cards render here -->
+              </div>
+            </div>
+          </div>
+          <div class="flight-modal-footer">
+            <button id="btn-close-flight-footer" class="flight-close-action" data-i18n="close_btn">Đóng</button>
+          </div>
+        </div>
+      </div>
+
       <div id="mappedin-map"></div>
 
       <!-- Camera Control Buttons -->
@@ -2156,6 +2242,83 @@
             <button id="btn-apply-area-color"
               style="padding: 10px 20px; background: #085ebb; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">Áp
               dụng màu</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="flight-info-modal" class="modal-overlay hidden">
+        <div class="flight-modal-shell">
+          <div class="flight-modal-header">
+            <h3 id="flight-info-modal-title" data-i18n="flight_info_title">Thông tin chuyến bay</h3>
+            <button id="btn-close-flight-info" class="close-btn" type="button" aria-label="Close">✕</button>
+          </div>
+          <div class="flight-modal-body">
+            <aside class="flight-modal-sidebar">
+              <div class="flight-mode-toggle">
+                <button id="flight-tab-departure" class="flight-mode-btn active" type="button" data-mode="D"
+                  data-i18n="flight_departure">Chuyến bay đi</button>
+                <button id="flight-tab-arrival" class="flight-mode-btn" type="button" data-mode="A"
+                  data-i18n="flight_arrival">Chuyến bay đến</button>
+              </div>
+
+              <div class="flight-field-group">
+                <label for="flight-date-input" data-i18n="flight_date_label">Ngày bay</label>
+                <div class="flight-date-wrapper">
+                  <input id="flight-date-input" type="date" class="flight-date-hidden" />
+                  <button id="flight-date-display" type="button" class="flight-date-display">
+                    <span id="flight-date-text"></span>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                      stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                      <line x1="16" y1="2" x2="16" y2="6" />
+                      <line x1="8" y1="2" x2="8" y2="6" />
+                      <line x1="3" y1="10" x2="21" y2="10" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              <div class="flight-field-group">
+                <label for="flight-search-input" data-i18n="flight_search_label">Tìm kiếm chuyến bay</label>
+                <div class="flight-search-box">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                  </svg>
+                  <input id="flight-search-input" type="text" data-i18n-placeholder="flight_search_placeholder"
+                    placeholder="Nhập số hiệu chuyến bay" />
+                </div>
+              </div>
+
+              <div id="flight-list-summary" class="flight-list-summary">Chuyến bay đi (0 chuyến)</div>
+            </aside>
+
+            <section class="flight-modal-results">
+              <div class="flight-results-toolbar">
+                <div class="flight-status-filter">
+                  <label for="flight-status-filter" data-i18n="flight_status_filter_label">Trạng thái</label>
+                  <select id="flight-status-filter">
+                    <option value="ALL" data-i18n="flight_status_all">Tất cả trạng thái</option>
+                  </select>
+                </div>
+              </div>
+
+              <div id="flight-list-loading" class="flight-list-state hidden" data-i18n="loading_flights">
+                Đang tải dữ liệu chuyến bay...
+              </div>
+              <div id="flight-list-empty" class="flight-list-state hidden" data-i18n="flight_empty">
+                Không có chuyến bay phù hợp.
+              </div>
+              <div id="flight-list-error" class="flight-list-state hidden"></div>
+              <div id="flight-list-container" class="flight-list-container"></div>
+            </section>
+          </div>
+          <div class="flight-modal-footer">
+            <button id="btn-close-flight-info-footer" class="flight-close-action" type="button"
+              data-i18n="flight_close_btn">
+              Đóng
+            </button>
           </div>
         </div>
       </div>

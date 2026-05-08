@@ -4707,7 +4707,9 @@ async function init() {
 
   // Helper: Thực hiện chuyển tầng có khóa bảo vệ
   const performFloorSwitch = async (targetFloorId: string, reason: string) => {
-    if (isFloorSwitching || mapView.currentFloor.id === targetFloorId) return;
+    // FIX: Allow switching even if ID matches IF we are currently in Overview mode
+    if (isFloorSwitching) return;
+    if (!isMapInOverview() && mapView.currentFloor && mapView.currentFloor.id === targetFloorId) return;
 
     isFloorSwitching = true;
     console.log(`🚀 [SMART-ZOOM] ${reason}. Target: ${targetFloorId}`);
@@ -4762,6 +4764,7 @@ async function init() {
       const floorObj = mapData.getByType("floor").find(f => f.id === targetFloorId);
       const type = getFloorType(floorObj);
       isInOverview = type === "overview";
+      (window as any).isInOverview = isInOverview;
 
       if (type === "detail") {
         lastActiveFloorId = targetFloorId;
@@ -11394,12 +11397,635 @@ async function init() {
     }
   }, 1000);
 
-  // 14. INIT ADMIN UI
+  // 14. FLIGHT INFO UI
+  const initFlightInfoUI = () => {
+    const modal = document.getElementById('flight-info-modal') as HTMLDivElement | null;
+    const flightBtn = document.getElementById('btn-open-flight-info') as HTMLButtonElement | null;
+    if (!modal || !flightBtn) {
+      return;
+    }
+
+    // HELPER: Find object by Mappedin ID (Scoped to initFlightInfoUI but uses parent mapData)
+    const findObjectByMappedinId = (id: string | null | undefined) => {
+      if (!id || !allMapObjects) return null;
+      return allMapObjects.find((obj: any) => obj.id === id || obj.mappedinId === id);
+    };
+
+    // HELPER: Build message when navigation is blocked by flight status
+    const buildNavigationUnavailableMessage = (statusLabel: string) => {
+      const template = TranslationManager.t('nav_blocked_by_status', 'Tính năng dẫn đường tạm khóa do trạng thái: {status}');
+      return template.replace('{status}', statusLabel);
+    };
+
+    const closeBtn = modal.querySelector('#btn-close-flight-info') as HTMLButtonElement | null;
+    const closeFooterBtn = modal.querySelector('#btn-close-flight-info-footer') as HTMLButtonElement | null;
+    const departureTab = modal.querySelector('#flight-tab-departure') as HTMLButtonElement | null;
+    const arrivalTab = modal.querySelector('#flight-tab-arrival') as HTMLButtonElement | null;
+    const dateInput = modal.querySelector('#flight-date-input') as HTMLInputElement | null;
+    const dateText = modal.querySelector('#flight-date-text') as HTMLSpanElement | null;
+    const dateDisplay = modal.querySelector('#flight-date-display') as HTMLButtonElement | null;
+    const searchInput = modal.querySelector('#flight-search-input') as HTMLInputElement | null;
+    const statusFilter = modal.querySelector('#flight-status-filter') as HTMLSelectElement | null;
+    const summary = modal.querySelector('#flight-list-summary') as HTMLDivElement | null;
+    const loading = modal.querySelector('#flight-list-loading') as HTMLDivElement | null;
+    const empty = modal.querySelector('#flight-list-empty') as HTMLDivElement | null;
+    const error = modal.querySelector('#flight-list-error') as HTMLDivElement | null;
+    const container = modal.querySelector('#flight-list-container') as HTMLDivElement | null;
+
+    if (!closeBtn || !closeFooterBtn || !departureTab || !arrivalTab || !dateInput || !dateText || !dateDisplay || !searchInput || !statusFilter || !summary || !loading || !empty || !error || !container) {
+      return;
+    }
+
+    type FlightRecord = {
+      FlightId: number;
+      FlightNo: string;
+      FlightDate: string;
+      ArrDep: 'A' | 'D';
+      Route?: string | null;
+      Airline?: string | null;
+      Status?: string | null;
+      ScheduledTime?: string | null;
+      EstimatedTime?: string | null;
+      ActualTime?: string | null;
+      Gate?: number | null;
+      CheckInIsland?: string | null;
+      CheckInCounterSpec?: string | null;
+      Belt?: number | null;
+      Gate_MappedinID?: string | null;
+      Belt_MappedinID?: string | null;
+      PrimaryCheckIn_MappedinID?: string | null;
+      HasCheckInMapping?: boolean;
+      HasGateNavigation?: boolean;
+      HasBeltNavigation?: boolean;
+    };
+
+    type FlightNavigationCounter = {
+      FlightId: number;
+      CheckInIsland: string;
+      CounterNo: number;
+      CheckIn_MappedinID?: string | null;
+    };
+
+    type FlightNavigationPayload = {
+      flight: (FlightRecord & {
+        Gate_MappedinID?: string | null;
+        Belt_MappedinID?: string | null;
+        HasGateNavigation?: boolean;
+        HasBeltNavigation?: boolean;
+        HasCheckInMapping?: boolean;
+      }) | null;
+      counters: FlightNavigationCounter[];
+    };
+
+    const state = {
+      mode: 'D' as 'A' | 'D',
+      date: dateInput.value || new Date().toISOString().split('T')[0],
+      search: '',
+      status: 'ALL',
+      flights: [] as FlightRecord[]
+    };
+
+    let currentCalendarDate = new Date(state.date);
+
+    const generateCalendarDays = (year: number, month: number) => {
+      const firstDay = new Date(year, month, 1).getDay();
+      const lastDate = new Date(year, month + 1, 0).getDate();
+      const todayStr = new Date().toISOString().split('T')[0];
+      const selectedStr = state.date;
+
+      let html = '';
+      // Empty slots before first day of month
+      for (let i = 0; i < firstDay; i++) {
+        html += '<div class="calendar-day empty"></div>';
+      }
+      // Actual days
+      for (let d = 1; d <= lastDate; d++) {
+        const fullDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        const classes = ['calendar-day'];
+        if (fullDate === todayStr) classes.push('today');
+        if (fullDate === selectedStr) classes.push('active');
+        html += `<div class="${classes.join(' ')}" data-date="${fullDate}">${d}</div>`;
+      }
+      return html;
+    };
+
+    const renderCalendar = () => {
+      let calendarDropdown = modal.querySelector('.calendar-dropdown') as HTMLDivElement | null;
+      if (!calendarDropdown) {
+        calendarDropdown = document.createElement('div');
+        calendarDropdown.className = 'calendar-dropdown hidden';
+        dateDisplay.parentElement?.appendChild(calendarDropdown);
+      }
+
+      const year = currentCalendarDate.getFullYear();
+      const month = currentCalendarDate.getMonth();
+      const monthLabel = TranslationManager.t(`month_${month + 1}`, String(month + 1));
+
+      calendarDropdown.innerHTML = `
+        <div class="calendar-header">
+          <button class="calendar-nav-btn prev" type="button">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          </button>
+          <div class="calendar-title">${monthLabel} ${year}</div>
+          <button class="calendar-nav-btn next" type="button">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </button>
+        </div>
+        <div class="calendar-grid">
+          ${[0, 1, 2, 3, 4, 5, 6].map(d => `<div class="calendar-day-label">${TranslationManager.t(`day_${d}`)}</div>`).join('')}
+          ${generateCalendarDays(year, month)}
+        </div>
+        <div class="calendar-footer">
+          <button class="calendar-today-btn" type="button">${TranslationManager.t('today_label', 'Hôm nay')}</button>
+        </div>
+      `;
+
+      // Calendar Navigation
+      calendarDropdown.querySelector('.prev')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        currentCalendarDate.setMonth(currentCalendarDate.getMonth() - 1);
+        renderCalendar();
+      });
+      calendarDropdown.querySelector('.next')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        currentCalendarDate.setMonth(currentCalendarDate.getMonth() + 1);
+        renderCalendar();
+      });
+
+      // Today Selection
+      calendarDropdown.querySelector('.calendar-today-btn')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const today = new Date();
+        state.date = today.toISOString().split('T')[0];
+        updateDateText();
+        calendarDropdown?.classList.add('hidden');
+        void loadFlights();
+      });
+
+      // Day Selection
+      calendarDropdown.querySelectorAll('.calendar-day:not(.empty)').forEach(el => {
+        el.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const dayStr = (el as HTMLElement).getAttribute('data-date');
+          if (dayStr) {
+            state.date = dayStr;
+            updateDateText();
+            calendarDropdown?.classList.add('hidden');
+            void loadFlights();
+          }
+        });
+      });
+    };
+
+    const flightApiBaseUrl = (() => {
+      const isLocalHost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      return isLocalHost ? 'http://127.0.0.1:3002/api' : `${window.location.origin}/api`;
+    })();
+
+    const getDepartureStatusOptions = (): Array<[string, string]> => [
+      ['ALL', TranslationManager.t('flight_status_all', 'Tất cả trạng thái')],
+      ['CHECKIN_OPEN', TranslationManager.t('CHECKIN_OPEN', 'Mời hành khách làm thủ tục')],
+      ['BOARDING', TranslationManager.t('BOARDING', 'Hành khách lên tàu bay')],
+      ['DELAYED', TranslationManager.t('DELAYED', 'Chậm / trễ')],
+      ['CLOSED', TranslationManager.t('CLOSED', 'Đóng quầy')],
+      ['DEPARTED', TranslationManager.t('DEPARTED', 'Đã cất cánh')],
+      ['CANCELLED', TranslationManager.t('CANCELLED', 'Hủy chuyến')],
+      ['OTHER', TranslationManager.t('OTHER', 'Khác')]
+    ];
+
+    const getArrivalStatusOptions = (): Array<[string, string]> => [
+      ['ALL', TranslationManager.t('flight_status_all', 'Tất cả trạng thái')],
+      ['CANCELLED', TranslationManager.t('CANCELLED', 'Hủy chuyến')],
+      ['DELAYED', TranslationManager.t('DELAYED', 'Chậm / trễ')],
+      ['ARRIVED', TranslationManager.t('ARRIVED', 'Đã hạ cánh / đã đến')],
+      ['BAGGAGE_LOADING', TranslationManager.t('BAGGAGE_LOADING', 'Hành lý đang vào')],
+      ['BAGGAGE_DONE', TranslationManager.t('BAGGAGE_DONE', 'Đã trả xong hành lý')],
+      ['OTHER', TranslationManager.t('OTHER', 'Khác')]
+    ];
+
+    const formatTimeValue = (value?: string | null) => {
+      if (!value) return '-';
+      const text = String(value);
+      return text.length >= 16 && text[10] === 'T' ? text.slice(11, 16) : text.slice(0, 5);
+    };
+
+    const updateDateText = () => {
+      dateInput.value = state.date;
+      const parts = state.date.split('-');
+      if (parts.length === 3) {
+        // We stick to DD/MM/YYYY as requested but ensure it's updated
+        dateText.textContent = `${parts[2]}/${parts[1]}/${parts[0]}`;
+      } else {
+        dateText.textContent = state.date;
+      }
+    };
+
+    const updateTabState = () => {
+      departureTab.classList.toggle('active', state.mode === 'D');
+      arrivalTab.classList.toggle('active', state.mode === 'A');
+    };
+
+    const renderStatusOptions = () => {
+      const optionData = state.mode === 'D' ? getDepartureStatusOptions() : getArrivalStatusOptions();
+      const selectedValue = optionData.some(([value]) => value === state.status) ? state.status : 'ALL';
+      statusFilter.innerHTML = '';
+      optionData.forEach(([value, label]) => {
+        const option = document.createElement('option');
+        option.value = value;
+        option.textContent = label;
+        option.selected = value === selectedValue;
+        statusFilter.appendChild(option);
+      });
+      state.status = selectedValue;
+    };
+
+    const updateSummary = (count: number) => {
+      const label = TranslationManager.t('flights_found', 'chuyến bay');
+      summary.textContent = state.mode === 'D'
+        ? `${TranslationManager.t('flight_departure', 'Chuyến bay đi')} (${count} ${label})`
+        : `${TranslationManager.t('flight_arrival', 'Chuyến bay đến')} (${count} ${label})`;
+    };
+
+    const canonicalizeStatusStrict = (flight: FlightRecord) => {
+      const raw = String(flight.Status || '').trim().toUpperCase();
+      if (flight.ArrDep === 'D') {
+        if (raw === 'CHECKIN_OPEN') return { key: raw, label: TranslationManager.t(raw, 'Mời hành khách làm thủ tục'), tone: 'positive', canNavigateGate: Boolean(flight.Gate_MappedinID), canNavigateCheckin: Boolean(flight.HasCheckInMapping), navigationBlockedByStatus: false };
+        if (raw === 'BOARDING') return { key: raw, label: TranslationManager.t(raw, 'Hành khách lên tàu bay'), tone: 'warning', canNavigateGate: false, canNavigateCheckin: false, navigationBlockedByStatus: true };
+        if (raw === 'DELAYED') return { key: raw, label: TranslationManager.t(raw, 'Chậm / trễ'), tone: 'warning', canNavigateGate: Boolean(flight.Gate_MappedinID), canNavigateCheckin: Boolean(flight.HasCheckInMapping), navigationBlockedByStatus: false };
+        if (raw === 'CLOSED') return { key: raw, label: TranslationManager.t(raw, 'Đóng quầy'), tone: 'warning', canNavigateGate: false, canNavigateCheckin: false, navigationBlockedByStatus: true };
+        if (raw === 'DEPARTED') return { key: raw, label: TranslationManager.t(raw, 'Đã cất cánh'), tone: 'danger', canNavigateGate: false, canNavigateCheckin: false, navigationBlockedByStatus: true };
+        if (raw === 'CANCELLED') return { key: raw, label: TranslationManager.t(raw, 'Hủy chuyến'), tone: 'danger', canNavigateGate: false, canNavigateCheckin: false, navigationBlockedByStatus: true };
+        return { key: 'OTHER', label: TranslationManager.t('OTHER', raw || 'Khác'), tone: 'warning', canNavigateGate: Boolean(flight.Gate_MappedinID), canNavigateCheckin: Boolean(flight.HasCheckInMapping), navigationBlockedByStatus: false };
+      }
+      if (raw === 'CANCELLED') return { key: raw, label: TranslationManager.t(raw, 'Hủy chuyến'), tone: 'danger', canNavigateBelt: false, navigationBlockedByStatus: true };
+      if (raw === 'DELAYED') return { key: raw, label: TranslationManager.t(raw, 'Chậm / trễ'), tone: 'warning', canNavigateBelt: false, navigationBlockedByStatus: true };
+      if (raw === 'ARRIVED') return { key: raw, label: TranslationManager.t(raw, 'Đã hạ cánh / đã đến'), tone: 'positive', canNavigateBelt: Boolean(flight.Belt_MappedinID), navigationBlockedByStatus: false };
+      if (raw === 'BAGGAGE_LOADING') return { key: raw, label: TranslationManager.t(raw, 'Hành lý đang vào'), tone: 'positive', canNavigateBelt: Boolean(flight.Belt_MappedinID), navigationBlockedByStatus: false };
+      if (raw === 'BAGGAGE_DONE') return { key: raw, label: TranslationManager.t(raw, 'Đã trả xong hành lý'), tone: 'danger', canNavigateBelt: false, navigationBlockedByStatus: true };
+      return { key: 'OTHER', label: TranslationManager.t('OTHER', raw || 'Khác'), tone: 'warning', canNavigateBelt: Boolean(flight.Belt_MappedinID), navigationBlockedByStatus: false };
+    };
+
+    const canonicalizeStatusUi = (flight: FlightRecord) => {
+      const meta = canonicalizeStatusStrict(flight) as any;
+      if (flight.ArrDep === 'D' && !meta.navigationBlockedByStatus) {
+        return { ...meta, canNavigateGate: true, canNavigateCheckin: true };
+      }
+      if (flight.ArrDep === 'A' && !meta.navigationBlockedByStatus) {
+        return { ...meta, canNavigateBelt: true };
+      }
+      return meta;
+    };
+
+    const getNavigationDataIssues = (flight: FlightRecord) => {
+      const issues: string[] = [];
+      if (flight.ArrDep === 'D') {
+        if (!flight.Gate) issues.push(TranslationManager.t('issue_missing_gate', 'Chuyến bay chưa có dữ liệu gate.'));
+        else if (!flight.Gate_MappedinID && !flight.HasGateNavigation) issues.push(TranslationManager.t('issue_no_gate_mapping', 'Chưa cấu hình mapping gate cho chuyến bay này.'));
+
+        if (!flight.CheckInIsland || !flight.CheckInCounterSpec) issues.push(TranslationManager.t('issue_missing_checkin', 'Chuyến bay chưa có dữ liệu check-in.'));
+        else if (!flight.HasCheckInMapping) issues.push(TranslationManager.t('issue_no_checkin_mapping', 'Chưa cấu hình mapping check-in cho chuyến bay này.'));
+      } else {
+        if (!flight.Belt) issues.push(TranslationManager.t('issue_missing_belt', 'Chuyến bay chưa có dữ liệu băng chuyền.'));
+        else if (!flight.Belt_MappedinID && !flight.HasBeltNavigation) issues.push(TranslationManager.t('issue_no_belt_mapping', 'Chưa cấu hình mapping băng chuyền cho chuyến bay này.'));
+      }
+      return issues;
+    };
+
+    const resolveGateObjectStrict = (flight: FlightRecord) => findObjectByMappedinId(flight.Gate_MappedinID);
+    const resolveBeltObjectStrict = (flight: FlightRecord) => findObjectByMappedinId(flight.Belt_MappedinID);
+    const resolveCheckInObjectsStrict = (counters: FlightNavigationCounter[]) =>
+      counters.map((counter) => findObjectByMappedinId(counter.CheckIn_MappedinID)).filter(Boolean);
+
+    const switchToDirectionsTab = () => {
+      const tabDirections = document.getElementById('tab-directions') as HTMLElement | null;
+      tabDirections?.click();
+    };
+
+    const openInfoForObject = async (obj: any, zoomLevel: number = 20) => {
+      if (!obj) return;
+
+      // Space có .floor.id, Location có .floorId
+      const targetFloorId = obj.floorId || (obj.floor && obj.floor.id) || (obj.coordinate && obj.coordinate.floorId);
+      if (targetFloorId) {
+        const isCurrentlyOverview = isMapInOverview();
+        if (isCurrentlyOverview || (mapView.currentFloor && mapView.currentFloor.id !== targetFloorId)) {
+          console.log(`✈️ Switching floor for Flight Object: ${targetFloorId} (From Overview: ${isCurrentlyOverview})`);
+          await performFloorSwitch(targetFloorId, "Flight UI Interaction");
+          // Small delay to ensure SDK state is stable before camera focus
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+      }
+
+      focusOnObject(obj, zoomLevel);
+      if (typeof updateInfo === 'function') updateInfo(obj);
+    };
+
+    const routeBetweenObjects = async (originObj: any, destinationObj: any) => {
+      if (!originObj || !destinationObj) return false;
+      wayfindingOrigin = originObj;
+      wayfindingDestination = destinationObj;
+      wayfindingStopovers = [];
+      updateWayfindingUI();
+      updateHighlights();
+      switchToDirectionsTab();
+      await drawNavigation();
+
+      // Auto-focus on origin to start the journey
+      await openInfoForObject(originObj);
+      return true;
+    };
+
+    const navigateToDestinationFromCurrentContext = async (destinationObj: any) => {
+      if (!destinationObj) return false;
+      wayfindingDestination = destinationObj;
+      wayfindingStopovers = [];
+      updateWayfindingUI();
+      updateHighlights();
+      switchToDirectionsTab();
+      if (wayfindingOrigin) await drawNavigation();
+      else await openInfoForObject(destinationObj);
+      return true;
+    };
+
+    const fetchNavigationTargets = async (flightId: number): Promise<FlightNavigationPayload> => {
+      const response = await fetch(`${flightApiBaseUrl}/flights/${flightId}/navigation-targets`);
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload?.error || TranslationManager.t('error_nav_data', 'Không lấy được dữ liệu điều hướng chuyến bay'));
+      }
+      return response.json();
+    };
+
+    const showFlightMessage = (message: string) => {
+      error.textContent = message;
+      error.classList.remove('hidden');
+    };
+
+    const renderFlights = () => {
+      const filteredFlights = state.flights.filter((flight) => {
+        const meta = canonicalizeStatusUi(flight);
+        return state.status === 'ALL' || meta.key === state.status;
+      });
+
+      updateSummary(filteredFlights.length);
+      container.innerHTML = '';
+      loading.classList.add('hidden');
+      error.classList.add('hidden');
+      empty.classList.toggle('hidden', filteredFlights.length > 0);
+      container.classList.toggle('hidden', filteredFlights.length === 0);
+
+      filteredFlights.forEach((flight) => {
+        const meta = canonicalizeStatusUi(flight);
+        const tags: string[] = [];
+
+        // GATE TAG
+        if (flight.Gate) {
+          const gateObj = resolveGateObjectStrict(flight);
+          const gateLabel = gateObj ? TranslationManager.getName(gateObj) : `${TranslationManager.t('flight_gate_tag', 'Cửa')} ${flight.Gate}`;
+          tags.push(`<span class="flight-card-tag gate">${gateLabel}</span>`);
+        }
+
+        // CHECK-IN TAG
+        if (flight.CheckInIsland && flight.CheckInCounterSpec) {
+          const islandLabel = TranslationManager.t('flight_checkin_tag', 'Đảo');
+          const counterLabel = TranslationManager.t('flight_counter_tag', 'Quầy');
+          tags.push(`<span class="flight-card-tag checkin">${islandLabel} ${flight.CheckInIsland} - ${counterLabel} ${flight.CheckInCounterSpec}</span>`);
+        }
+
+        // BELT TAG
+        if (flight.Belt) {
+          const beltObj = resolveBeltObjectStrict(flight);
+          const beltLabel = beltObj ? TranslationManager.getName(beltObj) : `${TranslationManager.t('flight_belt_tag', 'Băng chuyền')} ${flight.Belt}`;
+          tags.push(`<span class="flight-card-tag belt">${beltLabel}</span>`);
+        }
+
+        const departureActions = `
+          <div class="flight-card-actions">
+            <button class="flight-card-action" data-action="checkin" data-flight-id="${flight.FlightId}" ${meta.canNavigateCheckin ? '' : 'disabled'}>${TranslationManager.t('go_to_checkin', 'Đến check-in')}</button>
+            <button class="flight-card-action primary" data-action="gate" data-flight-id="${flight.FlightId}" ${meta.canNavigateGate ? '' : 'disabled'}>${TranslationManager.t('go_to_gate', 'Đến gate')}</button>
+            <button class="flight-card-action success" data-action="route" data-flight-id="${flight.FlightId}" ${(meta.canNavigateGate && meta.canNavigateCheckin) ? '' : 'disabled'}>${TranslationManager.t('find_route', 'Tìm đường')}</button>
+          </div>
+        `;
+
+        const arrivalActions = `
+          <div class="flight-card-actions flight-card-actions--arrival">
+            <button class="flight-card-action primary" data-action="belt" data-flight-id="${flight.FlightId}" ${meta.canNavigateBelt ? '' : 'disabled'}>${TranslationManager.t('go_to_belt', 'Đến băng chuyền')}</button>
+          </div>
+        `;
+
+        const statusBlockedMessage = meta.navigationBlockedByStatus
+          ? `<div class="flight-card-message">${buildNavigationUnavailableMessage(meta.label)}</div>`
+          : '';
+        const navigationIssues = getNavigationDataIssues(flight);
+        const mappingMessage = (!meta.navigationBlockedByStatus && navigationIssues.length > 0)
+          ? `<div class="flight-card-message">${navigationIssues.join(' ')}</div>`
+          : '';
+
+        const card = document.createElement('article');
+        card.className = `flight-card status-${meta.tone}`;
+        card.innerHTML = `
+          <div class="flight-card-header">
+            <div>
+              <div class="flight-card-title-wrap">
+                <div class="flight-card-title">${flight.FlightNo}</div>
+                <div class="flight-card-route">${flight.Route || 'N/A'}</div>
+              </div>
+              ${flight.Airline ? `<div class="flight-card-subhead">${flight.Airline}</div>` : ''}
+            </div>
+            <div class="flight-card-status-badge status-${meta.tone}">${meta.label}</div>
+          </div>
+          <div class="flight-card-times">
+            <div class="flight-time-block"><div class="flight-time-label">${state.mode === 'D' ? 'SOBT' : 'STA'}</div><div class="flight-time-value">${formatTimeValue(flight.ScheduledTime)}</div></div>
+            <div class="flight-time-block"><div class="flight-time-label">${state.mode === 'D' ? 'ETOT' : 'ETA'}</div><div class="flight-time-value">${formatTimeValue(flight.EstimatedTime)}</div></div>
+            <div class="flight-time-block"><div class="flight-time-label">${state.mode === 'D' ? 'ATOT' : 'ALDT'}</div><div class="flight-time-value">${formatTimeValue(flight.ActualTime)}</div></div>
+          </div>
+          <div class="flight-card-tags">${tags.join('')}</div>
+          ${state.mode === 'D' ? departureActions : arrivalActions}
+          ${statusBlockedMessage}
+          ${mappingMessage}
+        `;
+
+        card.querySelectorAll('[data-action]').forEach((button) => {
+          button.addEventListener('click', async () => {
+            const action = (button as HTMLElement).getAttribute('data-action');
+            const flightId = Number((button as HTMLElement).getAttribute('data-flight-id'));
+            if (!action || !Number.isFinite(flightId)) return;
+            try {
+              error.classList.add('hidden');
+              error.textContent = '';
+              const payload = await fetchNavigationTargets(flightId);
+              if (!payload.flight) throw new Error(TranslationManager.t('error_flight_not_found', 'Không tìm thấy dữ liệu chuyến bay'));
+              if (action === 'gate') {
+                if (!payload.flight.Gate) throw new Error(TranslationManager.t('issue_missing_gate', 'Chuyến bay chưa có dữ liệu gate.'));
+                if (!payload.flight.Gate_MappedinID && !payload.flight.HasGateNavigation) throw new Error(TranslationManager.t('issue_no_gate_mapping', 'Chưa cấu hình mapping gate cho chuyến bay này.'));
+                const gateObject = resolveGateObjectStrict(payload.flight);
+                if (!gateObject) throw new Error(TranslationManager.t('error_gate_not_found', 'Không tìm thấy gate trên bản đồ'));
+                await navigateToDestinationFromCurrentContext(gateObject);
+                await openInfoForObject(gateObject);
+                closeModal();
+                return;
+              }
+              if (action === 'checkin') {
+                if (!payload.flight.CheckInIsland || !payload.flight.CheckInCounterSpec) throw new Error(TranslationManager.t('issue_missing_checkin', 'Chuyến bay chưa có dữ liệu check-in.'));
+                if (!payload.flight.HasCheckInMapping) throw new Error(TranslationManager.t('issue_no_checkin_mapping', 'Chưa cấu hình mapping check-in cho chuyến bay này.'));
+                const checkinObject = resolveCheckInObjectsStrict(payload.counters || [])[0];
+                if (!checkinObject) throw new Error(TranslationManager.t('error_checkin_not_found', 'Không tìm thấy check-in trên bản đồ'));
+                await navigateToDestinationFromCurrentContext(checkinObject);
+                await openInfoForObject(checkinObject);
+                closeModal();
+                return;
+              }
+              if (action === 'route') {
+                if (!payload.flight.Gate) throw new Error(TranslationManager.t('issue_missing_gate', 'Chuyến bay chưa có dữ liệu gate.'));
+                if (!payload.flight.CheckInIsland || !payload.flight.CheckInCounterSpec) throw new Error(TranslationManager.t('issue_missing_checkin', 'Chuyến bay chưa có dữ liệu check-in.'));
+                if (!payload.flight.Gate_MappedinID && !payload.flight.HasGateNavigation) throw new Error(TranslationManager.t('issue_no_gate_mapping', 'Chưa cấu hình mapping gate cho chuyến bay này.'));
+                if (!payload.flight.HasCheckInMapping) throw new Error(TranslationManager.t('issue_no_checkin_mapping', 'Chưa cấu hình mapping check-in cho chuyến bay này.'));
+                const gateObject = resolveGateObjectStrict(payload.flight);
+                const checkinObject = resolveCheckInObjectsStrict(payload.counters || [])[0];
+                if (!gateObject || !checkinObject) throw new Error(TranslationManager.t('error_missing_route_points', 'Thiếu gate hoặc check-in để tạo đường đi'));
+                await routeBetweenObjects(checkinObject, gateObject);
+                closeModal();
+                return;
+              }
+              if (action === 'belt') {
+                if (!payload.flight.Belt) throw new Error(TranslationManager.t('issue_missing_belt', 'Chuyến bay chưa có dữ liệu băng chuyền.'));
+                if (!payload.flight.Belt_MappedinID && !payload.flight.HasBeltNavigation) throw new Error(TranslationManager.t('issue_no_belt_mapping', 'Chưa cấu hình mapping băng chuyền cho chuyến bay này.'));
+                const beltObject = resolveBeltObjectStrict(payload.flight);
+                if (!beltObject) throw new Error(TranslationManager.t('error_belt_not_found', 'Không tìm thấy băng chuyền trên bản đồ'));
+                await navigateToDestinationFromCurrentContext(beltObject);
+                await openInfoForObject(beltObject);
+                closeModal();
+              }
+            } catch (err: any) {
+              console.error('[FlightInfo] action failed:', err);
+              showFlightMessage(err?.message || TranslationManager.t('error_flight_action', 'Không thực hiện được thao tác chuyến bay'));
+            }
+          });
+        });
+
+        container.appendChild(card);
+      });
+    };
+
+    const loadFlights = async () => {
+      loading.classList.remove('hidden');
+      error.classList.add('hidden');
+      empty.classList.add('hidden');
+      container.classList.add('hidden');
+      try {
+        const params = new URLSearchParams();
+        params.set('date', state.date);
+        params.set('arrDep', state.mode);
+        if (state.search.trim()) params.set('search', state.search.trim());
+        const response = await fetch(`${flightApiBaseUrl}/flights?${params.toString()}`);
+        if (!response.ok) {
+          const payload = await response.json().catch(() => ({}));
+          throw new Error(payload?.error || TranslationManager.t('error_load_flights', 'Không tải được danh sách chuyến bay'));
+        }
+        state.flights = await response.json();
+        renderStatusOptions();
+        renderFlights();
+      } catch (err: any) {
+        container.innerHTML = '';
+        loading.classList.add('hidden');
+        empty.classList.add('hidden');
+        container.classList.add('hidden');
+        error.textContent = err?.message || TranslationManager.t('error_load_flights', 'Không tải được dữ liệu chuyến bay');
+        error.classList.remove('hidden');
+      }
+    };
+
+    const openModal = () => {
+      modal.classList.remove('hidden');
+      updateTabState();
+      updateDateText();
+      renderStatusOptions();
+      void loadFlights();
+    };
+
+    const closeModal = () => {
+      modal.classList.add('hidden');
+    };
+
+    const setMode = (mode: 'A' | 'D') => {
+      if (state.mode === mode) return;
+      state.mode = mode;
+      state.status = 'ALL';
+      updateTabState();
+      renderStatusOptions();
+      void loadFlights();
+    };
+
+    let searchTimer: ReturnType<typeof setTimeout> | null = null;
+    updateDateText();
+    renderStatusOptions();
+
+    flightBtn.addEventListener('click', openModal);
+    closeBtn.addEventListener('click', closeModal);
+    closeFooterBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', (event) => {
+      if (event.target === modal) closeModal();
+    });
+    departureTab.addEventListener('click', () => setMode('D'));
+    arrivalTab.addEventListener('click', () => setMode('A'));
+    dateDisplay.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const calendarDropdown = modal.querySelector('.calendar-dropdown') as HTMLDivElement | null;
+      if (calendarDropdown && !calendarDropdown.classList.contains('hidden')) {
+        calendarDropdown.classList.add('hidden');
+      } else {
+        // Reset calendar view to currently selected date
+        currentCalendarDate = new Date(state.date);
+        renderCalendar();
+        modal.querySelector('.calendar-dropdown')?.classList.remove('hidden');
+      }
+    });
+
+    // Close calendar on outside click
+    document.addEventListener('click', (e) => {
+      const calendarDropdown = modal.querySelector('.calendar-dropdown') as HTMLDivElement | null;
+      if (calendarDropdown && !calendarDropdown.contains(e.target as Node) && !dateDisplay.contains(e.target as Node)) {
+        calendarDropdown.classList.add('hidden');
+      }
+    });
+    dateInput.addEventListener('change', () => {
+      state.date = dateInput.value || state.date;
+      updateDateText();
+      void loadFlights();
+    });
+    searchInput.addEventListener('input', () => {
+      state.search = searchInput.value || '';
+      if (searchTimer) clearTimeout(searchTimer);
+      searchTimer = setTimeout(() => void loadFlights(), 250);
+    });
+    statusFilter.addEventListener('change', () => {
+      state.status = statusFilter.value || 'ALL';
+      renderFlights();
+    });
+
+    // Listen for language changes to refresh the modal UI
+    window.addEventListener('language-change', () => {
+      if (!modal.classList.contains('hidden')) {
+        updateDateText();
+        renderStatusOptions();
+        renderFlights();
+
+        // Also re-render calendar if it's open to update localized headers/days
+        const calendarDropdown = modal.querySelector('.calendar-dropdown') as HTMLDivElement | null;
+        if (calendarDropdown && !calendarDropdown.classList.contains('hidden')) {
+          renderCalendar();
+        }
+      }
+    });
+  };
+
+  // 15. INIT ADMIN UI
   try {
     (window as any).globalMapView = mapView;
     (window as any).globalMapData = mapData;
     initAdminUI(allMapObjects);
     initAreaColorUI(allMapObjects, mapView, mapData);
+    initFlightInfoUI();
 
     // Apply custom area colors immediately on load
     if (typeof (window as any).refreshMapColors === 'function') {
@@ -12419,7 +13045,6 @@ if (speedDisplay && speedMenu) {
   });
 }
 
-// KHỞI CHẠY HỆ THỐNG
 init().catch(err => {
-  console.error("❌ Critical initialization error:", err);
+  console.error("? Critical initialization error:", err);
 });
