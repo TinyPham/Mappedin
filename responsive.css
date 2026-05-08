@@ -6,14 +6,17 @@
 @media (max-width: 768px) {
 
     .flight-info-trigger {
-        top: calc(132px + env(safe-area-inset-top, 0px)) !important;
-        left: 16px !important;
-        right: 16px !important;
-        width: auto !important;
-        justify-content: center !important;
-        min-height: 46px !important;
-        padding: 0 14px !important;
-        z-index: 2300 !important;
+        position: fixed !important;
+        top: auto !important;
+        bottom: 160px !important;
+        right: max(10px, env(safe-area-inset-right)) !important;
+        left: auto !important;
+        width: 36px !important;
+        height: 36px !important;
+        min-height: 36px !important;
+        padding: 0 !important;
+        z-index: 5000 !important;
+        border-radius: 6px !important;
     }
 
     .flight-modal-shell {

@@ -1,0 +1,15 @@
+{
+  "FlightNo": ["FlightNo", "flightNo", "flight_number"],
+  "FlightDate": ["FlightDate", "flightDate", "date"],
+  "ArrDep": ["ArrDep", "arrDep", "direction", "type"],
+  "Route": ["Route", "route"],
+  "Airline": ["Airline", "airline", "carrier"],
+  "Status": ["Status", "status", "flightStatus"],
+  "ScheduledTime": ["ScheduledTime", "SOBT", "STD", "STA", "scheduledTime"],
+  "EstimatedTime": ["EstimatedTime", "ETD", "ETA", "estimatedTime"],
+  "ActualTime": ["ActualTime", "ATD", "ATA", "actualTime"],
+  "Gate": ["Gate", "gate", "boardingGate"],
+  "CheckInIsland": ["CheckInIsland", "checkInIsland", "island"],
+  "CheckInCounterSpec": ["CheckInCounterSpec", "checkInCounterSpec", "checkinCounters", "CkiRow"],
+  "Belt": ["Belt", "belt", "BaggageClaim"]
+}
