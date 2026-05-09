@@ -14,7 +14,8 @@
     ],
     "moduleResolution": "node",
     "resolveJsonModule": true,
-    "ignoreDeprecations": "6.0"
+    "noEmit": true,
+    "skipLibCheck": true
   },
   "include": [
     "./**/*"

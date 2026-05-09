@@ -68,8 +68,14 @@ BEGIN
         AI.Phone,
         AI.OpeningHours,
         AI.LocationDetail_VN, AI.LocationDetail_EN, AI.LocationDetail_ZH, AI.LocationDetail_JA, AI.LocationDetail_KO,
+        AC.SubCategoryID,
         SC.CategoryID,
-        SC.IconPath
+        SC.IconPath AS SubCategoryIconPath,
+        SC.SubCategoryName AS SubCategoryVN,
+        SC.EN AS SubCategoryEN,
+        SC.ZH AS SubCategoryZH,
+        SC.JA AS SubCategoryJA,
+        SC.KO AS SubCategoryKO
     FROM AreaList AL
     LEFT JOIN AreaCategory AC ON AL.AreaListID = AC.AreaListID
     LEFT JOIN SubCategories SC ON AC.SubCategoryID = SC.SubCategoryID

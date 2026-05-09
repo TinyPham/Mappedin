@@ -1333,9 +1333,17 @@
             </svg>
             <input type="text" id="location-search" placeholder="Tìm kiếm khu vực, điểm đến..."
               data-i18n-placeholder="search_placeholder"
+              onfocus="if(window.innerWidth <= 768) { document.getElementById('category-section').classList.add('mobile-expanded'); document.getElementById('mobile-category-toggle').classList.add('active'); }"
               style="width: 100%; border: none !important; box-shadow: none !important; outline: none !important; padding: 12px 10px !important; font-size: 14px !important; background: transparent !important; color: #333 !important; font-weight: 500 !important; height: auto !important;">
             <button id="search-clear-btn"
               style="display: none; background: none; border: none; font-size: 20px; color: #999; cursor: pointer; padding: 0 14px; transition: color 0.2s;">&times;</button>
+            <button id="mobile-category-toggle" class="mobile-only-btn" 
+              style="display: none; background: none; border: none; padding: 0 14px; cursor: pointer; color: #214ca6; border-left: 1px solid #e0e0e0; align-items: center; justify-content: center;"
+              onclick="const sect = document.getElementById('category-section'); sect.classList.toggle('mobile-expanded'); this.classList.toggle('active');">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.3s ease;" class="toggle-icon">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </button>
             <div id="search-results"
               style="margin-top: 8px; background: white; border-radius: 12px; box-shadow: 0 8px 25px rgba(0,0,0,0.1); max-height: 40vh; overflow-y: auto; display: none; border: 1px solid #f0f0f0; z-index: 2000; position: absolute; width: 100%; left: 0; top: 100%;">
             </div>

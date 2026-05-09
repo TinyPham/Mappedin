@@ -3,6 +3,29 @@ import { BlueDot } from "@mappedin/blue-dot";
 import { car, tree_palm } from "@mappedin/3d-assets";
 
 import "./styles.css";
+import {
+  buildSubCategoryLocationEntries,
+  buildVisibleCategoryAreas,
+  hasAssignmentsOnVisibleFloor,
+  normalizeLocationRecord,
+  normalizeOptionalNumber
+} from "./categoryPanelData.js";
+
+// Global Declarations to resolve scope issues
+let ApiService: any = null;
+interface ModelMetadata {
+  url: string;
+  uuid: string;
+  name: string;
+  desc: string;
+  rotation: number[];
+  scale: number[];
+  originalCoordinate: any;
+  floorId?: string;
+  thumb?: string;
+  displayWebsite?: number | boolean;
+  elevation?: number;
+}
 
 const isViewOnly = (function () {
   try {
@@ -104,8 +127,16 @@ class TranslationManager {
       const apiBase = isLocal ? "http://localhost:3002/api" : `${window.location.origin}/api`;
       const res = await fetch(`${apiBase}/init-data`);
       const json = await res.json();
+      const normalizedLocations: Record<string, any> = {};
+      Object.values(json?.locations || {}).forEach((location: any) => {
+        const normalized = normalizeLocationRecord(location);
+        if (normalized.MappedinID) {
+          normalizedLocations[normalized.MappedinID] = normalized;
+        }
+      });
       this.data = {
         ...json,
+        locations: normalizedLocations,
         areaColors: json?.areaColors || {}
       };
       console.log('🌐 Init Data loaded:', json);
@@ -1115,7 +1146,7 @@ async function init() {
 
   // Declarations for hoisting/scope visibility
   let categoryTree: any[] = [];
-  let ApiService: any = null;
+  // ApiService moved to top level
   let hideInfo: any = null;
   let updateInfo: any = null;
 
@@ -1271,6 +1302,24 @@ async function init() {
 
   // Expose mapView globally for easier debugging and access from console
   (window as any).mapView = mapView;
+
+  try {
+    (mapView as any).on("styleimagemissing", (e: any) => {
+      if (e && e.id === "pedestrian_polygon") {
+        const canvas = document.createElement("canvas");
+        canvas.width = 1;
+        canvas.height = 1;
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.fillStyle = "rgba(0,0,0,0)";
+          ctx.fillRect(0, 0, 1, 1);
+          try {
+            (mapView as any).addImage("pedestrian_polygon", canvas);
+          } catch (err) {}
+        }
+      }
+    });
+  } catch (err) {}
 
   // Inject Preview Blue Dot CSS Once
   const previewStyle = document.createElement('style');
@@ -1616,6 +1665,17 @@ async function init() {
       }
     } catch (e) { }
 
+    // Lấy connections (Thang máy, thang cuốn...)
+    const connectionTypes = ["connection", "connection-node", "elevator", "escalator", "stair"];
+    connectionTypes.forEach(type => {
+      try {
+        const items = mapData.getByType(type as any);
+        if (items && items.length > 0) {
+          allObjects.push(...items);
+        }
+      } catch (e) { }
+    });
+
     // Loại bỏ duplicates dựa trên id
     const uniqueObjects = allObjects.filter((obj, index, self) =>
       index === self.findIndex((o) => o.id === obj.id)
@@ -1681,6 +1741,11 @@ async function init() {
   // NEW: Track persistent category/subcategory state
   let activeCategoryId: string | null = null;
   let activeSubCategoryId: string | null = null;
+  let suppressMapClickUntil = 0;
+
+  const markSidebarInteraction = (durationMs: number = 600) => {
+    suppressMapClickUntil = Date.now() + durationMs;
+  };
   let activeCategoryIcon: string = "📍";
   let previousFloorId: string | null = null;
 
@@ -3350,6 +3415,10 @@ async function init() {
   const applyAreaColors = () => {
     const currentFloorId = mapView.currentFloor?.id;
     getColorRenderObjects().forEach((obj) => {
+      if (!obj || !obj.id) return;
+      // Skip connections and points as they don't have colorable polygons
+      if (obj.id.startsWith("c_") || obj.id.startsWith("p_") || obj.id.startsWith("n_") || obj.type === "connection") return;
+
       // Filter: Only update objects on the current floor to avoid performance issues
       const objFloorId = obj.floor?.id || obj.floorId;
       if (objFloorId && objFloorId !== currentFloorId) return;
@@ -3362,9 +3431,7 @@ async function init() {
         !(Array.isArray(obj.locationProfiles) && obj.locationProfiles.length > 0);
 
       if (isSpaceWithoutLocation) {
-        try {
-          mapView.updateState(obj, { interactive: false });
-        } catch (e) { }
+        // Skip updating state for spaces without location to avoid "No point-of-interest found" errors
         return;
       }
 
@@ -4027,6 +4094,9 @@ async function init() {
       if (activeSubCategoryId) {
         reapplyActiveSubCategoryPins();
       }
+
+      // RE-RENDER CATEGORIES: Update sidebar to show only categories/subs for the new floor
+      renderCategories(activeCategoryId);
     } catch { }
   });
 
@@ -4145,18 +4215,24 @@ async function init() {
 
     Object.keys(tmLocs).forEach(mid => {
       const l = tmLocs[mid];
-      // Check if location belongs to activeSubCategoryId
-      // Note: Translation_Locations.CategoryId usually maps to SubCategoryId in this context
-      if (l.categoryId?.toString() === activeSubCategoryId?.toString()) {
+      if (l.SubCategoryID?.toString() === activeSubCategoryId?.toString() ||
+        l.subCategoryId?.toString() === activeSubCategoryId?.toString()) {
         assignedMIDs.push(mid);
       }
     });
 
     // Filter objects on current floor
     const currentFloorId = mapView.currentFloor.id;
+    const currentFloorIds = getCurrentFloorFilterIds();
     const objectsToPin = allMapObjects.filter(obj => {
-      const objFloorId = obj.floor?.id || obj.floorId || (typeof obj.floor === 'string' ? obj.floor : null);
-      return assignedMIDs.includes(obj.id) && objFloorId === currentFloorId;
+      const objFloorIds = [
+        obj.floor?.mappedinId,
+        obj.floor?.externalId,
+        obj.floor?.id,
+        obj.floorId,
+        typeof obj.floor === 'string' ? obj.floor : null
+      ].filter(Boolean);
+      return assignedMIDs.includes(obj.id) && objFloorIds.some((floorId: string) => currentFloorIds.includes(floorId));
     });
 
     objectsToPin.forEach((obj: any) => {
@@ -4239,12 +4315,103 @@ async function init() {
     Object.defineProperty(window, 'activeSubCategoryId', { get: () => activeSubCategoryId, configurable: true });
   } catch (e) { console.warn("Could not expose category state", e); }
 
+  const isCategoryDebugEnabled = () => {
+    try {
+      return window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+    } catch (e) {
+      return false;
+    }
+  };
+
+  const getCurrentFloorFilterIds = () => {
+    const floor = mapView.currentFloor as any;
+    return [
+      floor?.mappedinId,
+      floor?.externalId,
+      floor?.id
+    ].filter(Boolean);
+  };
+
+  const getInitialLocationRows = () =>
+    Object.values(TranslationManager.data.locations || {})
+      .map((location: any) => normalizeLocationRecord(location))
+      .filter((location: any) => location.MappedinID);
+
+  const getSubCategoryLocationRows = async (subCatId: string | number) => {
+    const selectedSubCategoryId = Number(subCatId);
+    
+    // 1. Get initial/cached rows for this subcategory
+    const initialRows = getInitialLocationRows()
+      .filter((location: any) => {
+        const rowSubId = normalizeOptionalNumber(location.SubCategoryID);
+        return rowSubId === selectedSubCategoryId;
+      });
+
+    // 2. Fetch from API
+    let endpointRows: any[] = [];
+    try {
+      endpointRows = await ApiService.getSubCategoryLocations(String(subCatId));
+    } catch (err) {
+      console.warn("ApiService.getSubCategoryLocations failed", err);
+    }
+
+    const normalizedEndpointRows = (endpointRows || [])
+      .map((location: any) => normalizeLocationRecord(location))
+      .filter((location: any) => {
+        // We don't strictly filter by SubCategoryID here because the endpoint 
+        // is already specific to the subcategory ID. This avoids issues if the API 
+        // response doesn't include the SubCategoryID field in the rows.
+        return location.MappedinID;
+      });
+
+    // 3. Merge rows, prioritizing initialRows (local translations) for the same MappedinID
+    const mergedMap = new Map<string, any>();
+    
+    // Add endpoint rows first
+    normalizedEndpointRows.forEach(row => {
+      const mid = String(row.MappedinID).trim();
+      mergedMap.set(mid, row);
+    });
+    
+    // Overwrite with initial rows (translations)
+    initialRows.forEach(row => {
+      const mid = String(row.MappedinID).trim();
+      mergedMap.set(mid, row);
+    });
+
+    return Array.from(mergedMap.values());
+  };
+
+  let isRenderingCategories = false;
+  const getSubCategoryAreaEntries = async (
+    subCatId: string | number,
+    currentFloorIds: string[] | null,
+    isOverviewMode: boolean,
+    mapObjectsById: Map<string, any>
+  ) => {
+    const locationRows = await getSubCategoryLocationRows(subCatId);
+    const areaEntries = buildSubCategoryLocationEntries(
+      subCatId,
+      locationRows,
+      currentFloorIds || [],
+      isOverviewMode,
+      mapObjectsById
+    );
+    return { locationRows, areaEntries };
+  };
+
   const renderCategories = async (parentId: string | number | null = null, forceRefresh: boolean = false) => {
+    if (isRenderingCategories && !forceRefresh) return;
+    isRenderingCategories = true;
+
     // Expose function if not already (safeguard)
     if (!(window as any).renderCategories) (window as any).renderCategories = renderCategories;
 
     const categoryList = document.getElementById("category-list");
-    if (!categoryList) return;
+    if (!categoryList) {
+      isRenderingCategories = false;
+      return;
+    }
 
     if (forceRefresh) {
       categoryTree = [];
@@ -4281,12 +4448,64 @@ async function init() {
     // Helper function to get name in current language
     const getCategoryName = (cat: any) => {
       const lang = TranslationManager.currentLang || 'vn';
-      return cat.names?.[lang] || cat.names?.vn || cat[lang] || cat.vn || '';
+      return cat.names?.[lang] || cat.names?.vn || cat[lang] || cat.vn || cat.name || '';
     };
 
     const currentFloorId = mapView.currentFloor.id;
-    // Get all area assignments to filter active cats per floor
-    const assigned = await ApiService.getAssignedAreas(); // [{MappedinID, SubCategoryID}]
+    const currentFloorIds = getCurrentFloorFilterIds();
+    const isOverviewMode = isMapInOverview();
+    const mapObjectsById = new Map<string, any>();
+    allMapObjects.forEach((obj: any) => {
+      if (obj?.id) mapObjectsById.set(obj.id, obj);
+    });
+
+    // Get all area assignments to filter active cats per floor.
+    // Floor visibility is derived from runtime map objects, not persisted on AreaList.
+    const initialLocationRows = getInitialLocationRows();
+    const assignedFromInitialData = initialLocationRows
+      .filter((location: any) => location.SubCategoryID && location.MappedinID)
+      .map((location: any) => ({
+        MappedinID: location.MappedinID,
+        SubCategoryID: location.SubCategoryID,
+        CategoryID: location.CategoryID
+      }));
+    
+    let apiAssigned: any[] = [];
+    try {
+      apiAssigned = await ApiService.getAssignedAreas();
+    } catch (err) {
+      console.warn("ApiService.getAssignedAreas failed", err);
+    }
+
+    // Merge both sources to ensure we don't lose data if partial data exists in either
+    const mergedAssignedMap = new Map<string, any>();
+    (apiAssigned || []).forEach((a: any) => {
+      if (a.MappedinID) mergedAssignedMap.set(a.MappedinID, a);
+    });
+    assignedFromInitialData.forEach((a: any) => {
+      mergedAssignedMap.set(a.MappedinID, a);
+    });
+    
+    const assigned = Array.from(mergedAssignedMap.values());
+
+    if (isCategoryDebugEnabled()) console.groupCollapsed(`🧭 [CATEGORY_DEBUG] renderCategories parent=${parentId ?? 'root'} floor=${currentFloorId} overview=${isOverviewMode}`);
+    if (isCategoryDebugEnabled()) console.debug("Context:", {
+      parentId,
+      forceRefresh,
+      selectedFloorIds: currentFloorIds,
+      currentFloorName: mapView.currentFloor?.name,
+      isOverviewMode,
+      selectedCategoryId: activeCategoryId,
+      selectedSubCategoryId: activeSubCategoryId,
+      categoryTreeCount: categoryTree.length,
+      allMapObjectsCount: allMapObjects.length,
+      assignedCount: assigned.length
+    });
+    if (isCategoryDebugEnabled()) console.table(assigned.slice(0, 30).map((entry: any) => ({
+      mappedinId: entry.MappedinID,
+      subCategoryId: entry.SubCategoryID,
+      floorId: entry.FloorID
+    })));
 
     // Map assigned areas to their subcategories
     const assignedMap = new Map<string, string[]>(); // SubID -> MIDs
@@ -4296,14 +4515,8 @@ async function init() {
     });
 
     // Helper to check if a subcategory has objects on the current floor
-    const isSubActiveOnFloor = (subId: string) => {
-      const mids = assignedMap.get(subId.toString()) || [];
-      if (isMapInOverview()) return mids.length > 0; // Show if it has any assigned areas at all
-      return allMapObjects.some(obj => {
-        const objFloorId = obj.floor?.id || obj.floorId || (typeof obj.floor === 'string' ? obj.floor : null);
-        return mids.indexOf(obj.id) !== -1 && objFloorId === currentFloorId;
-      });
-    };
+    const isSubActiveOnFloor = (subId: string) =>
+      hasAssignmentsOnVisibleFloor(subId, assigned, currentFloorIds, isOverviewMode, mapObjectsById);
 
     const getIconHtml = (icon: string | null, defaultEmoji: string) => {
       if (!icon) return defaultEmoji;
@@ -4344,7 +4557,10 @@ async function init() {
             `;
       backBtn.onmouseenter = () => { backBtn.style.background = "#eef3ff"; };
       backBtn.onmouseleave = () => { backBtn.style.background = "#fafbfd"; };
-      backBtn.onclick = () => {
+      backBtn.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        markSidebarInteraction();
         // Clear highlights when returning to main categories
         activeCategoryId = null;
         activeSubCategoryId = null;
@@ -4359,10 +4575,26 @@ async function init() {
 
       const parentCat = categoryTree.find(c => c.id.toString() === parentId.toString());
       if (parentCat && parentCat.subcategories) {
-        // Filter subcategories that have locations on this floor
         const activeSubs = parentCat.subcategories.filter((s: any) => isSubActiveOnFloor(s.id));
+        const visibleSubs = activeSubs;
+        if (isCategoryDebugEnabled()) console.debug("Subcategory branch:", {
+          parentCategoryId: parentCat.id,
+          parentCategoryName: getCategoryName(parentCat),
+          totalSubcategories: parentCat.subcategories.length,
+          activeSubcategories: activeSubs.map((s: any) => ({
+            id: s.id,
+            name: getCategoryName(s),
+            assignmentCount: (assignedMap.get(s.id.toString()) || []).length
+          }))
+        });
 
-        if (activeSubs.length === 0) {
+        if (visibleSubs.length === 0) {
+          if (isCategoryDebugEnabled()) console.warn("⚠️ [CATEGORY_DEBUG] No active subcategories for current branch", {
+            parentCategoryId: parentCat.id,
+            parentCategoryName: getCategoryName(parentCat),
+            floorId: currentFloorId,
+            isOverviewMode
+          });
           const emptyMsg = document.createElement("div");
           emptyMsg.style.cssText = `
                         padding: 32px 20px; text-align: center; color: #999;
@@ -4375,35 +4607,36 @@ async function init() {
           categoryList.appendChild(emptyMsg);
         }
 
-        activeSubs.forEach((sub: any) => {
-          const item = document.createElement("div");
-          const isActive = activeSubCategoryId === sub.id.toString();
+        for (const sub of visibleSubs) {
+          try {
+            const item = document.createElement("div");
+            const isActive = activeSubCategoryId === sub.id.toString();
 
-          // Không dùng class cũ để tránh xung đột CSS
-          item.className = isActive ? "sub-item-header-modern" : "";
+            // Không dùng class cũ để tránh xung đột CSS
+            item.className = isActive ? "sub-item-header-modern" : "";
 
-          const subName = getCategoryName(sub);
+            const subName = getCategoryName(sub);
 
-          // === INCHEON STYLE: Row layout với icon tròn, text, chevron ===
-          item.style.display = "flex";
-          item.style.alignItems = "center";
-          item.style.padding = "12px 16px";
-          item.style.cursor = "pointer";
-          item.style.transition = "all 0.2s ease";
-          item.style.borderBottom = "1px solid #f0f0f0";
-          item.style.width = "100%";
-          item.style.boxSizing = "border-box";
+            // === INCHEON STYLE: Row layout với icon tròn, text, chevron ===
+            item.style.display = "flex";
+            item.style.alignItems = "center";
+            item.style.padding = "12px 16px";
+            item.style.cursor = "pointer";
+            item.style.transition = "all 0.2s ease";
+            item.style.borderBottom = "1px solid #f0f0f0";
+            item.style.width = "100%";
+            item.style.boxSizing = "border-box";
 
-          if (isActive) {
-            item.style.backgroundColor = "#f0f4ff";
-            item.style.borderLeft = "3px solid #214ca6";
-          } else {
-            item.style.backgroundColor = "white";
-            item.style.borderLeft = "3px solid transparent";
-          }
+            if (isActive) {
+              item.style.backgroundColor = "#f0f4ff";
+              item.style.borderLeft = "3px solid #214ca6";
+            } else {
+              item.style.backgroundColor = "white";
+              item.style.borderLeft = "3px solid transparent";
+            }
 
-          // Icon tròn nền nhạt (chuẩn Incheon style)
-          const iconCircle = `<div style="
+            // Icon tròn nền nhạt (chuẩn Incheon style)
+            const iconCircle = `<div style="
                         flex-shrink: 0;
                         width: 40px; height: 40px;
                         border-radius: 50%;
@@ -4419,8 +4652,8 @@ async function init() {
                         ">${getIconHtml(sub.icon, "📍")}</div>
                     </div>`;
 
-          // Tên subcategory
-          const textBlock = `<div style="flex: 1; overflow: hidden;">
+            // Tên subcategory
+            const textBlock = `<div style="flex: 1; overflow: hidden;">
                         <div style="
                             font-weight: ${isActive ? '600' : '500'};
                             font-size: 14px;
@@ -4431,8 +4664,8 @@ async function init() {
                         ">${subName}</div>
                     </div>`;
 
-          // Chevron mũi tên (xoay xuống khi active)
-          const chevron = `<div style="
+            // Chevron mũi tên (xoay xuống khi active)
+            const chevron = `<div style="
                         flex-shrink: 0; margin-left: 8px; color: ${isActive ? '#214ca6' : '#bbb'};
                         transition: transform 0.3s;
                         transform: ${isActive ? 'rotate(90deg)' : 'rotate(0deg)'};
@@ -4440,57 +4673,154 @@ async function init() {
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
                     </div>`;
 
-          item.innerHTML = iconCircle + textBlock + chevron;
+            item.innerHTML = iconCircle + textBlock + chevron;
 
-          // Hover effect (chỉ khi không active)
-          if (!isActive) {
-            item.onmouseenter = () => {
-              item.style.backgroundColor = "#f8faff";
-              item.style.borderLeft = "3px solid #cbd5e1";
+            // Hover effect (chỉ khi không active)
+            if (!isActive) {
+              item.onmouseenter = () => {
+                item.style.backgroundColor = "#f8faff";
+                item.style.borderLeft = "3px solid #cbd5e1";
+              };
+              item.onmouseleave = () => {
+                item.style.backgroundColor = "white";
+                item.style.borderLeft = "3px solid transparent";
+              };
+            }
+
+            item.onclick = (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              markSidebarInteraction();
+              (window as any).highlightSubCategory(String(sub.id));
             };
-            item.onmouseleave = () => {
-              item.style.backgroundColor = "white";
-              item.style.borderLeft = "3px solid transparent";
-            };
-          }
+            categoryList.appendChild(item);
 
-          item.onclick = () => {
-            (window as any).highlightSubCategory(sub.id.toString());
-          };
-          categoryList.appendChild(item);
-
-          // === AREA LIST: Render khi active (Incheon accordion style) ===
-          if (isActive) {
-            const areaContainer = document.createElement("div");
-            areaContainer.className = "category-area-list";
-            areaContainer.style.cssText = `
+            // === AREA LIST: Render khi active (Incheon accordion style) ===
+            if (isActive) {
+              const areaContainer = document.createElement("div");
+              areaContainer.className = "category-area-list";
+              areaContainer.style.cssText = `
                             margin: 0; width: 100%; box-sizing: border-box;
-                            max-height: 350px; overflow-y: auto;
+                            max-height: 600px; overflow-y: auto;
                             background: #fafbfd;
                             border-bottom: 2px solid #e8ecf4;
+                            display: block !important;
+                            visibility: visible !important;
+                            min-height: 100px;
                         `;
+              
+              // Show loading indicator immediately
+              areaContainer.innerHTML = `<div style="padding: 15px 28px; font-size: 13px; color: #999; display: flex; align-items: center; gap: 8px;">
+                <div class="loading-spinner-small" style="width: 14px; height: 14px; border: 2px solid #f3f3f3; border-top: 2px solid #214ca6; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                <span>${TranslationManager.t('loading', 'Đang tải...')}</span>
+              </div>`;
+              categoryList.appendChild(areaContainer);
 
-            // Get assigned areas for this subcategory
-            const assignedMIDs = assignedMap.get(sub.id.toString()) || [];
-            if (assignedMIDs.length > 0) {
-              const currentFloorId = isMapInOverview() ? null : mapView.currentFloor.id;
-              let areas = allMapObjects.filter(o => assignedMIDs.indexOf(o.id) !== -1);
+              // Get assigned areas for this subcategory
+              const assignedMIDs = assignedMap.get(sub.id.toString()) || [];
+              {
+                const currentVisibleFloorIds = isOverviewMode ? null : currentFloorIds;
+                const { locationRows: subLocations, areaEntries } = await getSubCategoryAreaEntries(
+                  sub.id.toString(),
+                  currentVisibleFloorIds,
+                  isOverviewMode,
+                  mapObjectsById
+                );
+                
+                // Clear loading indicator
+                areaContainer.innerHTML = "";
 
-              if (currentFloorId) {
-                areas = areas.filter(a => {
-                  const fId = a.floor?.id || a.floorId || (typeof a.floor === 'string' ? a.floor : null);
-                  return fId === currentFloorId;
+                const subLocationMIDs = subLocations.map((row: any) => row?.MappedinID).filter(Boolean);
+                const unmatchedAssignedMIDs = assignedMIDs.filter((mid: string) => !mapObjectsById.has(mid));
+                const unmatchedSubLocationMIDs = subLocationMIDs.filter((mid: string) => !mapObjectsById.has(mid));
+                const fallbackFilteredEntries = buildVisibleCategoryAreas(
+                  subLocations,
+                  currentVisibleFloorIds || [],
+                  isOverviewMode,
+                  mapObjectsById
+                );
+                if (isCategoryDebugEnabled()) console.debug("Area list branch:", {
+                  subCategoryId: sub.id,
+                  subCategoryName: getCategoryName(sub),
+                  assignedMIDsCount: assignedMIDs.length,
+                  subLocationRows: subLocations.length,
+                  subLocationMIDsCount: subLocationMIDs.length,
+                  currentVisibleFloorIds,
+                  areaEntriesCount: areaEntries.length,
+                  fallbackFilteredEntriesCount: fallbackFilteredEntries.length,
+                  unmatchedAssignedMIDsCount: unmatchedAssignedMIDs.length,
+                  unmatchedSubLocationMIDsCount: unmatchedSubLocationMIDs.length,
+                  entries: areaEntries.map((entry: any) => ({
+                    mappedinId: entry?.mappedinId,
+                    floorId: entry?.floorId,
+                    hasMapObject: Boolean(entry?.mapObject),
+                    dbName: entry?.dbRow?.VN || entry?.dbRow?.Name || null
+                  }))
                 });
-              }
-              // Sort by localized name
-              areas.sort((a, b) => (TranslationManager.getName(a) || a.name || '').localeCompare(TranslationManager.getName(b) || b.name || ''));
+                if (isCategoryDebugEnabled() && subLocations.length > 0 && areaEntries.length === 0) {
+                  console.error("❌ [CATEGORY_DEBUG] Area list collapsed to zero after filtering", {
+                    subCategoryId: sub.id,
+                    subCategoryName: getCategoryName(sub),
+                    currentVisibleFloorIds,
+                    isOverviewMode,
+                    assignedMIDs,
+                    subLocationMIDs,
+                    subLocationRows: subLocations.map((row: any) => ({
+                      mappedinId: row.MappedinID,
+                      floorId: null,
+                      vn: row.VN || row.Name || null,
+                      hasMapObject: Boolean(mapObjectsById.get(row.MappedinID)),
+                      mapObjectFloorId: (() => {
+                        const obj = mapObjectsById.get(row.MappedinID);
+                        return obj?.floor?.mappedinId || obj?.floor?.id || obj?.floorId || (typeof obj?.floor === "string" ? obj.floor : null) || null;
+                      })()
+                    })),
+                    unmatchedAssignedMIDs,
+                    unmatchedSubLocationMIDs,
+                    fallbackFilteredEntries: fallbackFilteredEntries.map((entry: any) => ({
+                      mappedinId: entry?.mappedinId,
+                      floorId: entry?.floorId
+                    }))
+                  });
+                }
+                if (isCategoryDebugEnabled() && (unmatchedAssignedMIDs.length > 0 || unmatchedSubLocationMIDs.length > 0)) {
+                  console.warn("⚠️ [CATEGORY_DEBUG] Some assigned mids cannot be resolved to map objects", {
+                    subCategoryId: sub.id,
+                    subCategoryName: getCategoryName(sub),
+                    unmatchedAssignedMIDs,
+                    unmatchedSubLocationMIDs
+                  });
+                }
 
-              areas.forEach((area, index) => {
-                const areaItem = document.createElement("div");
-                const isFocused = currentSearchResults.length === 1 && currentSearchResults[0].id === area.id;
+                areaEntries.sort((a: any, b: any) => {
+                  const aName = TranslationManager.getName(a?.mapObject || a?.dbRow) || a?.dbRow?.VN || a?.dbRow?.Name || a?.dbRow?.name || a?.mappedinId || "";
+                  const bName = TranslationManager.getName(b?.mapObject || b?.dbRow) || b?.dbRow?.VN || b?.dbRow?.Name || b?.dbRow?.name || b?.mappedinId || "";
+                  return aName.localeCompare(bName);
+                });
 
-                // === INCHEON STYLE: Mỗi area item là một row flex đẹp mắt ===
-                areaItem.style.cssText = `
+                if (areaEntries.length === 0) {
+                  const emptyAreaState = document.createElement("div");
+                  emptyAreaState.style.cssText = `
+                              padding: 14px 20px 16px 28px;
+                              color: #667085;
+                              font-size: 13px;
+                              border-top: 1px solid #eef2f6;
+                          `;
+                  emptyAreaState.textContent = isOverviewMode
+                    ? "Chưa có khu vực hiển thị cho danh mục này."
+                    : "Không có khu vực của danh mục này trên tầng hiện tại.";
+                  areaContainer.appendChild(emptyAreaState);
+                }
+
+                areaEntries.forEach((areaEntry: any) => {
+                  if (!areaEntry) return;
+                  const area = areaEntry.mapObject;
+                  const focusedResult = currentSearchResults.length === 1 ? currentSearchResults[0] : null;
+                  const isFocused = focusedResult?.id === (area?.id || areaEntry.mappedinId);
+                  const areaItem = document.createElement("div");
+
+                  // === INCHEON STYLE: Mỗi area item là một row flex đẹp mắt ===
+                  areaItem.style.cssText = `
                                     display: flex; align-items: center;
                                     padding: 10px 16px 10px 28px;
                                     cursor: pointer;
@@ -4500,8 +4830,8 @@ async function init() {
                                     border-left: 3px solid ${isFocused ? '#214ca6' : 'transparent'};
                                 `;
 
-                // Icon pin nhỏ
-                const pinIcon = `<div style="
+                  // Icon pin nhỏ
+                  const pinIcon = `<div style="
                                     flex-shrink: 0; width: 28px; height: 28px;
                                     border-radius: 50%;
                                     background: ${isFocused ? '#214ca6' : '#e8ecf4'};
@@ -4511,13 +4841,24 @@ async function init() {
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${isFocused ? 'white' : '#666'}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
                                 </div>`;
 
-                // Tên + tầng
-                const areaName = TranslationManager.getName(area) || area.name || area.id;
-                const rawFloorName = area.floor?.name || (typeof area.floor === 'string' ? area.floor : null);
-                const floorMappedId = area.floor?.mappedinId || area.floor?.id || area.floorId || (typeof area.floor === 'string' ? area.floor : null);
-                const localizedFloorName = floorMappedId ? TranslationManager.getFloorName(floorMappedId, rawFloorName || '') : rawFloorName;
+                  // Tên + tầng
+                  const areaName =
+                    TranslationManager.getName(area || areaEntry.dbRow) ||
+                    areaEntry.dbRow?.VN ||
+                    areaEntry.dbRow?.Name ||
+                    areaEntry.dbRow?.name ||
+                    area?.name ||
+                    areaEntry.mappedinId;
+                  const rawFloorName = area?.floor?.name || (typeof area?.floor === 'string' ? area.floor : null);
+                  const floorMappedId =
+                    area?.floor?.mappedinId ||
+                    areaEntry.floorId ||
+                    area?.floor?.id ||
+                    area?.floorId ||
+                    (typeof area?.floor === 'string' ? area.floor : null);
+                  const localizedFloorName = floorMappedId ? TranslationManager.getFloorName(floorMappedId, rawFloorName || '') : rawFloorName;
 
-                const textInfo = `<div style="flex: 1; overflow: hidden;">
+                  const textInfo = `<div style="flex: 1; overflow: hidden;">
                                     <div style="
                                         font-weight: ${isFocused ? '600' : '400'};
                                         font-size: 13px;
@@ -4530,119 +4871,136 @@ async function init() {
                                     ">${localizedFloorName}</div>` : ''}
                                 </div>`;
 
-                // Chevron nhỏ
-                const miniChevron = `<div style="flex-shrink:0; margin-left:8px; color:#ccc;">
+                  // Chevron nhỏ
+                  const miniChevron = `<div style="flex-shrink:0; margin-left:8px; color:#ccc;">
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
                                 </div>`;
 
-                areaItem.innerHTML = pinIcon + textInfo + miniChevron;
+                  areaItem.innerHTML = pinIcon + textInfo + miniChevron;
 
-                // Hover (chỉ khi không focus)
-                if (!isFocused) {
-                  areaItem.onmouseenter = () => {
-                    areaItem.style.backgroundColor = "#f0f4ff";
-                    areaItem.style.borderLeft = "3px solid #cbd5e1";
-                  };
-                  areaItem.onmouseleave = () => {
-                    areaItem.style.backgroundColor = "transparent";
-                    areaItem.style.borderLeft = "3px solid transparent";
-                  };
-                }
-
-                areaItem.onclick = (e) => {
-                  e.stopPropagation(); // Prevent subcategory toggle
-                  // Focus on this area
-                  // Update highlight
-                  // 1. Clear OLD highlights/markers (Fix for "Highlight All" issue)
-                  clearSearchMarkers();
-                  if (currentSearchResults.length > 0) {
-                    currentSearchResults.forEach(o => { try { resetObjectHighlight(o); } catch (e) { } });
+                  // Hover (chỉ khi không focus)
+                  if (!isFocused) {
+                    areaItem.onmouseenter = () => {
+                      areaItem.style.backgroundColor = "#f0f4ff";
+                      areaItem.style.borderLeft = "3px solid #cbd5e1";
+                    };
+                    areaItem.onmouseleave = () => {
+                      areaItem.style.backgroundColor = "transparent";
+                      areaItem.style.borderLeft = "3px solid transparent";
+                    };
                   }
 
-                  // 2. Set New Selection
-                  currentSearchResults = [area];
+                  areaItem.onclick = (e) => {
+                    markSidebarInteraction();
+                    e.stopPropagation(); // Prevent subcategory toggle
+                    if (!area) {
+                      if (floorMappedId && (!mapView.currentFloor || mapView.currentFloor.id !== floorMappedId)) {
+                        performFloorSwitch(floorMappedId, "Category Area Fallback Navigation");
+                      }
+                      return;
+                    }
+                    // Focus on this area
+                    // Update highlight
+                    // 1. Clear OLD highlights/markers (Fix for "Highlight All" issue)
+                    clearSearchMarkers();
+                    if (currentSearchResults.length > 0) {
+                      currentSearchResults.forEach(o => { try { resetObjectHighlight(o); } catch (e) { } });
+                    }
 
-                  // Add marker
-                  try {
-                    mapView.updateState(area, { interactive: true, color: "#4CAF50", hoverColor: "#45a049" }); // Green
-                    const anchor = getObjectAnchor(area);
-                    if (anchor) {
-                      const markerHtml = `<div class="search-marker" style="transform:translate(-50%,-100%);">
+                    // 2. Set New Selection
+                    currentSearchResults = [area];
+
+                    // Add marker
+                    try {
+                      mapView.updateState(area, { interactive: true, color: "#4CAF50", hoverColor: "#45a049" }); // Green
+                      const anchor = getObjectAnchor(area);
+                      if (anchor) {
+                        const markerHtml = `<div class="search-marker" style="transform:translate(-50%,-100%);">
                                     <div style="background:#085ebb;color:white;padding:4px 8px;border-radius:4px;font-size:12px;font-weight:bold;white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,0.2);">${area.name}</div>
                                     <div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:6px solid #085ebb;margin:0 auto;"></div>
                                 </div>`;
-                      const marker = mapView.Markers.add(anchor, markerHtml, { interactive: false });
-                      currentSearchMarkers.push(marker);
-                    }
-                  } catch (err) { }
-
-                  // Smart Zoom 16.5x (User Request)
-                  const floorId = area.floor?.id || area.floorId || (typeof area.floor === 'string' ? area.floor : null);
-                  if (floorId) {
-                    // ROBUST FLOOR SWITCH & ZOOM LOGIC (Moved from highlightSubCategory)
-                    console.log("🚀 Item Click: Switching to floor", floorId, "for", area.name);
-
-                    const isCurrentlyOverview = isMapInOverview();
-                    const currentFloorId = isCurrentlyOverview ? null : mapView.currentFloor.id;
-
-                    const executeZoom = () => {
-                      console.log("⚡ Item Zoom Triggered");
-                      // Use SIDEBAR PADDING (380px) to center object in visible area
-                      mapView.Camera.focusOn(area, {
-                        duration: 1500,
-                        minZoomLevel: 19,
-                        maxZoomLevel: 21,
-                        padding: { top: 0, bottom: 0, left: 380, right: 0 }
-                      } as any);
-                      setTimeout(() => { isProgrammaticZoom = false; }, 2000);
-                    };
-
-                    // Always force switch if in Overview, or if ID differs
-                    if (!currentFloorId || currentFloorId !== floorId) {
-                      isProgrammaticZoom = true;
-                      if (isCurrentlyOverview) {
-                        (window as any).isInOverview = false;
-                        isInOverview = false;
-                        lastActiveFloorId = floorId;
+                        const marker = mapView.Markers.add(anchor, markerHtml, { interactive: false });
+                        currentSearchMarkers.push(marker);
                       }
+                    } catch (err) { }
 
-                      let executed = false;
-                      const handler = () => {
-                        if (executed) return;
-                        executed = true;
-                        mapView.off("floor-change", handler);
-                        setTimeout(executeZoom, 800);
+                    // Smart Zoom 16.5x (User Request)
+                    const floorId = area.floor?.id || area.floorId || (typeof area.floor === 'string' ? area.floor : null);
+                    if (floorId) {
+                      // ROBUST FLOOR SWITCH & ZOOM LOGIC (Moved from highlightSubCategory)
+                      console.log("🚀 Item Click: Switching to floor", floorId, "for", area.name);
+
+                      const isCurrentlyOverview = isMapInOverview();
+                      const currentFloorId = isCurrentlyOverview ? null : mapView.currentFloor.id;
+
+                      const executeZoom = () => {
+                        console.log("⚡ Item Zoom Triggered");
+                        // Use SIDEBAR PADDING (380px) to center object in visible area
+                        mapView.Camera.focusOn(area, {
+                          duration: 1500,
+                          minZoomLevel: 19,
+                          maxZoomLevel: 21,
+                          padding: { top: 0, bottom: 0, left: 380, right: 0 }
+                        } as any);
+                        setTimeout(() => { isProgrammaticZoom = false; }, 2000);
                       };
-                      mapView.on("floor-change", handler);
-                      setTimeout(() => { if (!executed) { console.warn("Fallback Item Zoom"); handler(); } }, 2000);
 
-                      try {
-                        performFloorSwitch(floorId, "Item Click Navigation");
-                      } catch (e) { handler(); }
-                    } else {
-                      // Same ID, but maybe stuck in Overview visual state?
-                      if (isCurrentlyOverview) {
-                        console.log("⚡ Exiting Overview for Item Click (Same Floor)");
-                        (window as any).isInOverview = false;
-                        isInOverview = false;
+                      // Always force switch if in Overview, or if ID differs
+                      if (!currentFloorId || currentFloorId !== floorId) {
                         isProgrammaticZoom = true;
-                        executeZoom();
+                        if (isCurrentlyOverview) {
+                          (window as any).isInOverview = false;
+                          isInOverview = false;
+                          lastActiveFloorId = floorId;
+                        }
+
+                        let executed = false;
+                        const handler = () => {
+                          if (executed) return;
+                          executed = true;
+                          mapView.off("floor-change", handler);
+                          setTimeout(executeZoom, 800);
+                        };
+                        mapView.on("floor-change", handler);
+                        setTimeout(() => { if (!executed) { console.warn("Fallback Item Zoom"); handler(); } }, 2000);
+
+                        try {
+                          performFloorSwitch(floorId, "Item Click Navigation");
+                        } catch (e) { handler(); }
                       } else {
-                        executeZoom();
+                        // Same ID, but maybe stuck in Overview visual state?
+                        if (isCurrentlyOverview) {
+                          console.log("⚡ Exiting Overview for Item Click (Same Floor)");
+                          (window as any).isInOverview = false;
+                          isInOverview = false;
+                          isProgrammaticZoom = true;
+                          executeZoom();
+                        } else {
+                          executeZoom();
+                        }
                       }
                     }
-                  }
 
-                  // Re-render to update the Blue Highlight on this item
-                  renderCategories(parentId);
-                };
+                    // Re-render to update the Blue Highlight on this item
+                    renderCategories(parentId);
+                  };
 
-                areaContainer.appendChild(areaItem);
-              });
-              categoryList.appendChild(areaContainer);
+                  areaContainer.appendChild(areaItem);
+                });
+                categoryList.appendChild(areaContainer);
+              }
             }
+          } catch (subRenderError) {
+            if (isCategoryDebugEnabled()) console.error("❌ [CATEGORY_DEBUG] Failed while rendering subcategory row", {
+              subId: sub?.id,
+              subName: getCategoryName(sub),
+              isActive: activeSubCategoryId === sub?.id?.toString?.(),
+              floorId: currentFloorId,
+              isOverviewMode,
+              error: subRenderError
+            });
           }
-        });
+        }
       }
     } else {
       // MAIN CATEGORIES VIEW: Use Grid (2 columns)
@@ -4653,6 +5011,14 @@ async function init() {
       const activeMainCats = categoryTree.filter(cat =>
         cat.subcategories && cat.subcategories.some((s: any) => isSubActiveOnFloor(s.id))
       );
+      if (isCategoryDebugEnabled()) console.debug("Main categories branch:", {
+        activeMainCategoryCount: activeMainCats.length,
+        activeMainCategories: activeMainCats.map((cat: any) => ({
+          id: cat.id,
+          name: getCategoryName(cat),
+          totalSubcategories: cat.subcategories?.length || 0
+        }))
+      });
 
       if (activeMainCats.length === 0) {
         // Use TranslationManager for correct text
@@ -4667,12 +5033,17 @@ async function init() {
                 <div class="category-icon-box">${getIconHtml(cat.icon, "📁")}</div>
                 <div class="category-label-box">${getCategoryName(cat)}</div>
             `;
-        item.onclick = () => {
+        item.onclick = (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          markSidebarInteraction();
           (window as any).highlightCategory(cat.id.toString());
         };
         categoryList.appendChild(item);
       });
     }
+    isRenderingCategories = false;
+    if (isCategoryDebugEnabled()) console.groupEnd();
   };
 
   // Category Toggle Logic
@@ -4693,6 +5064,20 @@ async function init() {
 
   // Default Open
   setCategoryPanelState(true);
+
+  const mainSidebar = document.getElementById("main-sidebar-left");
+  if (mainSidebar && !(mainSidebar as any).__blocksMapClick) {
+    const stopSidebarEvent = (e: Event) => {
+      markSidebarInteraction();
+      e.stopPropagation();
+    };
+
+    ["pointerdown", "mousedown", "touchstart", "click", "dblclick"].forEach((eventName) => {
+      mainSidebar.addEventListener(eventName, stopSidebarEvent);
+    });
+
+    (mainSidebar as any).__blocksMapClick = true;
+  }
 
   if (mainToggleBtn) {
     mainToggleBtn.addEventListener("click", () => setCategoryPanelState(true));
@@ -6898,6 +7283,10 @@ async function init() {
    * - Highlight object bằng màu xanh lá
    */
   mapView.on("click", async (event: any) => {
+    if (Date.now() < suppressMapClickUntil) {
+      if (isCategoryDebugEnabled()) console.debug("🧭 [CATEGORY_DEBUG] Suppressed map click after sidebar interaction");
+      return;
+    }
     // Bỏ qua click vào popup
     const target = event.originalEvent?.target;
     if (target && (target.closest("#info-popup") || target.closest(".close-btn"))) {
@@ -6999,7 +7388,7 @@ async function init() {
         let name: string;
         let url: string;
 
-        if (placingMode === 'copy' && sourceModelData) {
+        if ((placingMode as any) === 'copy' && sourceModelData) {
           const filename = (placingModelConfig.file || placingModelConfig.url || "model").split('/').pop() || 'model';
           uuid = generateUUID(filename);
           scale = sourceModelData.scale;
@@ -8992,6 +9381,70 @@ async function init() {
     });
   }
 
+  const syncMapAreasToDB = async () => {
+    try {
+      // Refresh the list of objects to ensure we have everything (doors, connections, objects, spaces)
+      const currentMapObjects = getAllMapObjects();
+      
+      const areas = currentMapObjects
+        .filter((o: any) => o.id) 
+        .map((o: any) => {
+          // Robust FloorID extraction
+          let floorId = o.floor?.id || o.floorId;
+          
+          // Case 1: Multi-floor objects (Connections/Elevators)
+          if (!floorId && o.floors && Array.isArray(o.floors) && o.floors.length > 0) {
+            const firstFloor = o.floors[0];
+            floorId = typeof firstFloor === 'string' ? firstFloor : (firstFloor.id || firstFloor.mappedinId);
+          }
+          
+          // Case 2: Coordinate-based floor ID
+          if (!floorId && o.coordinate?.floorId) {
+            floorId = o.coordinate.floorId;
+          }
+          
+          // Case 3: Connection coordinates array
+          if (!floorId && o.coordinates && Array.isArray(o.coordinates) && o.coordinates.length > 0) {
+            floorId = o.coordinates[0].floorId || o.coordinates[0].floor?.id;
+          }
+
+          // Case 4: Target floor fallback
+          if (!floorId && o.targetFloorId) {
+            floorId = o.targetFloorId;
+          }
+          
+          // Case 5: Connection node specific
+          if (!floorId && o.type === 'connection-node' && o.floorId) {
+            floorId = o.floorId;
+          }
+          
+          // Better naming for objects/doors/connections
+          let name = o.name || o.customName || "";
+          if (!name) {
+            const type = String(o.type || "").toLowerCase();
+            if (type === 'door') name = `Cửa (${o.id.substring(0,6)})`;
+            else if (type === 'connection' || type === 'elevator') name = `Thang máy (${o.id.substring(0,6)})`;
+            else if (type === 'escalator') name = `Thang cuốn (${o.id.substring(0,6)})`;
+            else if (type === 'stair') name = `Cầu thang (${o.id.substring(0,6)})`;
+            else if (type === 'object') name = `Vật thể (${o.id.substring(0,6)})`;
+            else name = o.id;
+          }
+          
+          return {
+            id: o.id,
+            name: name,
+            floorId: floorId || null
+          };
+        });
+
+      console.info(`🔄 [SYNC] Auto-syncing ${areas.length} items (including doors/objects) to database...`);
+      const result = await ApiService.syncAreas(areas);
+      console.info("✅ [SYNC] Database updated successfully.", result);
+    } catch (e) {
+      console.warn("❌ [SYNC] Error syncing map areas:", e);
+    }
+  };
+
   const updateFullscreenIcons = () => {
     if (document.fullscreenElement) {
       if (iconEnter) iconEnter.style.display = 'none';
@@ -9033,20 +9486,7 @@ async function init() {
   inputScaleZ = document.getElementById("scale-z") as HTMLInputElement;
   controlsPanel = document.getElementById("model-controls-panel");
 
-  // Metadata Interface
-  interface ModelMetadata {
-    url: string;
-    uuid: string;
-    name: string;
-    desc: string;
-    rotation: number[];
-    scale: number[];
-    originalCoordinate: any;
-    floorId?: string; // Add floorId explicitly
-    thumb?: string; // Add thumb to metadata
-    displayWebsite?: number | boolean; // 1/true = visible, 0/false = hidden
-    elevation?: number; // Add vertical height
-  }
+  // ModelMetadata moved to top level
 
 
 
@@ -9259,27 +9699,6 @@ async function init() {
       }
     }
   };
-
-  // SYNC ALL MAP AREAS ON INIT
-  const syncMapAreasToDB = async () => {
-    try {
-      // Use allMapObjects to ensure we sync Spaces, Locations, Points, etc.
-      // This matches the logic in renderAreaAssignments
-      const areas = allMapObjects
-        .filter((o: any) => o.name) // Only sync named areas
-        .map((o: any) => ({
-          id: o.id,
-          name: o.name,
-          floorId: o.floor?.id || o.coordinate?.floorId || null
-        }));
-
-      console.log(`🔄 Syncing ${areas.length} areas to database...`);
-      await ApiService.syncAreas(areas);
-    } catch (e) {
-      console.warn("Error syncing map areas:", e);
-    }
-  };
-
   syncMapAreasToDB();
 
 
@@ -10762,6 +11181,18 @@ async function init() {
   let pendingAssignments: Set<string> = new Set(); // Track selections in modal
 
   (window as any).highlightCategory = async (catId: string) => {
+    markSidebarInteraction();
+    if (isCategoryDebugEnabled()) console.groupCollapsed(`🧭 [CATEGORY_DEBUG] highlightCategory cat=${catId}`);
+    if (isCategoryDebugEnabled()) console.debug("Before category click:", {
+      catId,
+      currentFloorId: mapView.currentFloor?.id,
+      currentFloorName: mapView.currentFloor?.name,
+      isOverviewMode: isMapInOverview(),
+      activeCategoryId,
+      activeSubCategoryId,
+      categoryTreeCount: categoryTree.length
+    });
+
     // Parent category click: ONLY show subcategories, DO NOT highlight map objects
     activeCategoryId = catId;
     activeSubCategoryId = null;
@@ -10775,7 +11206,20 @@ async function init() {
 
     if (categoryTree.length === 0) categoryTree = await ApiService.getCategories();
     const cat = categoryTree.find((c: any) => String(c.id) === String(catId));
-    if (!cat) return;
+    if (!cat) {
+      if (isCategoryDebugEnabled()) console.warn("⚠️ [CATEGORY_DEBUG] Category not found in tree", { catId });
+      if (isCategoryDebugEnabled()) console.groupEnd();
+      return;
+    }
+    if (isCategoryDebugEnabled()) console.debug("Resolved category:", {
+      id: cat.id,
+      name: cat.vn || cat.en || cat.id,
+      subcategoryCount: cat.subcategories?.length || 0,
+      subcategories: (cat.subcategories || []).map((sub: any) => ({
+        id: sub.id,
+        name: sub.vn || sub.en || sub.id
+      }))
+    });
 
     // Auto-select if only 1 subcategory
     if (cat.subcategories && cat.subcategories.length === 1) {
@@ -10783,6 +11227,7 @@ async function init() {
       if (typeof renderActiveCategoryGrid === 'function') renderActiveCategoryGrid();
 
       (window as any).highlightSubCategory(cat.subcategories[0].id);
+      if (isCategoryDebugEnabled()) console.groupEnd();
       return;
     }
 
@@ -10791,10 +11236,22 @@ async function init() {
 
     // Also update main grid to show active state
     if (typeof renderActiveCategoryGrid === 'function') renderActiveCategoryGrid();
+    if (isCategoryDebugEnabled()) console.groupEnd();
   };
 
   // New function to handle subcategory clicks and highlighting
   (window as any).highlightSubCategory = async (subCatId: string) => {
+    markSidebarInteraction();
+    if (isCategoryDebugEnabled()) console.groupCollapsed(`🧭 [CATEGORY_DEBUG] highlightSubCategory sub=${subCatId}`);
+    if (isCategoryDebugEnabled()) console.debug("Before subcategory click:", {
+      subCatId,
+      activeCategoryId,
+      activeSubCategoryId,
+      selectedFloorIds: getCurrentFloorFilterIds(),
+      currentFloorName: mapView.currentFloor?.name,
+      isOverviewMode: isMapInOverview()
+    });
+
     // TOGGLE LOGIC: If same subCategory, turn off highlights
     if (activeSubCategoryId === subCatId.toString()) {
       activeSubCategoryId = null;
@@ -10804,6 +11261,8 @@ async function init() {
         currentSearchResults = [];
       }
       renderCategories(activeCategoryId); // Re-render to update active state
+      console.log("Toggled subcategory off", { subCatId });
+      if (isCategoryDebugEnabled()) console.groupEnd();
       return;
     }
 
@@ -10816,10 +11275,44 @@ async function init() {
       currentSearchResults = [];
     }
 
-    const locs = await ApiService.getSubCategoryLocations(subCatId);
-    const allAssignedMIDs = locs.map((l: any) => l.MappedinID);
-
-    const objectsToHighlight = allMapObjects.filter(obj => allAssignedMIDs.indexOf(obj.id) !== -1);
+    const mapObjectsById = new Map<string, any>();
+    allMapObjects.forEach((obj: any) => {
+      if (obj?.id) mapObjectsById.set(obj.id, obj);
+    });
+    const isOverviewMode = isMapInOverview();
+    const selectedFloorIds = isOverviewMode ? null : getCurrentFloorFilterIds();
+    const { locationRows: locs, areaEntries } = await getSubCategoryAreaEntries(
+      subCatId,
+      selectedFloorIds,
+      isOverviewMode,
+      mapObjectsById
+    );
+    const allMatchedMIDs = locs.map((l: any) => l.MappedinID).filter(Boolean);
+    const highlightedMIDs = areaEntries.map((entry: any) => entry.mappedinId);
+    const objectsToHighlight = areaEntries.map((entry: any) => entry.mapObject).filter(Boolean);
+    const missingMapObjects = allMatchedMIDs.filter((mid: string) => !mapObjectsById.has(mid));
+    if (isCategoryDebugEnabled()) console.debug("Resolved subcategory data:", {
+      subCatId,
+      selectedFloorIds,
+      countBeforeFloorFilter: locs.length,
+      countAfterFloorFilter: areaEntries.length,
+      matchedMIDsCount: allMatchedMIDs.length,
+      objectsToHighlightCount: objectsToHighlight.length,
+      missingMapObjectsCount: missingMapObjects.length,
+      highlightedMIDs,
+      rows: locs.slice(0, 30).map((loc: any) => ({
+        mappedinId: loc.MappedinID,
+        subCategoryId: loc.SubCategoryID,
+        floorId: loc.FloorID || null,
+        vn: loc.VN || loc.Name || null
+      }))
+    });
+    if (isCategoryDebugEnabled() && missingMapObjects.length > 0) {
+      console.warn("⚠️ [CATEGORY_DEBUG] Assigned rows missing from allMapObjects", {
+        subCatId,
+        missingMapObjects: missingMapObjects.slice(0, 30)
+      });
+    }
 
     // OVERWRITE NAMES WITH DB DATA (Fix: Update TranslationManager directly to avoid read-only error)
     objectsToHighlight.forEach(obj => {
@@ -10840,7 +11333,10 @@ async function init() {
         if (!TranslationManager.data.locations) TranslationManager.data.locations = {};
 
         // Store in the structure expected by TranslationManager.getName (Case B2)
-        TranslationManager.data.locations[obj.id] = { names: names };
+        TranslationManager.data.locations[obj.id] = {
+          ...(TranslationManager.data.locations[obj.id] || {}),
+          names
+        };
 
         // Remove customName override to allow TranslationManager to handle languages
         delete (obj as any).customName;
@@ -10886,16 +11382,24 @@ async function init() {
       // 2. If on Floor: Auto-zoom to show all items (16.5x).
       if (!isMapInOverview()) {
         console.log(`⚡ Auto-zoom to subcategory group (16.5x) for ${objectsToHighlight.length} items`);
+        isProgrammaticZoom = true;
         mapView.Camera.focusOn(objectsToHighlight, {
           duration: 1000,
           minZoomLevel: 16.5,
           maxZoomLevel: 16.5
         } as any);
+        setTimeout(() => { isProgrammaticZoom = false; }, 1500);
       } else {
         console.log(`📌 Highlighted ${objectsToHighlight.length} objects for subcategory ${subCatId} (No Zoom in Overview)`);
       }
+    } else if (isCategoryDebugEnabled()) {
+      console.warn("⚠️ [CATEGORY_DEBUG] No map objects found for clicked subcategory", {
+        subCatId,
+        matchedMIDs: allMatchedMIDs.slice(0, 30)
+      });
     }
     renderCategories(activeCategoryId); // Re-render to update active state
+    if (isCategoryDebugEnabled()) console.groupEnd();
   };
 
   // 2. Classification Modal Logic
@@ -11528,7 +12032,7 @@ async function init() {
     const generateCalendarDays = (year: number, month: number) => {
       const firstDay = new Date(year, month, 1).getDay();
       const lastDate = new Date(year, month + 1, 0).getDate();
-      
+
       const now = new Date();
       const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
       const selectedStr = state.date;
@@ -11546,7 +12050,7 @@ async function init() {
       // Actual days
       for (let d = 1; d <= lastDate; d++) {
         const fullDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-        
+
         const currentDate = new Date(year, month, d);
         const isValidDate = currentDate >= minDate && currentDate <= todayMidnight;
 

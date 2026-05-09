@@ -939,17 +939,19 @@ app.post('/api/areas/sync', async (req, res) => {
             await db.request()
                 .input('MID', sql.NVarChar(100), area.id)
                 .input('Name', sql.NVarChar(200), finalName || null)
-                .input('FID', sql.NVarChar(100), area.floorId || null)
+                .input('FloorID', sql.NVarChar(100), area.floorId || null)
                 .query(`
                     IF NOT EXISTS (SELECT 1 FROM AreaList WHERE MappedinID = @MID)
-                        INSERT INTO AreaList (MappedinID, Name)
-                        VALUES (@MID, ISNULL(@Name, @MID))
+                        INSERT INTO AreaList (MappedinID, Name, VN, EN, FloorID)
+                        VALUES (@MID, ISNULL(@Name, @MID), ISNULL(@Name, @MID), ISNULL(@Name, @MID), @FloorID)
                     ELSE
-                        UPDATE AreaList SET Name = ISNULL(@Name, Name)
+                        UPDATE AreaList
+                        SET Name = ISNULL(@Name, Name),
+                            FloorID = ISNULL(@FloorID, FloorID)
                         WHERE MappedinID = @MID
                 `);
         }
-        res.json({ success: true });
+        res.json({ success: true, count: areas.length });
     } catch (err: any) {
         console.error('SQL Error in /areas/sync:', err.message || err);
         res.status(500).json({ error: err.message });
@@ -964,8 +966,19 @@ app.get('/api/categories/subcategory/:id/locations', async (req, res) => {
         const result = await db.request()
             .input('SID', sql.Int, id)
             .query(`
-                SELECT AL.* FROM AreaList AL
+                SELECT
+                    AL.*,
+                    AC.SubCategoryID,
+                    SC.CategoryID,
+                    SC.IconPath AS SubCategoryIconPath,
+                    SC.SubCategoryName AS SubCategoryVN,
+                    SC.EN AS SubCategoryEN,
+                    SC.ZH AS SubCategoryZH,
+                    SC.JA AS SubCategoryJA,
+                    SC.KO AS SubCategoryKO
+                FROM AreaList AL
                 JOIN AreaCategory AC ON AL.AreaListID = AC.AreaListID
+                LEFT JOIN SubCategories SC ON AC.SubCategoryID = SC.SubCategoryID
                 WHERE AC.SubCategoryID = @SID
             `);
         res.json(result.recordset);
@@ -1028,7 +1041,16 @@ app.post('/api/categories/subcategory/:id/assign', async (req, res) => {
 app.get('/api/areas/assigned', async (req, res) => {
     try {
         const db = await getDbConnection();
-        const result = await db.request().query("SELECT MappedinID, SubCategoryID FROM AreaList AL JOIN AreaCategory AC ON AL.AreaListID = AC.AreaListID");
+        const result = await db.request().query(`
+            SELECT
+                AL.MappedinID,
+                AL.FloorID,
+                AC.SubCategoryID,
+                SC.CategoryID
+            FROM AreaList AL
+            JOIN AreaCategory AC ON AL.AreaListID = AC.AreaListID
+            LEFT JOIN SubCategories SC ON AC.SubCategoryID = SC.SubCategoryID
+        `);
         res.json(result.recordset);
     } catch (err: any) {
         res.status(500).json({ error: err.message });
@@ -1234,13 +1256,28 @@ app.get('/api/init-data', async (req, res) => {
         // 6. Locations (Result 5)
         const locations: any = {};
         result.recordsets[5].forEach((row: any) => {
-            const mid = row.MappedinID;
+            const mid = typeof row.MappedinID === 'string' ? row.MappedinID.trim() : row.MappedinID;
             if (!mid) return;
 
             locations[mid] = {
-                id: row.AreaListID,
-                categoryId: row.CategoryID,
-                subCategoryIcon: row.IconPath,
+                id: Number(row.AreaListID),
+                AreaListID: Number(row.AreaListID),
+                mappedinId: mid,
+                MappedinID: mid,
+                categoryId: row.CategoryID == null ? null : Number(row.CategoryID),
+                CategoryID: row.CategoryID == null ? null : Number(row.CategoryID),
+                subCategoryId: row.SubCategoryID == null ? null : Number(row.SubCategoryID),
+                SubCategoryID: row.SubCategoryID == null ? null : Number(row.SubCategoryID),
+                subCategoryIcon: row.SubCategoryIconPath,
+                subCategoryIconPath: row.SubCategoryIconPath,
+                subCategoryNames: {
+                    vn: row.SubCategoryVN,
+                    vi: row.SubCategoryVN,
+                    en: row.SubCategoryEN,
+                    zh: row.SubCategoryZH,
+                    ja: row.SubCategoryJA,
+                    ko: row.SubCategoryKO
+                },
                 names: {
                     vn: row.VN,
                     vi: row.VN,
