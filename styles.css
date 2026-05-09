@@ -1053,14 +1053,15 @@ body.placing-mode #mappedin-map {
   background: #1a3d8a;
 }
 
-.flight-card-action.success {
-  border-color: #34d399;
-  color: #059669;
-  background: #ecfdf5;
+.flight-card-action.accent {
+  background: #ffb703;
+  border-color: transparent;
+  color: #023047;
 }
 
-.flight-card-action.success:hover:not(:disabled) {
-  background: #d1fae5;
+.flight-card-action.accent:hover:not(:disabled) {
+  background: #ffaa00;
+  box-shadow: 0 4px 12px rgba(255, 170, 0, 0.3);
 }
 
 .flight-card-action:hover:not(:disabled) {

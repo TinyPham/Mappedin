@@ -136,9 +136,9 @@
     }
 
     /* 3. Ẩn các thành phần không cần thiết theo yêu cầu */
-    #camera-controls {
+    /* #camera-controls {
         display: none !important;
-    }
+    } */
 
     #sidebar-admin-actions {
         display: none !important;

@@ -8969,6 +8969,41 @@ async function init() {
     });
   }
 
+  // Nút Fullscreen
+  const btnFullscreen = document.getElementById("btn-fullscreen");
+  const iconEnter = document.getElementById("icon-fullscreen-enter");
+  const iconExit = document.getElementById("icon-fullscreen-exit");
+
+  if (btnFullscreen) {
+    btnFullscreen.addEventListener("click", () => {
+      try {
+        if (!document.fullscreenElement) {
+          document.documentElement.requestFullscreen().catch(err => {
+            console.error(`Error attempting to enable full-screen mode: ${err.message}`);
+          });
+        } else {
+          if (document.exitFullscreen) {
+            document.exitFullscreen();
+          }
+        }
+      } catch (e) {
+        console.warn("Fullscreen toggle error:", e);
+      }
+    });
+  }
+
+  const updateFullscreenIcons = () => {
+    if (document.fullscreenElement) {
+      if (iconEnter) iconEnter.style.display = 'none';
+      if (iconExit) iconExit.style.display = 'block';
+    } else {
+      if (iconEnter) iconEnter.style.display = 'block';
+      if (iconExit) iconExit.style.display = 'none';
+    }
+  };
+
+  document.addEventListener('fullscreenchange', updateFullscreenIcons);
+
 
 
 
@@ -11479,7 +11514,10 @@ async function init() {
 
     const state = {
       mode: 'D' as 'A' | 'D',
-      date: dateInput.value || new Date().toISOString().split('T')[0],
+      date: dateInput.value || (() => {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      })(),
       search: '',
       status: 'ALL',
       flights: [] as FlightRecord[]
@@ -11490,8 +11528,15 @@ async function init() {
     const generateCalendarDays = (year: number, month: number) => {
       const firstDay = new Date(year, month, 1).getDay();
       const lastDate = new Date(year, month + 1, 0).getDate();
-      const todayStr = new Date().toISOString().split('T')[0];
+      
+      const now = new Date();
+      const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
       const selectedStr = state.date;
+
+      // Calculate valid range: Today and previous 7 days
+      const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const minDate = new Date(todayMidnight);
+      minDate.setDate(todayMidnight.getDate() - 7);
 
       let html = '';
       // Empty slots before first day of month
@@ -11501,10 +11546,21 @@ async function init() {
       // Actual days
       for (let d = 1; d <= lastDate; d++) {
         const fullDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        
+        const currentDate = new Date(year, month, d);
+        const isValidDate = currentDate >= minDate && currentDate <= todayMidnight;
+
         const classes = ['calendar-day'];
+        if (!isValidDate) classes.push('disabled');
         if (fullDate === todayStr) classes.push('today');
-        if (fullDate === selectedStr) classes.push('active');
-        html += `<div class="${classes.join(' ')}" data-date="${fullDate}">${d}</div>`;
+        if (fullDate === selectedStr && isValidDate) classes.push('active');
+
+        if (isValidDate) {
+          html += `<div class="${classes.join(' ')}" data-date="${fullDate}">${d}</div>`;
+        } else {
+          // Disable clicking by omitting data-date and apply inline styling for visual lock
+          html += `<div class="${classes.join(' ')}" style="opacity: 0.3; cursor: not-allowed;">${d}</div>`;
+        }
       }
       return html;
     };
@@ -11556,7 +11612,7 @@ async function init() {
       calendarDropdown.querySelector('.calendar-today-btn')?.addEventListener('click', (e) => {
         e.stopPropagation();
         const today = new Date();
-        state.date = today.toISOString().split('T')[0];
+        state.date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
         updateDateText();
         calendarDropdown?.classList.add('hidden');
         void loadFlights();
@@ -11801,9 +11857,9 @@ async function init() {
 
         const departureActions = `
           <div class="flight-card-actions">
-            <button class="flight-card-action" data-action="checkin" data-flight-id="${flight.FlightId}" ${meta.canNavigateCheckin ? '' : 'disabled'}>${TranslationManager.t('go_to_checkin', 'Đến check-in')}</button>
+            <button class="flight-card-action primary" data-action="checkin" data-flight-id="${flight.FlightId}" ${meta.canNavigateCheckin ? '' : 'disabled'}>${TranslationManager.t('go_to_checkin', 'Đến check-in')}</button>
             <button class="flight-card-action primary" data-action="gate" data-flight-id="${flight.FlightId}" ${meta.canNavigateGate ? '' : 'disabled'}>${TranslationManager.t('go_to_gate', 'Đến gate')}</button>
-            <button class="flight-card-action success" data-action="route" data-flight-id="${flight.FlightId}" ${(meta.canNavigateGate && meta.canNavigateCheckin) ? '' : 'disabled'}>${TranslationManager.t('find_route', 'Tìm đường')}</button>
+            <button class="flight-card-action accent" data-action="route" data-flight-id="${flight.FlightId}" ${(meta.canNavigateGate && meta.canNavigateCheckin) ? '' : 'disabled'}>${TranslationManager.t('find_route', 'Tìm đường')}</button>
           </div>
         `;
 
