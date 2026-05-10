@@ -1315,11 +1315,11 @@ async function init() {
           ctx.fillRect(0, 0, 1, 1);
           try {
             (mapView as any).addImage("pedestrian_polygon", canvas);
-          } catch (err) {}
+          } catch (err) { }
         }
       }
     });
-  } catch (err) {}
+  } catch (err) { }
 
   // Inject Preview Blue Dot CSS Once
   const previewStyle = document.createElement('style');
@@ -4339,7 +4339,7 @@ async function init() {
 
   const getSubCategoryLocationRows = async (subCatId: string | number) => {
     const selectedSubCategoryId = Number(subCatId);
-    
+
     // 1. Get initial/cached rows for this subcategory
     const initialRows = getInitialLocationRows()
       .filter((location: any) => {
@@ -4366,13 +4366,13 @@ async function init() {
 
     // 3. Merge rows, prioritizing initialRows (local translations) for the same MappedinID
     const mergedMap = new Map<string, any>();
-    
+
     // Add endpoint rows first
     normalizedEndpointRows.forEach(row => {
       const mid = String(row.MappedinID).trim();
       mergedMap.set(mid, row);
     });
-    
+
     // Overwrite with initial rows (translations)
     initialRows.forEach(row => {
       const mid = String(row.MappedinID).trim();
@@ -4469,7 +4469,7 @@ async function init() {
         SubCategoryID: location.SubCategoryID,
         CategoryID: location.CategoryID
       }));
-    
+
     let apiAssigned: any[] = [];
     try {
       apiAssigned = await ApiService.getAssignedAreas();
@@ -4485,7 +4485,7 @@ async function init() {
     assignedFromInitialData.forEach((a: any) => {
       mergedAssignedMap.set(a.MappedinID, a);
     });
-    
+
     const assigned = Array.from(mergedAssignedMap.values());
 
     if (isCategoryDebugEnabled()) console.groupCollapsed(`🧭 [CATEGORY_DEBUG] renderCategories parent=${parentId ?? 'root'} floor=${currentFloorId} overview=${isOverviewMode}`);
@@ -4708,7 +4708,7 @@ async function init() {
                             visibility: visible !important;
                             min-height: 100px;
                         `;
-              
+
               // Show loading indicator immediately
               areaContainer.innerHTML = `<div style="padding: 15px 28px; font-size: 13px; color: #999; display: flex; align-items: center; gap: 8px;">
                 <div class="loading-spinner-small" style="width: 14px; height: 14px; border: 2px solid #f3f3f3; border-top: 2px solid #214ca6; border-radius: 50%; animation: spin 1s linear infinite;"></div>
@@ -4726,7 +4726,7 @@ async function init() {
                   isOverviewMode,
                   mapObjectsById
                 );
-                
+
                 // Clear loading indicator
                 areaContainer.innerHTML = "";
 
@@ -9385,24 +9385,24 @@ async function init() {
     try {
       // Refresh the list of objects to ensure we have everything (doors, connections, objects, spaces)
       const currentMapObjects = getAllMapObjects();
-      
+
       const areas = currentMapObjects
-        .filter((o: any) => o.id) 
+        .filter((o: any) => o.id)
         .map((o: any) => {
           // Robust FloorID extraction
           let floorId = o.floor?.id || o.floorId;
-          
+
           // Case 1: Multi-floor objects (Connections/Elevators)
           if (!floorId && o.floors && Array.isArray(o.floors) && o.floors.length > 0) {
             const firstFloor = o.floors[0];
             floorId = typeof firstFloor === 'string' ? firstFloor : (firstFloor.id || firstFloor.mappedinId);
           }
-          
+
           // Case 2: Coordinate-based floor ID
           if (!floorId && o.coordinate?.floorId) {
             floorId = o.coordinate.floorId;
           }
-          
+
           // Case 3: Connection coordinates array
           if (!floorId && o.coordinates && Array.isArray(o.coordinates) && o.coordinates.length > 0) {
             floorId = o.coordinates[0].floorId || o.coordinates[0].floor?.id;
@@ -9412,24 +9412,24 @@ async function init() {
           if (!floorId && o.targetFloorId) {
             floorId = o.targetFloorId;
           }
-          
+
           // Case 5: Connection node specific
           if (!floorId && o.type === 'connection-node' && o.floorId) {
             floorId = o.floorId;
           }
-          
+
           // Better naming for objects/doors/connections
           let name = o.name || o.customName || "";
           if (!name) {
             const type = String(o.type || "").toLowerCase();
-            if (type === 'door') name = `Cửa (${o.id.substring(0,6)})`;
-            else if (type === 'connection' || type === 'elevator') name = `Thang máy (${o.id.substring(0,6)})`;
-            else if (type === 'escalator') name = `Thang cuốn (${o.id.substring(0,6)})`;
-            else if (type === 'stair') name = `Cầu thang (${o.id.substring(0,6)})`;
-            else if (type === 'object') name = `Vật thể (${o.id.substring(0,6)})`;
+            if (type === 'door') name = `Cửa (${o.id.substring(0, 6)})`;
+            else if (type === 'connection' || type === 'elevator') name = `Thang máy (${o.id.substring(0, 6)})`;
+            else if (type === 'escalator') name = `Thang cuốn (${o.id.substring(0, 6)})`;
+            else if (type === 'stair') name = `Cầu thang (${o.id.substring(0, 6)})`;
+            else if (type === 'object') name = `Vật thể (${o.id.substring(0, 6)})`;
             else name = o.id;
           }
-          
+
           return {
             id: o.id,
             name: name,
@@ -9699,7 +9699,13 @@ async function init() {
       }
     }
   };
-  syncMapAreasToDB();
+  // --- ĐỒNG BỘ DỮ LIỆU FLOOR ID VÀO DATABASE ---
+  // Mẹo: Chỉ chạy đồng bộ khi bạn thêm "?sync=true" vào URL (Ví dụ: http://localhost:3000?sync=true)
+  // Điều này giúp máy load cực nhanh khi sử dụng bình thường mà vẫn đảm bảo đồng bộ khi cần.
+  if (window.location.search.includes("sync=true")) {
+    console.log("🔄 Đang chạy chế độ đồng bộ dữ liệu (Sync Mode)...");
+    syncMapAreasToDB();
+  }
 
 
   // Helper: Save SINGLE Model to API
@@ -12144,23 +12150,23 @@ async function init() {
 
     const getDepartureStatusOptions = (): Array<[string, string]> => [
       ['ALL', TranslationManager.t('flight_status_all', 'Tất cả trạng thái')],
-      ['CHECKIN_OPEN', TranslationManager.t('CHECKIN_OPEN', 'Mời hành khách làm thủ tục')],
-      ['BOARDING', TranslationManager.t('BOARDING', 'Hành khách lên tàu bay')],
+      ['CHECKIN_OPEN', TranslationManager.t('CHECKIN_OPEN', 'Đang làm thủ tục')],
+      ['BOARDING', TranslationManager.t('BOARDING', 'Đang lên máy bay')],
       ['DELAYED', TranslationManager.t('DELAYED', 'Chậm / trễ')],
       ['CLOSED', TranslationManager.t('CLOSED', 'Đóng quầy')],
       ['DEPARTED', TranslationManager.t('DEPARTED', 'Đã cất cánh')],
-      ['CANCELLED', TranslationManager.t('CANCELLED', 'Hủy chuyến')],
-      ['OTHER', TranslationManager.t('OTHER', 'Khác')]
+      ['CANCELLED', TranslationManager.t('CANCELLED', 'Hủy chuyến')]
     ];
 
     const getArrivalStatusOptions = (): Array<[string, string]> => [
       ['ALL', TranslationManager.t('flight_status_all', 'Tất cả trạng thái')],
-      ['CANCELLED', TranslationManager.t('CANCELLED', 'Hủy chuyến')],
-      ['DELAYED', TranslationManager.t('DELAYED', 'Chậm / trễ')],
-      ['ARRIVED', TranslationManager.t('ARRIVED', 'Đã hạ cánh / đã đến')],
-      ['BAGGAGE_LOADING', TranslationManager.t('BAGGAGE_LOADING', 'Hành lý đang vào')],
-      ['BAGGAGE_DONE', TranslationManager.t('BAGGAGE_DONE', 'Đã trả xong hành lý')],
-      ['OTHER', TranslationManager.t('OTHER', 'Khác')]
+      ['SCHEDULED', TranslationManager.t('SCHEDULED', 'Đúng giờ')],
+      ['EN_ROUTE', TranslationManager.t('EN_ROUTE', 'Đang bay')],
+      ['LANDED', TranslationManager.t('LANDED', 'Đã hạ cánh')],
+      ['BAGGAGE_LOADING', TranslationManager.t('BAGGAGE_LOADING', 'Đang trả hành lý')],
+      ['BAGGAGE_DONE', TranslationManager.t('BAGGAGE_DONE', 'Trả xong hành lý')],
+      ['DELAYED', TranslationManager.t('DELAYED', 'Chậm chuyến')],
+      ['CANCELLED', TranslationManager.t('CANCELLED', 'Hủy chuyến')]
     ];
 
     const formatTimeValue = (value?: string | null) => {
@@ -12209,20 +12215,25 @@ async function init() {
     const canonicalizeStatusStrict = (flight: FlightRecord) => {
       const raw = String(flight.Status || '').trim().toUpperCase();
       if (flight.ArrDep === 'D') {
-        if (raw === 'CHECKIN_OPEN') return { key: raw, label: TranslationManager.t(raw, 'Mời hành khách làm thủ tục'), tone: 'positive', canNavigateGate: Boolean(flight.Gate_MappedinID), canNavigateCheckin: Boolean(flight.HasCheckInMapping), navigationBlockedByStatus: false };
-        if (raw === 'BOARDING') return { key: raw, label: TranslationManager.t(raw, 'Hành khách lên tàu bay'), tone: 'warning', canNavigateGate: false, canNavigateCheckin: false, navigationBlockedByStatus: true };
+        if (raw === 'CHECKIN_OPEN') return { key: raw, label: TranslationManager.t(raw, 'Đang làm thủ tục'), tone: 'positive', canNavigateGate: Boolean(flight.Gate_MappedinID), canNavigateCheckin: Boolean(flight.HasCheckInMapping), navigationBlockedByStatus: false };
+        if (raw === 'BOARDING') return { key: raw, label: TranslationManager.t(raw, 'Đang lên máy bay'), tone: 'warning', canNavigateGate: false, canNavigateCheckin: false, navigationBlockedByStatus: true };
         if (raw === 'DELAYED') return { key: raw, label: TranslationManager.t(raw, 'Chậm / trễ'), tone: 'warning', canNavigateGate: Boolean(flight.Gate_MappedinID), canNavigateCheckin: Boolean(flight.HasCheckInMapping), navigationBlockedByStatus: false };
         if (raw === 'CLOSED') return { key: raw, label: TranslationManager.t(raw, 'Đóng quầy'), tone: 'warning', canNavigateGate: false, canNavigateCheckin: false, navigationBlockedByStatus: true };
         if (raw === 'DEPARTED') return { key: raw, label: TranslationManager.t(raw, 'Đã cất cánh'), tone: 'danger', canNavigateGate: false, canNavigateCheckin: false, navigationBlockedByStatus: true };
         if (raw === 'CANCELLED') return { key: raw, label: TranslationManager.t(raw, 'Hủy chuyến'), tone: 'danger', canNavigateGate: false, canNavigateCheckin: false, navigationBlockedByStatus: true };
-        return { key: 'OTHER', label: TranslationManager.t('OTHER', raw || 'Khác'), tone: 'warning', canNavigateGate: Boolean(flight.Gate_MappedinID), canNavigateCheckin: Boolean(flight.HasCheckInMapping), navigationBlockedByStatus: false };
+        // Fallback to key if no match
+        return { key: raw, label: TranslationManager.t(raw, raw), tone: 'warning', canNavigateGate: Boolean(flight.Gate_MappedinID), canNavigateCheckin: Boolean(flight.HasCheckInMapping), navigationBlockedByStatus: false };
       }
       if (raw === 'CANCELLED') return { key: raw, label: TranslationManager.t(raw, 'Hủy chuyến'), tone: 'danger', canNavigateBelt: false, navigationBlockedByStatus: true };
-      if (raw === 'DELAYED') return { key: raw, label: TranslationManager.t(raw, 'Chậm / trễ'), tone: 'warning', canNavigateBelt: false, navigationBlockedByStatus: true };
-      if (raw === 'ARRIVED') return { key: raw, label: TranslationManager.t(raw, 'Đã hạ cánh / đã đến'), tone: 'positive', canNavigateBelt: Boolean(flight.Belt_MappedinID), navigationBlockedByStatus: false };
-      if (raw === 'BAGGAGE_LOADING') return { key: raw, label: TranslationManager.t(raw, 'Hành lý đang vào'), tone: 'positive', canNavigateBelt: Boolean(flight.Belt_MappedinID), navigationBlockedByStatus: false };
-      if (raw === 'BAGGAGE_DONE') return { key: raw, label: TranslationManager.t(raw, 'Đã trả xong hành lý'), tone: 'danger', canNavigateBelt: false, navigationBlockedByStatus: true };
-      return { key: 'OTHER', label: TranslationManager.t('OTHER', raw || 'Khác'), tone: 'warning', canNavigateBelt: Boolean(flight.Belt_MappedinID), navigationBlockedByStatus: false };
+      if (raw === 'DELAYED') return { key: raw, label: TranslationManager.t(raw, 'Chậm chuyến'), tone: 'warning', canNavigateBelt: false, navigationBlockedByStatus: true };
+      if (raw === 'SCHEDULED') return { key: raw, label: TranslationManager.t(raw, 'Đúng giờ'), tone: 'positive', canNavigateBelt: false, navigationBlockedByStatus: true };
+      if (raw === 'EN_ROUTE') return { key: raw, label: TranslationManager.t(raw, 'Đang bay'), tone: 'positive', canNavigateBelt: false, navigationBlockedByStatus: true };
+      if (raw === 'LANDED') return { key: raw, label: TranslationManager.t(raw, 'Đã hạ cánh'), tone: 'positive', canNavigateBelt: Boolean(flight.Belt_MappedinID), navigationBlockedByStatus: false };
+      if (raw === 'BAGGAGE_LOADING') return { key: raw, label: TranslationManager.t(raw, 'Đang trả hành lý'), tone: 'positive', canNavigateBelt: Boolean(flight.Belt_MappedinID), navigationBlockedByStatus: false };
+      if (raw === 'BAGGAGE_DONE') return { key: raw, label: TranslationManager.t(raw, 'Trả xong hành lý'), tone: 'danger', canNavigateBelt: false, navigationBlockedByStatus: true };
+      
+      // Fallback to key if no match
+      return { key: raw, label: TranslationManager.t(raw, raw), tone: 'warning', canNavigateBelt: Boolean(flight.Belt_MappedinID), navigationBlockedByStatus: false };
     };
 
     const canonicalizeStatusUi = (flight: FlightRecord) => {
