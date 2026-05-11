@@ -26,15 +26,38 @@ interface ModelMetadata {
   displayWebsite?: number | boolean;
   elevation?: number;
 }
+function getApiBaseUrl(): string {
+  const hostname = window.location.hostname;
+  const isLocal = hostname === "localhost" || hostname === "127.0.0.1" || hostname.startsWith("192.168.") || hostname.startsWith("10.") || hostname.startsWith("172.");
+  // If local dev environment, point to backend on port 3002, otherwise use current origin
+  return isLocal ? `http://${hostname}:3002/api` : `${window.location.origin}/api`;
+}
+
+// Helper: Check if running in local environment
+function checkIsLocal(): boolean {
+  const hostname = window.location.hostname;
+  return hostname === "localhost" || hostname === "127.0.0.1" || hostname.startsWith("192.168.") || hostname.startsWith("10.") || hostname.startsWith("172.");
+}
 
 const isViewOnly = (function () {
   try {
     const urlParams = new URLSearchParams(window.location.search);
-    const hasParam = urlParams.get('viewOnly') === 'true' || urlParams.get('viewonly') === 'true';
+    const hasAdminParam = urlParams.get('admin') === 'true';
+    const hasViewOnlyParam = urlParams.get('viewOnly') === 'true' || urlParams.get('viewonly') === 'true';
+    
+    // If explicitly requested admin, show admin tools
+    if (hasAdminParam) return false;
+    
+    // If explicitly requested view-only
+    if (hasViewOnlyParam) return true;
+
+    // Check environment (Iframe or specific port)
     const isIframe = window.self !== window.top;
     const isWebsiteHost = window.location.port === '7141' || document.referrer.includes(':7141');
-    return hasParam || isWebsiteHost || isIframe; // Aggressive detect
-  } catch (e) { return false; }
+    
+    // DEFAULT: Hide admin buttons on main UI unless ?admin=true is present
+    return true; 
+  } catch (e) { return true; }
 })();
 
 // Detect Mobile Device
@@ -44,7 +67,7 @@ const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/
 if (isViewOnly) {
   const style = document.createElement('style');
   style.textContent = `
-    #btn-add-model, #btn-open-classification, #btn-open-admin-info, .sidebar-actions, #controls-panel {
+    #btn-add-model, #btn-open-classification, #btn-open-admin-info, #btn-open-area-color, .sidebar-actions, #controls-panel {
       display: none !important;
     }
   `;
@@ -122,9 +145,8 @@ class TranslationManager {
 
   static async init() {
     try {
-      // Dynamic API URL: local → localhost:3002, production → same origin
-      const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
-      const apiBase = isLocal ? "http://localhost:3002/api" : `${window.location.origin}/api`;
+      // Dynamic API URL resolution
+      const apiBase = getApiBaseUrl();
       const res = await fetch(`${apiBase}/init-data`);
       const json = await res.json();
       const normalizedLocations: Record<string, any> = {};
@@ -1021,10 +1043,7 @@ class TranslationManager {
 const AREA_COLOR_LOCAL_STORAGE_KEY = 'customAreaColors';
 const AREA_COLOR_MIGRATION_FLAG_KEY = 'customAreaColorsMigratedToServer';
 
-function getApiBaseUrl(): string {
-  const isLocalHost = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
-  return isLocalHost ? "http://localhost:3002/api" : `${window.location.origin}/api`;
-}
+// getApiBaseUrl moved to top
 
 function safeParseAreaColorMap(rawValue: any): Record<string, string> {
   if (!rawValue || rawValue === 'undefined') return {};
@@ -1218,8 +1237,8 @@ async function init() {
 
 
   // Tự động chuyển đổi URL API giữa Local và Production (Render)
-  const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
-  const API_BASE_URL = isLocal ? "http://127.0.0.1:3002/api" : `${window.location.origin}/api`;
+  const isLocal = checkIsLocal();
+  const API_BASE_URL = getApiBaseUrl();
   const SERVER_URL = API_BASE_URL.replace("/api", "");
 
   // Hàm hỗ trợ giải quyết URL động (Sửa lỗi CORS localhost trên Render)
@@ -1227,8 +1246,8 @@ async function init() {
     if (!url) return "";
     if (url.startsWith("data:")) return url; // Base64
 
-    // Nếu đang chạy trên web (Render) mà link lại là localhost -> đổi sang SERVER_URL
-    if (!isLocal && (url.includes("localhost:3002") || url.includes("127.0.0.1:3002"))) {
+    // Replace localhost/127.0.0.1 with the actual server IP if accessing via LAN
+    if ((url.includes("localhost:3002") || url.includes("127.0.0.1:3002")) && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
       const parts = url.split("/Model3D/");
       if (parts.length > 1) {
         return `${SERVER_URL}/Model3D/${parts[1]}`;
@@ -4317,7 +4336,7 @@ async function init() {
 
   const isCategoryDebugEnabled = () => {
     try {
-      return window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+      return checkIsLocal();
     } catch (e) {
       return false;
     }
@@ -6824,7 +6843,7 @@ async function init() {
     const btnEditColor = document.getElementById("btn-edit-current-area-color");
     if (btnEditColor) {
       if (space && space.id && displayName && !displayName.toLowerCase().includes("khu vực không tên")) {
-        btnEditColor.style.display = "block";
+        btnEditColor.style.display = isViewOnly ? "none" : "block";
         btnEditColor.onclick = () => {
           if (typeof (window as any).openAreaColorModalForSingleSpace === 'function') {
             (window as any).openAreaColorModalForSingleSpace(space);
@@ -10119,10 +10138,7 @@ async function init() {
 
     // 2. LỌC DANH SÁCH TIỀM NĂNG
     const candidateModels = _allModelMetadata.filter((m: any) => {
-      if (isViewOnly) {
-        const shouldShow = m.displayWebsite == 1 || m.displayWebsite === true;
-        if (!shouldShow) return false;
-      }
+      // Allow all models to show in both admin and viewer modes as per request
       const isCurrent = m.floorId === currentFloor.id;
       const isVerticalOnLowerFloor = lowerFloorIds.has(m.floorId || "") && isThang(m);
       const isPersistentOnLowerFloor = lowerFloorIds.has(m.floorId || "") && isPersistentLowerFloorModel(m);
@@ -12143,10 +12159,7 @@ async function init() {
       });
     };
 
-    const flightApiBaseUrl = (() => {
-      const isLocalHost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-      return isLocalHost ? 'http://127.0.0.1:3002/api' : `${window.location.origin}/api`;
-    })();
+    const flightApiBaseUrl = getApiBaseUrl();
 
     const getDepartureStatusOptions = (): Array<[string, string]> => [
       ['ALL', TranslationManager.t('flight_status_all', 'Tất cả trạng thái')],
@@ -12677,7 +12690,7 @@ function initAdminUI(allMapObjects: any[]) {
           };
         })
       };
-      await fetch('http://localhost:3002/api/sync-locations', {
+      await fetch(`${getApiBaseUrl()}/sync-locations`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -12903,7 +12916,8 @@ function initAdminUI(allMapObjects: any[]) {
 
         (document.getElementById(elId) as HTMLTextAreaElement).value = "Translating...";
         try {
-          const res = await fetch('http://localhost:3002/api/translate', {
+          const apiBase = getApiBaseUrl();
+          const res = await fetch(`${apiBase}/translate`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ text, to })
@@ -13027,9 +13041,8 @@ function initAdminUI(allMapObjects: any[]) {
     reader.onload = async (e) => {
       const base64 = e.target?.result as string;
       try {
-        const apiOrigin = window.location.origin.includes(':8080')
-          ? window.location.origin.replace(':8080', ':3002')
-          : `${window.location.protocol}//${window.location.hostname}:3002`;
+        const apiBase = getApiBaseUrl();
+        const apiOrigin = apiBase.endsWith('/api') ? apiBase.slice(0, -4) : apiBase;
 
         const res = await fetch(`${apiOrigin}/api/upload-image`, {
           method: 'POST',
@@ -13040,8 +13053,10 @@ function initAdminUI(allMapObjects: any[]) {
         if (data.url) {
           // Robust URL handling: ensure the URL uses the same host user is currently on
           let finalUrl = data.url;
-          if (finalUrl.includes('localhost:3002') && !window.location.hostname.includes('localhost')) {
-            finalUrl = finalUrl.replace('localhost:3002', window.location.host.replace(':8080', ':3002'));
+          if ((finalUrl.includes('localhost:3002') || finalUrl.includes('127.0.0.1:3002')) && !window.location.hostname.includes('localhost')) {
+            const apiBase = getApiBaseUrl();
+            const apiOrigin = apiBase.endsWith('/api') ? apiBase.slice(0, -4) : apiBase;
+            finalUrl = finalUrl.replace(/http:\/\/(localhost|127\.0\.0\.1):3002/g, apiOrigin);
           }
 
           imgInput.value = finalUrl;
@@ -13109,9 +13124,8 @@ function initAdminUI(allMapObjects: any[]) {
       };
 
       try {
-        const apiOrigin = window.location.origin.includes(':8080')
-          ? window.location.origin.replace(':8080', ':3002')
-          : `${window.location.protocol}//${window.location.hostname}:3002`;
+        const apiBase = getApiBaseUrl();
+        const apiOrigin = apiBase.endsWith('/api') ? apiBase.slice(0, -4) : apiBase;
 
         const res = await fetch(`${apiOrigin}/api/update-area-info`, {
           method: 'POST',

@@ -1,0 +1,30 @@
+﻿GO
+SET IDENTITY_INSERT [dbo].[FlightStatus] ON 
+
+INSERT [dbo].[FlightStatus] ([FlightStatusId], [FlightStatusName], [FieldName], [Domestic], [International], [Sortby], [Remarks]) VALUES (1, N'INI', N'EOBT', -150, -210, 1, NULL)
+INSERT [dbo].[FlightStatus] ([FlightStatusId], [FlightStatusName], [FieldName], [Domestic], [International], [Sortby], [Remarks]) VALUES (2, N'FIR', N'ELDT', -9999, -9999, 2, NULL)
+INSERT [dbo].[FlightStatus] ([FlightStatusId], [FlightStatusName], [FieldName], [Domestic], [International], [Sortby], [Remarks]) VALUES (3, N'FNL', N'ELDT', -10, -10, 3, NULL)
+INSERT [dbo].[FlightStatus] ([FlightStatusId], [FlightStatusName], [FieldName], [Domestic], [International], [Sortby], [Remarks]) VALUES (4, N'LND', N'ALDT', -9999, -9999, 4, NULL)
+INSERT [dbo].[FlightStatus] ([FlightStatusId], [FlightStatusName], [FieldName], [Domestic], [International], [Sortby], [Remarks]) VALUES (5, N'IBK', N'AIBT', -9999, -9999, 5, NULL)
+INSERT [dbo].[FlightStatus] ([FlightStatusId], [FlightStatusName], [FieldName], [Domestic], [International], [Sortby], [Remarks]) VALUES (6, N'BRD', N'ASBT', -9999, -9999, 6, NULL)
+INSERT [dbo].[FlightStatus] ([FlightStatusId], [FlightStatusName], [FieldName], [Domestic], [International], [Sortby], [Remarks]) VALUES (7, N'RDY', N'ARDT', -9999, -9999, 7, NULL)
+INSERT [dbo].[FlightStatus] ([FlightStatusId], [FlightStatusName], [FieldName], [Domestic], [International], [Sortby], [Remarks]) VALUES (8, N'OBK', N'AOBT', -9999, -9999, 8, NULL)
+INSERT [dbo].[FlightStatus] ([FlightStatusId], [FlightStatusName], [FieldName], [Domestic], [International], [Sortby], [Remarks]) VALUES (9, N'DEP', N'ATOT', -9999, -9999, 9, NULL)
+INSERT [dbo].[FlightStatus] ([FlightStatusId], [FlightStatusName], [FieldName], [Domestic], [International], [Sortby], [Remarks]) VALUES (10, N'SCH', N'SIBT', -9999, -9999, -2, NULL)
+INSERT [dbo].[FlightStatus] ([FlightStatusId], [FlightStatusName], [FieldName], [Domestic], [International], [Sortby], [Remarks]) VALUES (11, N'SCH', N'SOBT', -9999, -9999, -2, NULL)
+INSERT [dbo].[FlightStatus] ([FlightStatusId], [FlightStatusName], [FieldName], [Domestic], [International], [Sortby], [Remarks]) VALUES (12, N'IBK', N'SIBT', 1441, 1441, -1, NULL)
+INSERT [dbo].[FlightStatus] ([FlightStatusId], [FlightStatusName], [FieldName], [Domestic], [International], [Sortby], [Remarks]) VALUES (13, N'DEP', N'SOBT', 1441, 1441, -1, NULL)
+SET IDENTITY_INSERT [dbo].[FlightStatus] OFF
+GO
+INSERT [dbo].[FunctionRequirement] ([FunctionRequirementID], [FieldName], [Priority], [TimeCalc], [Formula], [FieldRequire], [Status], [Parameter]) VALUES (1, N'EOBT', 1, 1, N'', N'SOBT', 1, NULL)
+INSERT [dbo].[FunctionRequirement] ([FunctionRequirementID], [FieldName], [Priority], [TimeCalc], [Formula], [FieldRequire], [Status], [Parameter]) VALUES (2, N'LRWY', 2, 1, N'RunwayConfig', N'ELDT', 0, NULL)
+INSERT [dbo].[FunctionRequirement] ([FunctionRequirementID], [FieldName], [Priority], [TimeCalc], [Formula], [FieldRequire], [Status], [Parameter]) VALUES (3, N'LRWY', 2, 2, N'RunwayConfig', N'ALDT', 0, NULL)
+INSERT [dbo].[FunctionRequirement] ([FunctionRequirementID], [FieldName], [Priority], [TimeCalc], [Formula], [FieldRequire], [Status], [Parameter]) VALUES (4, N'TRWY', 2, 1, N'RunwayConfig', N'SOBT', 0, NULL)
+INSERT [dbo].[FunctionRequirement] ([FunctionRequirementID], [FieldName], [Priority], [TimeCalc], [Formula], [FieldRequire], [Status], [Parameter]) VALUES (5, N'TRWY', 2, 2, N'RunwayConfig', N'EOBT', 0, NULL)
+INSERT [dbo].[FunctionRequirement] ([FunctionRequirementID], [FieldName], [Priority], [TimeCalc], [Formula], [FieldRequire], [Status], [Parameter]) VALUES (6, N'TRWY', 2, 3, N'RunwayConfig', N'AOBT', 0, NULL)
+INSERT [dbo].[FunctionRequirement] ([FunctionRequirementID], [FieldName], [Priority], [TimeCalc], [Formula], [FieldRequire], [Status], [Parameter]) VALUES (7, N'TRWY', 2, 4, N'RunwayConfig', N'ATOT', 0, NULL)
+INSERT [dbo].[FunctionRequirement] ([FunctionRequirementID], [FieldName], [Priority], [TimeCalc], [Formula], [FieldRequire], [Status], [Parameter]) VALUES (8, N'EXIT', 3, 1, N'EstimatedTaxiTime', N'APRK,LRWY', 0, NULL)
+INSERT [dbo].[FunctionRequirement] ([FunctionRequirementID], [FieldName], [Priority], [TimeCalc], [Formula], [FieldRequire], [Status], [Parameter]) VALUES (9, N'EXOT', 3, 1, N'EstimatedTaxiTime', N'DPRK,TRWY', 0, NULL)
+INSERT [dbo].[FunctionRequirement] ([FunctionRequirementID], [FieldName], [Priority], [TimeCalc], [Formula], [FieldRequire], [Status], [Parameter]) VALUES (10, N'EIBT', 4, 1, N'SUM', N'ELDT,EXIT', 0, NULL)
+INSERT [dbo].[FunctionRequirement] ([FunctionRequirementID], [FieldName], [Priority], [TimeCalc], [Formula], [FieldRequire], [Status], [Parameter]) VALUES (11, N'EIBT', 4, 2, N'SUM', N'ALDT,EXIT', 0, NULL)
+INSERT [dbo].[FunctionRequirement] ([FunctionRequirementID], [FieldName], [Priority], [TimeCalc], [Formula], [FieldRequire], [Status], [Parameter]) VALUES (12, N'TOBT', 5, 1, N'', N'EOBT', 0, NULL)
