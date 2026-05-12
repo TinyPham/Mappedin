@@ -44,19 +44,19 @@ const isViewOnly = (function () {
     const urlParams = new URLSearchParams(window.location.search);
     const hasAdminParam = urlParams.get('admin') === 'true';
     const hasViewOnlyParam = urlParams.get('viewOnly') === 'true' || urlParams.get('viewonly') === 'true';
-    
+
     // If explicitly requested admin, show admin tools
     if (hasAdminParam) return false;
-    
+
     // If explicitly requested view-only
     if (hasViewOnlyParam) return true;
 
     // Check environment (Iframe or specific port)
     const isIframe = window.self !== window.top;
     const isWebsiteHost = window.location.port === '7141' || document.referrer.includes(':7141');
-    
+
     // DEFAULT: Hide admin buttons on main UI unless ?admin=true is present
-    return true; 
+    return true;
   } catch (e) { return true; }
 })();
 
@@ -11337,7 +11337,7 @@ async function init() {
     }
 
     // OVERWRITE NAMES WITH DB DATA (Fix: Update TranslationManager directly to avoid read-only error)
-    objectsToHighlight.forEach(obj => {
+    objectsToHighlight.forEach((obj: any) => {
       const dbLoc = locs.find((l: any) => l.MappedinID === obj.id);
       if (dbLoc) {
         // Construct localized names object
@@ -12244,7 +12244,7 @@ async function init() {
       if (raw === 'LANDED') return { key: raw, label: TranslationManager.t(raw, 'Đã hạ cánh'), tone: 'positive', canNavigateBelt: Boolean(flight.Belt_MappedinID), navigationBlockedByStatus: false };
       if (raw === 'BAGGAGE_LOADING') return { key: raw, label: TranslationManager.t(raw, 'Đang trả hành lý'), tone: 'positive', canNavigateBelt: Boolean(flight.Belt_MappedinID), navigationBlockedByStatus: false };
       if (raw === 'BAGGAGE_DONE') return { key: raw, label: TranslationManager.t(raw, 'Trả xong hành lý'), tone: 'danger', canNavigateBelt: false, navigationBlockedByStatus: true };
-      
+
       // Fallback to key if no match
       return { key: raw, label: TranslationManager.t(raw, raw), tone: 'warning', canNavigateBelt: Boolean(flight.Belt_MappedinID), navigationBlockedByStatus: false };
     };
@@ -13631,5 +13631,5 @@ if (speedDisplay && speedMenu) {
 }
 
 init().catch(err => {
-  console.error("? Critical initialization error:", err);
+  console.error("❌ Critical initialization error:", err);
 });
