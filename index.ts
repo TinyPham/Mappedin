@@ -7,9 +7,11 @@ import {
   buildSubCategoryLocationEntries,
   buildVisibleCategoryAreas,
   hasAssignmentsOnVisibleFloor,
+  mergeLocationRowsByMappedinId,
   normalizeLocationRecord,
   normalizeOptionalNumber
 } from "./categoryPanelData.js";
+import { shouldRenderFlightNavigationActions } from "./flightNavigationActions.js";
 
 // Global Declarations to resolve scope issues
 let ApiService: any = null;
@@ -4383,22 +4385,9 @@ async function init() {
         return location.MappedinID;
       });
 
-    // 3. Merge rows, prioritizing initialRows (local translations) for the same MappedinID
-    const mergedMap = new Map<string, any>();
-
-    // Add endpoint rows first
-    normalizedEndpointRows.forEach(row => {
-      const mid = String(row.MappedinID).trim();
-      mergedMap.set(mid, row);
-    });
-
-    // Overwrite with initial rows (translations)
-    initialRows.forEach(row => {
-      const mid = String(row.MappedinID).trim();
-      mergedMap.set(mid, row);
-    });
-
-    return Array.from(mergedMap.values());
+    // Merge cached init-data with fresh AreaList rows.
+    // Endpoint rows come last so current AreaList language columns win over blank cached values.
+    return mergeLocationRowsByMappedinId(initialRows, normalizedEndpointRows);
   };
 
   let isRenderingCategories = false;
@@ -4414,7 +4403,8 @@ async function init() {
       locationRows,
       currentFloorIds || [],
       isOverviewMode,
-      mapObjectsById
+      mapObjectsById,
+      TranslationManager.currentLang || 'vn'
     );
     return { locationRows, areaEntries };
   };
@@ -4554,6 +4544,8 @@ async function init() {
       categoryList.style.display = "flex";
       categoryList.style.flexDirection = "column";
       categoryList.style.gridTemplateColumns = "none"; // disable grid
+      const parentCat = categoryTree.find(c => c.id.toString() === parentId.toString());
+      const parentCategoryName = parentCat ? getCategoryName(parentCat) : TranslationManager.t('back_btn', 'Danh mục');
       const backBtn = document.createElement("div");
       backBtn.style.cssText = `
                 display: flex; align-items: center; gap: 10px;
@@ -4572,7 +4564,7 @@ async function init() {
                 ">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
                 </div>
-                <span>${TranslationManager.t('back_btn', 'Quay lại danh mục')}</span>
+                <span>${parentCategoryName}</span>
             `;
       backBtn.onmouseenter = () => { backBtn.style.background = "#eef3ff"; };
       backBtn.onmouseleave = () => { backBtn.style.background = "#fafbfd"; };
@@ -4592,7 +4584,6 @@ async function init() {
       };
       categoryList.appendChild(backBtn);
 
-      const parentCat = categoryTree.find(c => c.id.toString() === parentId.toString());
       if (parentCat && parentCat.subcategories) {
         const activeSubs = parentCat.subcategories.filter((s: any) => isSubActiveOnFloor(s.id));
         const visibleSubs = activeSubs;
@@ -4756,7 +4747,8 @@ async function init() {
                   subLocations,
                   currentVisibleFloorIds || [],
                   isOverviewMode,
-                  mapObjectsById
+                  mapObjectsById,
+                  TranslationManager.currentLang || 'vn'
                 );
                 if (isCategoryDebugEnabled()) console.debug("Area list branch:", {
                   subCategoryId: sub.id,
@@ -4773,7 +4765,7 @@ async function init() {
                     mappedinId: entry?.mappedinId,
                     floorId: entry?.floorId,
                     hasMapObject: Boolean(entry?.mapObject),
-                    dbName: entry?.dbRow?.VN || entry?.dbRow?.Name || null
+                    dbName: entry?.displayName || entry?.dbRow?.VN || entry?.dbRow?.Name || null
                   }))
                 });
                 if (isCategoryDebugEnabled() && subLocations.length > 0 && areaEntries.length === 0) {
@@ -4812,8 +4804,8 @@ async function init() {
                 }
 
                 areaEntries.sort((a: any, b: any) => {
-                  const aName = TranslationManager.getName(a?.mapObject || a?.dbRow) || a?.dbRow?.VN || a?.dbRow?.Name || a?.dbRow?.name || a?.mappedinId || "";
-                  const bName = TranslationManager.getName(b?.mapObject || b?.dbRow) || b?.dbRow?.VN || b?.dbRow?.Name || b?.dbRow?.name || b?.mappedinId || "";
+                  const aName = a?.displayName || TranslationManager.getName(a?.dbRow) || TranslationManager.getName(a?.mapObject) || a?.dbRow?.VN || a?.dbRow?.Name || a?.dbRow?.name || a?.mappedinId || "";
+                  const bName = b?.displayName || TranslationManager.getName(b?.dbRow) || TranslationManager.getName(b?.mapObject) || b?.dbRow?.VN || b?.dbRow?.Name || b?.dbRow?.name || b?.mappedinId || "";
                   return aName.localeCompare(bName);
                 });
 
@@ -4862,7 +4854,9 @@ async function init() {
 
                   // Tên + tầng
                   const areaName =
-                    TranslationManager.getName(area || areaEntry.dbRow) ||
+                    areaEntry.displayName ||
+                    TranslationManager.getName(areaEntry.dbRow) ||
+                    TranslationManager.getName(area) ||
                     areaEntry.dbRow?.VN ||
                     areaEntry.dbRow?.Name ||
                     areaEntry.dbRow?.name ||
@@ -4935,7 +4929,7 @@ async function init() {
                       const anchor = getObjectAnchor(area);
                       if (anchor) {
                         const markerHtml = `<div class="search-marker" style="transform:translate(-50%,-100%);">
-                                    <div style="background:#085ebb;color:white;padding:4px 8px;border-radius:4px;font-size:12px;font-weight:bold;white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,0.2);">${area.name}</div>
+                                    <div style="background:#085ebb;color:white;padding:4px 8px;border-radius:4px;font-size:12px;font-weight:bold;white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,0.2);">${areaName}</div>
                                     <div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:6px solid #085ebb;margin:0 auto;"></div>
                                 </div>`;
                         const marker = mapView.Markers.add(anchor, markerHtml, { interactive: false });
@@ -12163,6 +12157,7 @@ async function init() {
 
     const getDepartureStatusOptions = (): Array<[string, string]> => [
       ['ALL', TranslationManager.t('flight_status_all', 'Tất cả trạng thái')],
+      ['LAST_CALL', TranslationManager.t('LAST_CALL', 'Hành khách cuối lên tàu bay đi')],
       ['CHECKIN_OPEN', TranslationManager.t('CHECKIN_OPEN', 'Đang làm thủ tục')],
       ['BOARDING', TranslationManager.t('BOARDING', 'Đang lên máy bay')],
       ['DELAYED', TranslationManager.t('DELAYED', 'Chậm / trễ')],
@@ -12173,8 +12168,6 @@ async function init() {
 
     const getArrivalStatusOptions = (): Array<[string, string]> => [
       ['ALL', TranslationManager.t('flight_status_all', 'Tất cả trạng thái')],
-      ['SCHEDULED', TranslationManager.t('SCHEDULED', 'Đúng giờ')],
-      ['EN_ROUTE', TranslationManager.t('EN_ROUTE', 'Đang bay')],
       ['LANDED', TranslationManager.t('LANDED', 'Đã hạ cánh')],
       ['BAGGAGE_LOADING', TranslationManager.t('BAGGAGE_LOADING', 'Đang trả hành lý')],
       ['BAGGAGE_DONE', TranslationManager.t('BAGGAGE_DONE', 'Trả xong hành lý')],
@@ -12234,13 +12227,13 @@ async function init() {
         if (raw === 'CLOSED') return { key: raw, label: TranslationManager.t(raw, 'Đóng quầy'), tone: 'warning', canNavigateGate: false, canNavigateCheckin: false, navigationBlockedByStatus: true };
         if (raw === 'DEPARTED') return { key: raw, label: TranslationManager.t(raw, 'Đã cất cánh'), tone: 'danger', canNavigateGate: false, canNavigateCheckin: false, navigationBlockedByStatus: true };
         if (raw === 'CANCELLED') return { key: raw, label: TranslationManager.t(raw, 'Hủy chuyến'), tone: 'danger', canNavigateGate: false, canNavigateCheckin: false, navigationBlockedByStatus: true };
+        if (raw === 'LAST_CALL' || raw === 'SCHEDULED') return { key: 'LAST_CALL', label: TranslationManager.t('LAST_CALL', 'Hành khách cuối lên tàu bay đi'), tone: 'warning', canNavigateGate: Boolean(flight.Gate_MappedinID), canNavigateCheckin: Boolean(flight.HasCheckInMapping), navigationBlockedByStatus: false };
         // Fallback to key if no match
         return { key: raw, label: TranslationManager.t(raw, raw), tone: 'warning', canNavigateGate: Boolean(flight.Gate_MappedinID), canNavigateCheckin: Boolean(flight.HasCheckInMapping), navigationBlockedByStatus: false };
       }
       if (raw === 'CANCELLED') return { key: raw, label: TranslationManager.t(raw, 'Hủy chuyến'), tone: 'danger', canNavigateBelt: false, navigationBlockedByStatus: true };
       if (raw === 'DELAYED') return { key: raw, label: TranslationManager.t(raw, 'Chậm chuyến'), tone: 'warning', canNavigateBelt: false, navigationBlockedByStatus: true };
-      if (raw === 'SCHEDULED') return { key: raw, label: TranslationManager.t(raw, 'Đúng giờ'), tone: 'positive', canNavigateBelt: false, navigationBlockedByStatus: true };
-      if (raw === 'EN_ROUTE') return { key: raw, label: TranslationManager.t(raw, 'Đang bay'), tone: 'positive', canNavigateBelt: false, navigationBlockedByStatus: true };
+
       if (raw === 'LANDED') return { key: raw, label: TranslationManager.t(raw, 'Đã hạ cánh'), tone: 'positive', canNavigateBelt: Boolean(flight.Belt_MappedinID), navigationBlockedByStatus: false };
       if (raw === 'BAGGAGE_LOADING') return { key: raw, label: TranslationManager.t(raw, 'Đang trả hành lý'), tone: 'positive', canNavigateBelt: Boolean(flight.Belt_MappedinID), navigationBlockedByStatus: false };
       if (raw === 'BAGGAGE_DONE') return { key: raw, label: TranslationManager.t(raw, 'Trả xong hành lý'), tone: 'danger', canNavigateBelt: false, navigationBlockedByStatus: true };
@@ -12383,19 +12376,20 @@ async function init() {
           tags.push(`<span class="flight-card-tag belt">${beltLabel}</span>`);
         }
 
-        const departureActions = `
+        const showNavigationActions = shouldRenderFlightNavigationActions(meta);
+        const departureActions = showNavigationActions ? `
           <div class="flight-card-actions">
             <button class="flight-card-action primary" data-action="checkin" data-flight-id="${flight.FlightId}" ${meta.canNavigateCheckin ? '' : 'disabled'}>${TranslationManager.t('go_to_checkin', 'Đến check-in')}</button>
             <button class="flight-card-action primary" data-action="gate" data-flight-id="${flight.FlightId}" ${meta.canNavigateGate ? '' : 'disabled'}>${TranslationManager.t('go_to_gate', 'Đến gate')}</button>
             <button class="flight-card-action accent" data-action="route" data-flight-id="${flight.FlightId}" ${(meta.canNavigateGate && meta.canNavigateCheckin) ? '' : 'disabled'}>${TranslationManager.t('find_route', 'Tìm đường')}</button>
           </div>
-        `;
+        ` : '';
 
-        const arrivalActions = `
+        const arrivalActions = showNavigationActions ? `
           <div class="flight-card-actions flight-card-actions--arrival">
             <button class="flight-card-action primary" data-action="belt" data-flight-id="${flight.FlightId}" ${meta.canNavigateBelt ? '' : 'disabled'}>${TranslationManager.t('go_to_belt', 'Đến băng chuyền')}</button>
           </div>
-        `;
+        ` : '';
 
         const statusBlockedMessage = meta.navigationBlockedByStatus
           ? `<div class="flight-card-message">${buildNavigationUnavailableMessage(meta.label)}</div>`
@@ -12419,9 +12413,9 @@ async function init() {
             <div class="flight-card-status-badge status-${meta.tone}">${meta.label}</div>
           </div>
           <div class="flight-card-times">
-            <div class="flight-time-block"><div class="flight-time-label">${state.mode === 'D' ? 'SOBT' : 'STA'}</div><div class="flight-time-value">${formatTimeValue(flight.ScheduledTime)}</div></div>
-            <div class="flight-time-block"><div class="flight-time-label">${state.mode === 'D' ? 'ETOT' : 'ETA'}</div><div class="flight-time-value">${formatTimeValue(flight.EstimatedTime)}</div></div>
-            <div class="flight-time-block"><div class="flight-time-label">${state.mode === 'D' ? 'ATOT' : 'ALDT'}</div><div class="flight-time-value">${formatTimeValue(flight.ActualTime)}</div></div>
+            <div class="flight-time-block"><div class="flight-time-label">${state.mode === 'D' ? TranslationManager.t('SOBT', 'SOBT') : TranslationManager.t('STA', 'STA')}</div><div class="flight-time-value">${formatTimeValue(flight.ScheduledTime)}</div></div>
+            <div class="flight-time-block"><div class="flight-time-label">${state.mode === 'D' ? TranslationManager.t('ETOT', 'ETOT') : TranslationManager.t('ETA', 'ETA')}</div><div class="flight-time-value">${formatTimeValue(flight.EstimatedTime)}</div></div>
+            <div class="flight-time-block"><div class="flight-time-label">${state.mode === 'D' ? TranslationManager.t('ATOT', 'ATOT') : TranslationManager.t('ALDT', 'ALDT')}</div><div class="flight-time-value">${formatTimeValue(flight.ActualTime)}</div></div>
           </div>
           <div class="flight-card-tags">${tags.join('')}</div>
           ${state.mode === 'D' ? departureActions : arrivalActions}

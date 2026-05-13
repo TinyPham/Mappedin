@@ -18,6 +18,92 @@ export function normalizeOptionalNumber(value) {
   return Number.isFinite(numeric) ? numeric : null;
 }
 
+function firstNonEmpty(values) {
+  return values.find((value) => typeof value === 'string' && value.trim().length > 0)?.trim() || '';
+}
+
+export function getLocalizedAreaName(row, language = 'vn', fallback = '') {
+  const requestedLang = String(language || 'vn').toLowerCase();
+  const lang = requestedLang === 'vi' ? 'vn' : requestedLang;
+  const columnByLang = {
+    vn: 'VN',
+    en: 'EN',
+    zh: 'ZH',
+    ja: 'JA',
+    ko: 'KO'
+  };
+  const preferredColumn = columnByLang[lang] || 'VN';
+
+  return firstNonEmpty([
+    row?.names?.[lang],
+    row?.[preferredColumn],
+    row?.[preferredColumn.toLowerCase()],
+    row?.names?.vn,
+    row?.VN,
+    row?.vn,
+    row?.EN,
+    row?.en,
+    row?.Name,
+    row?.name,
+    fallback,
+    row?.MappedinID,
+    row?.mappedinId
+  ]);
+}
+
+function getMapObjectByMappedinId(mapObjectsById, mappedinId) {
+  if (!mapObjectsById || !mappedinId) return null;
+  const mid = String(mappedinId).trim();
+  return mapObjectsById.get(mid) ||
+    mapObjectsById.get(mid.toLowerCase()) ||
+    mapObjectsById.get(mid.toUpperCase()) ||
+    null;
+}
+
+function hasMeaningfulValue(value) {
+  if (value === null || value === undefined) return false;
+  if (typeof value === 'string') return value.trim().length > 0;
+  return true;
+}
+
+function mergeMeaningfulValues(base, incoming) {
+  const merged = { ...(base || {}) };
+  Object.entries(incoming || {}).forEach(([key, value]) => {
+    if (!hasMeaningfulValue(value)) return;
+
+    if (
+      value &&
+      typeof value === 'object' &&
+      !Array.isArray(value) &&
+      merged[key] &&
+      typeof merged[key] === 'object' &&
+      !Array.isArray(merged[key])
+    ) {
+      merged[key] = mergeMeaningfulValues(merged[key], value);
+      return;
+    }
+
+    merged[key] = value;
+  });
+  return merged;
+}
+
+export function mergeLocationRowsByMappedinId(...rowGroups) {
+  const mergedMap = new Map();
+
+  rowGroups.flat().forEach((row) => {
+    const mid = typeof row?.MappedinID === 'string'
+      ? row.MappedinID.trim()
+      : (typeof row?.mappedinId === 'string' ? row.mappedinId.trim() : '');
+    if (!mid) return;
+
+    const existing = mergedMap.get(mid) || {};
+    mergedMap.set(mid, mergeMeaningfulValues(existing, row));
+  });
+
+  return Array.from(mergedMap.values());
+}
+
 export function normalizeLocationRecord(row) {
   const rawMappedinId = row?.MappedinID ?? row?.mappedinId;
   const mappedinId = typeof rawMappedinId === 'string' ? rawMappedinId.trim() : rawMappedinId;
@@ -82,7 +168,7 @@ export function buildAssignedAreaEntries(assignedMIDs, locationRows, currentFloo
     .map((mappedinId) => {
       if (!mappedinId) return null;
 
-      const mapObject = mapObjectsById.get(mappedinId) || null;
+      const mapObject = getMapObjectByMappedinId(mapObjectsById, mappedinId);
       const dbRow = locationRowsById.get(mappedinId) || null;
       const floorId = normalizeFloorId(dbRow?.FloorID) || getMapObjectFloorId(mapObject);
 
@@ -109,9 +195,7 @@ export function hasAssignmentsOnVisibleFloor(subCategoryId, assignments, current
     if (isOverview) return true;
 
     const mid = String(assignment?.MappedinID || "").trim();
-    const mapObject = mapObjectsById.get(mid) || 
-                       mapObjectsById.get(mid.toLowerCase()) || 
-                       mapObjectsById.get(mid.toUpperCase());
+    const mapObject = getMapObjectByMappedinId(mapObjectsById, mid);
 
     const floorIds = [
       normalizeFloorId(assignment?.FloorID),
@@ -121,7 +205,7 @@ export function hasAssignmentsOnVisibleFloor(subCategoryId, assignments, current
   });
 }
 
-export function buildVisibleCategoryAreas(locationRows, currentFloorId, isOverview, mapObjectsById = new Map()) {
+export function buildVisibleCategoryAreas(locationRows, currentFloorId, isOverview, mapObjectsById = new Map(), language = 'vn') {
   const normalizedCurrentFloorIds = normalizeFloorIds(currentFloorId);
 
   return locationRows
@@ -129,7 +213,7 @@ export function buildVisibleCategoryAreas(locationRows, currentFloorId, isOvervi
       const mappedinId = row?.MappedinID;
       if (!mappedinId) return null;
 
-      const mapObject = mapObjectsById.get(mappedinId) || null;
+      const mapObject = getMapObjectByMappedinId(mapObjectsById, mappedinId);
       const floorId = normalizeFloorId(row?.FloorID) || getMapObjectFloorId(mapObject);
       if (!isOverview && floorId && !floorMatches(floorId, normalizedCurrentFloorIds)) {
         return null;
@@ -139,13 +223,14 @@ export function buildVisibleCategoryAreas(locationRows, currentFloorId, isOvervi
         mappedinId,
         floorId,
         mapObject,
-        dbRow: row
+        dbRow: row,
+        displayName: getLocalizedAreaName(row, language, mapObject?.name)
       };
     })
     .filter(Boolean);
 }
 
-export function buildSubCategoryLocationEntries(subCategoryId, locationRows, currentFloorId, isOverview, mapObjectsById = new Map()) {
+export function buildSubCategoryLocationEntries(subCategoryId, locationRows, currentFloorId, isOverview, mapObjectsById = new Map(), language = 'vn') {
   const normalizedSubCategoryId = normalizeOptionalNumber(subCategoryId);
   const normalizedRows = (locationRows || [])
     .map(normalizeLocationRecord)
@@ -158,17 +243,8 @@ export function buildSubCategoryLocationEntries(subCategoryId, locationRows, cur
         if (rowSubId !== null && rowSubId !== normalizedSubCategoryId) return false;
       }
 
-      // If mapObjectsById is provided, we prefer to have a match, but if we're relying on DB, 
-      // we might want to show it anyway (e.g. if the SDK hasn't loaded it yet but we have the ID).
-      // However, for highlighting to work, we eventually need the mapObject.
-      // We'll keep the filter but make it case-insensitive for robustness if possible.
-      const mid = String(row.MappedinID).trim();
-      const hasObject = mapObjectsById.has(mid) || 
-                       mapObjectsById.has(mid.toLowerCase()) || 
-                       mapObjectsById.has(mid.toUpperCase());
-      
-      return hasObject || (mapObjectsById.size === 0);
+      return true;
     });
 
-  return buildVisibleCategoryAreas(normalizedRows, currentFloorId, isOverview, mapObjectsById);
+  return buildVisibleCategoryAreas(normalizedRows, currentFloorId, isOverview, mapObjectsById, language);
 }
