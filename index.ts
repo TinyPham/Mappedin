@@ -5687,6 +5687,9 @@ async function init() {
         `;
       }
 
+      // ⏱️ Đợi 50ms để trình duyệt kịp vẽ giao diện Loading trước khi bắt đầu tính toán
+      await new Promise(r => setTimeout(r, 50));
+
       // Helper: Lấy tọa độ anchor của một object (Internal to drawNavigation)
       const getObjAnchor = (obj: any): any => {
         if (obj.anchor) return obj.anchor;
