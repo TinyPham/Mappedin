@@ -4149,7 +4149,7 @@ async function init() {
     const floor = mapData.getByType("floor").find(f => f.id === floorId);
     const isOverview = floor?.name?.toLowerCase().match(/overview|tổng quan|tong quan|view/);
 
-    const targetZoom = isOverview ? 16.5 : 17; // Overview = 16.5x, Tầng = 17x
+    const targetZoom = isOverview ? 16.5 : 16; // Overview = 16.5x, Tầng = 16x
 
     console.log(`🖱️ Manual floor switch via drop-down. Targeted zoom: ${targetZoom}x, Centering: ${initialVenueCenter ? "Initial Center" : "Current Center"}`);
 
