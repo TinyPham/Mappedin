@@ -5527,6 +5527,14 @@ async function init() {
       if (instructionsListEl) {
         instructionsListEl.innerHTML = "";
       }
+      const summaryContainer = document.getElementById("wayfinding-summary-container");
+      if (summaryContainer) {
+        summaryContainer.style.display = "none";
+      }
+      const previewBar = document.getElementById("route-preview-bar");
+      if (previewBar) {
+        previewBar.style.display = "none";
+      }
 
       // Dừng blue dot animation nếu đang chạy
       if (blueDotAnimationInterval) {
@@ -5942,7 +5950,33 @@ async function init() {
         } catch (e) {
           console.warn("Error simplifying instructions:", e);
         }
-        simplifiedInstructions = simplifyNavigationInstructions(directions.instructions || [])
+        const coordinateFromPathEntry = (entry: any) => entry?.coordinate || entry?.anchor || entry;
+        const extractPathCoordinates = (directionsLike: any) => {
+          const sources = Array.isArray(directionsLike?.paths) && directionsLike.paths.length > 0
+            ? directionsLike.paths
+            : [directionsLike?.path].filter(Boolean);
+          const coords: any[] = [];
+          for (const source of sources) {
+            let sourceCoords: any[] = [];
+            if (Array.isArray(source)) {
+              sourceCoords = source.map(coordinateFromPathEntry).filter(Boolean);
+            } else if (Array.isArray(source?.coordinates)) {
+              sourceCoords = source.coordinates.filter(Boolean);
+            } else if (Array.isArray(source?.segments)) {
+              sourceCoords = source.segments.flatMap((segment: any) => segment?.coordinates || []).filter(Boolean);
+            }
+            if (sourceCoords.length === 0) continue;
+            if (coords.length > 0) {
+              coords.push(...sourceCoords.slice(1));
+            } else {
+              coords.push(...sourceCoords);
+            }
+          }
+          return coords.length >= 3 ? coords : (directionsLike.coordinates || []);
+        };
+        simplifiedInstructions = simplifyNavigationInstructions(directions.instructions || [], {
+          pathCoordinates: extractPathCoordinates(directions)
+        })
           .filter((instruction: any) => shouldRenderNavigationInstruction(instruction));
 
         const navigationOptions: any = {
@@ -6411,6 +6445,8 @@ async function init() {
 
   (window as any).removeStopover = (e: Event, index: number) => {
     e.stopPropagation();
+    const stop = wayfindingStopovers[index];
+    if (stop) resetObjectHighlight(stop);
     wayfindingStopovers.splice(index, 1);
     // Reset selection if it was deleted
     if (isSelectingStopoverIndex === index) {
@@ -6418,6 +6454,61 @@ async function init() {
     } else if (isSelectingStopoverIndex > index) {
       isSelectingStopoverIndex--;
     }
+    updateWayfindingUI();
+    if (wayfindingOrigin && wayfindingDestination) drawNavigation(); else clearNavigation();
+  };
+
+  (window as any).clearNode = (type: string, index: number = -1) => {
+    if (type === 'origin') {
+      if (wayfindingOrigin) resetObjectHighlight(wayfindingOrigin);
+      wayfindingOrigin = null;
+    } else if (type === 'destination') {
+      if (wayfindingDestination) resetObjectHighlight(wayfindingDestination);
+      wayfindingDestination = null;
+    } else if (type === 'stopover' && index >= 0) {
+      const stop = wayfindingStopovers[index];
+      if (stop) resetObjectHighlight(stop);
+      wayfindingStopovers.splice(index, 1);
+    }
+    updateWayfindingUI();
+    clearNavigation();
+
+    if (!wayfindingOrigin && wayfindingDestination) {
+      updateInfo(wayfindingDestination);
+    } else if (!wayfindingDestination && wayfindingOrigin) {
+      updateInfo(wayfindingOrigin);
+    } else if (!wayfindingOrigin && !wayfindingDestination) {
+      const popupInfo = document.getElementById("sidebar-info-panel");
+      if (popupInfo) popupInfo.style.display = "none";
+    }
+  };
+
+  let draggedNodeIndex = -1;
+  (window as any).onWayfindingDragStart = (e: any, index: number) => {
+    draggedNodeIndex = index;
+    e.dataTransfer.effectAllowed = "move";
+    e.target.style.opacity = "0.5";
+  };
+  (window as any).onWayfindingDragEnd = (e: any) => {
+    e.target.style.opacity = "1";
+    draggedNodeIndex = -1;
+  };
+  (window as any).onWayfindingDragOver = (e: any) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  };
+  (window as any).onWayfindingDrop = (e: any, targetIndex: number) => {
+    e.preventDefault();
+    if (draggedNodeIndex === -1 || draggedNodeIndex === targetIndex) return;
+
+    const nodes = [wayfindingOrigin, ...wayfindingStopovers, wayfindingDestination];
+    const draggedItem = nodes.splice(draggedNodeIndex, 1)[0];
+    nodes.splice(targetIndex, 0, draggedItem);
+
+    wayfindingOrigin = nodes[0];
+    wayfindingDestination = nodes[nodes.length - 1];
+    wayfindingStopovers = nodes.slice(1, nodes.length - 1);
+
     updateWayfindingUI();
     if (wayfindingOrigin && wayfindingDestination) drawNavigation(); else clearNavigation();
   };
@@ -6447,6 +6538,18 @@ async function init() {
       let swapHtml = '';
 
       const totalNodes = wayfindingStopovers.length + 2;
+      const useDragAndDrop = totalNodes >= 3;
+      
+      const getDragAttributes = (index: number) => {
+        if (!useDragAndDrop) return '';
+        return `draggable="true" ondragstart="window.onWayfindingDragStart(event, ${index})" ondragend="window.onWayfindingDragEnd(event)" ondragover="window.onWayfindingDragOver(event)" ondrop="window.onWayfindingDrop(event, ${index})"`;
+      };
+      
+      const dragHandleHtml = useDragAndDrop ? `
+        <div style="cursor:grab; display:flex; align-items:center; color:#adb5bd; padding-right:4px;" onmousedown="event.stopPropagation();">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="9" x2="20" y2="9"></line><line x1="4" y1="15" x2="20" y2="15"></line></svg>
+        </div>
+      ` : '';
 
       // ===================================
       // 1. ORIGIN ROW
@@ -6455,13 +6558,14 @@ async function init() {
       const originColor = wayfindingOrigin ? '#1a1a2e' : '#999';
       const originBg = 'white';
       const originBorder = 'border:1px solid transparent; border-bottom:1px solid #e0e4ef;';
-      nodesHtml += `<div style="
+      nodesHtml += `<div ${getDragAttributes(0)} style="
         display:flex; align-items:center; gap:10px;
         padding:12px 14px; background:${originBg};
         ${originBorder}
         cursor:pointer; transition: background 0.2s;" 
         onclick="window.startSelectingNode('origin')"
         onmouseenter="if(!${isSelectingOrigin}) this.style.background='#fafcff'" onmouseleave="if(!${isSelectingOrigin}) this.style.background='${originBg}'">
+        ${dragHandleHtml}
         <div style="width:24px;height:24px;border-radius:50%;background:white; display:flex;align-items:center;justify-content:center;flex-shrink:0;">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#214ca6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
         </div>
@@ -6475,6 +6579,9 @@ async function init() {
             style="width:100%; border:none; outline:none; background:transparent; font-size:16px; color:${originColor}; padding:0; margin:0; font-weight:500;" 
           />
         </div>
+        ${wayfindingOrigin ? `<button onclick="event.stopPropagation(); window.clearNode('origin')" style="background:none;border:none;cursor:pointer;color:#94a3b8;display:flex;align-items:center;justify-content:center;padding:4px;" title="Xóa">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>` : ''}
       </div>`;
 
       // ===================================
@@ -6487,13 +6594,14 @@ async function init() {
         const stopBg = 'white';
         const stopBorder = 'border:1px solid transparent; border-bottom:1px solid #e0e4ef;';
 
-        nodesHtml += `<div style="
+        nodesHtml += `<div ${getDragAttributes(i + 1)} style="
           display:flex; align-items:center; gap:10px;
           padding:12px 14px; background:${stopBg};
           ${stopBorder}
           cursor:pointer; transition: background 0.2s;"
           onclick="window.startSelectingNode('stopover', ${i})"
           onmouseenter="if(!${isSelecting}) this.style.background='#fafcff'" onmouseleave="if(!${isSelecting}) this.style.background='${stopBg}'">
+          ${dragHandleHtml}
           <div style="width:24px;height:24px;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#64748b;font-size:14px;font-weight:bold;">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
           </div>
@@ -6520,7 +6628,7 @@ async function init() {
       const destColor = wayfindingDestination ? '#1a1a2e' : '#999';
       const destBg = 'white';
       const destBorder = 'border:1px solid transparent;';
-      nodesHtml += `<div style="
+      nodesHtml += `<div ${getDragAttributes(totalNodes - 1)} style="
         display:flex; align-items:center; gap:10px;
         padding:12px 14px; background:${destBg};
         ${destBorder}
@@ -6528,6 +6636,7 @@ async function init() {
         cursor:pointer; transition: background 0.2s;"
         onclick="window.startSelectingNode('destination')"
         onmouseenter="if(!${isSelectingDestination}) this.style.background='#fafcff'" onmouseleave="if(!${isSelectingDestination}) this.style.background='${destBg}'">
+        ${dragHandleHtml}
         <div style="width:24px;height:24px;border-radius:50%;background:white;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3" fill="#f59e0b"></circle></svg>
         </div>
@@ -6541,8 +6650,16 @@ async function init() {
             style="width:100%; border:none; outline:none; background:transparent; font-size:16px; color:${destColor}; padding:0; margin:0; font-weight:500;" 
           />
         </div>
-        <button onclick="window.addStopover(event)" style="background:none;border:none;cursor:pointer;color:#94a3b8;display:flex;align-items:center;justify-content:center;padding:4px;" title="Thêm điểm dừng">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6c757d" stroke-width="2"><circle cx="12" cy="12" r="10" fill="#f0f4f8"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
+        ${wayfindingDestination ? `<button onclick="event.stopPropagation(); window.clearNode('destination')" style="background:none;border:none;cursor:pointer;color:#94a3b8;display:flex;align-items:center;justify-content:center;padding:4px;" title="Xóa">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>` : ''}
+      </div>`;
+
+      // Nút Thêm điểm dừng (Add Stopover) nằm dưới ô Điểm đến
+      nodesHtml += `<div style="padding: 4px 14px 10px; background: white; border-radius: 0 0 8px 8px; display: flex; align-items: center; justify-content: flex-start;">
+        <button onclick="window.addStopover(event)" style="background:none;border:none;cursor:pointer;color:#214ca6;display:flex;align-items:center;gap:6px;padding:6px 8px;font-size:13px;font-weight:500;border-radius:6px;transition:background 0.2s;" onmouseenter="this.style.background='#f0f4ff'" onmouseleave="this.style.background='transparent'" title="${TranslationManager.t('add_stopover', 'Thêm điểm dừng')}">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
+          ${TranslationManager.t('add_stopover', 'Thêm điểm dừng')}
         </button>
       </div>`;
 
@@ -6551,7 +6668,6 @@ async function init() {
       // ===================================
       // 4. RESET & SWAP BUTTONS (Right Column)
       // ===================================
-      // Reset Button (X Icon at the top to clear all)
       swapHtml += `<button id="wayfinding-reset-btn" title="Xóa tất cả" style="
         background:none; border:none;
         cursor:pointer; padding:6px;
@@ -6562,18 +6678,21 @@ async function init() {
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
       </button>`;
 
-      for (let i = 0; i < totalNodes - 1; i++) {
-        swapHtml += `<button onclick="window.swapNodes(${i}, ${i + 1})" title="Hoán đổi" style="
-          background:none; border:none;
-          cursor:pointer; padding:4px;
-          color:#214ca6; transition:all 0.2s;
-          display:flex; align-items:center; justify-content:center;
-          opacity: 0.6;
-        " onmouseenter="this.style.opacity='1'; this.style.color='#f59e0b'" onmouseleave="this.style.opacity='0.6'; this.style.color='#214ca6'">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4"/></svg>
-        </button>`;
+      if (!useDragAndDrop) {
+        for (let i = 0; i < totalNodes - 1; i++) {
+          swapHtml += `<button onclick="window.swapNodes(${i}, ${i + 1})" title="Hoán đổi" style="
+            background:none; border:none;
+            cursor:pointer; padding:4px;
+            color:#214ca6; transition:all 0.2s;
+            display:flex; align-items:center; justify-content:center;
+            opacity: 0.6;
+          " onmouseenter="this.style.opacity='1'; this.style.color='#f59e0b'" onmouseleave="this.style.opacity='0.6'; this.style.color='#214ca6'">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4"/></svg>
+          </button>`;
+        }
       }
       swapContainer.innerHTML = swapHtml;
+      swapContainer.style.display = 'flex';
 
       // Bind Reset Button - cần dùng ID vì render dynamic
       const resBtn = document.getElementById("wayfinding-reset-btn");
