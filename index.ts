@@ -662,6 +662,13 @@ class TranslationManager {
       'ja': '経由地',
       'ko': '경유지'
     },
+    'add_stopover': {
+      'vn': 'Thêm điểm dừng',
+      'en': 'Add stopover',
+      'zh': '添加中转点',
+      'ja': '経由地を追加',
+      'ko': '경유지 추가'
+    },
     'stopover_placeholder': {
       'vn': 'Chọn điểm dừng',
       'en': 'Select Stopover',
