@@ -6700,6 +6700,8 @@ async function init() {
         resBtn.onclick = (e) => {
           e.preventDefault();
           resetWayfinding();
+          const resultsContainer = document.getElementById("wayfinding-search-results");
+          if (resultsContainer) resultsContainer.style.display = "none";
         };
       }
 
@@ -6816,25 +6818,55 @@ async function init() {
     resultsContainer.innerHTML = "";
 
     // Header for suggested
+    let itemsWrapper: HTMLElement;
     if (isSuggested) {
       const header = document.createElement("div");
-      header.style.cssText = "padding: 20px 15px 12px; font-size: 16px; font-weight: 700; color: #1a1a2e; background: white;";
-      header.innerText = TranslationManager.t('frequent_locations', 'Frequent Locations');
+      header.style.cssText = "padding: 16px 15px 12px; display: flex; align-items: center; justify-content: space-between; font-size: 15px; font-weight: 700; color: #1a1a2e; background: white; cursor: pointer; border-bottom: 1px solid #f0f4f8;";
+      const arrowId = `wayfinding-dropdown-arrow`;
+      header.innerHTML = `
+        <span>${TranslationManager.t('suggested_places', 'Địa điểm gợi ý')}</span>
+        <svg id="${arrowId}" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.3s;"><polyline points="6 9 12 15 18 9"></polyline></svg>
+      `;
+      
+      itemsWrapper = document.createElement("div");
+      
+      let isOpen = true;
+      header.onclick = () => {
+        isOpen = !isOpen;
+        itemsWrapper.style.display = isOpen ? 'block' : 'none';
+        const arrow = document.getElementById(arrowId);
+        if (arrow) arrow.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(-180deg)';
+      };
+
       resultsContainer.appendChild(header);
+      resultsContainer.appendChild(itemsWrapper);
+    } else {
+      itemsWrapper = document.createElement("div");
+      resultsContainer.appendChild(itemsWrapper);
     }
 
     uniqueResults.forEach((result) => {
       const item = document.createElement("div");
-      item.style.cssText = "display: flex; align-items: center; padding: 14px 15px; cursor: pointer; background: white; transition: all 0.2s ease;";
+      item.style.cssText = "display: flex; align-items: center; padding: 14px 15px; cursor: pointer; background: white; transition: all 0.2s ease; border-bottom: 1px solid #f8fafc;";
       item.onmouseenter = () => item.style.backgroundColor = "#f0f4ff";
       item.onmouseleave = () => item.style.backgroundColor = "white";
 
       const cleanName = result.name.replace(/room|door|gate/gi, '').trim();
-      const floorObj = result.primaryObject.floor;
+      const floorObj = result.primaryObject.floor || result.primaryObject.floorId;
+      let floorName = '';
+      if (floorObj) {
+        const fn = floorObj.name || floorObj;
+        const localizedLevel = TranslationManager.t('level_label', 'Tầng');
+        floorName = fn.includes('L') ? `${localizedLevel} ${fn.replace('L', '')}` : `${localizedLevel} ${fn}`;
+      }
 
       item.innerHTML = `
-        <div style="flex: 1; overflow: hidden;">
+        <div style="width:36px; height:36px; border-radius:50%; background:#f1f5f9; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-right:12px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+        </div>
+        <div style="flex: 1; overflow: hidden; display: flex; flex-direction: column; justify-content: center;">
           <div style="font-size: 15px; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500;">${cleanName}</div>
+          ${floorName ? `<div style="font-size:12px; color:#64748b; margin-top:2px;">${floorName}</div>` : ''}
         </div>
       `;
 
@@ -6856,7 +6888,7 @@ async function init() {
         if (wayfindingOrigin && wayfindingDestination) drawNavigation();
       });
 
-      resultsContainer.appendChild(item);
+      itemsWrapper.appendChild(item);
     });
 
     resultsContainer.style.display = "block";
