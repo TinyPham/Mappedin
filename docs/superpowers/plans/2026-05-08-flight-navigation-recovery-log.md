@@ -247,3 +247,57 @@ Sau mỗi đợt sửa, append một block mới theo mẫu:
   - runtime v?n ph? thu?c vi?c 3 b?ng `NavigationMap` d� du?c n?p d? hay chua
 - Bu?c ti?p theo:
   - test 4 case runtime theo mapping th?t
+
+## Update 2026-05-14 - Navigation connection direction
+
+- Muc tieu:
+  - giu nguyen luong instruction hien tai da dung yeu cau
+  - chi sua cach xac dinh `len/xuong` cho buoc vao thang may va di thang cuon
+- File da sua:
+  - `navigationInstructionRules.js`
+  - `tests/navigationInstructionRules.test.mjs`
+  - `database/patches/add_navigation_instruction_phrase_translations.sql`
+- Ket qua:
+  - elevator dung mau cau `Vao thang may len/xuong <ten tang>`
+  - escalator dung mau cau `Di thang cuon len/xuong <ten tang>`
+  - huong len/xuong duoc tinh theo so tang trong ten tang, fallback sang metadata chieu cao cua floor tu SDK (`elevation`, `altitude`, `level`, `z`, `verticalOffset`, `height`), cuoi cung moi fallback theo thu tu floor array
+  - tiep tuc giu rule khong render cac buoc khong co quang duong/thoi gian hien thi, tru buoc ket thuc
+- SQL/DB can chay:
+  - chay lai `database/patches/add_navigation_instruction_phrase_translations.sql` de them `connection_direction_up` va `connection_direction_down`
+- Xac minh:
+  - `node --test tests/navigationInstructionRules.test.mjs` pass
+
+## Update 2026-05-14 - Navigation connection direction follow-up
+
+- Nguyen nhan runtime:
+  - SDK floor `name` co the khong chua so tang, trong khi DB TranslationManager moi tra ve ten day du nhu `Tang 1 [Ga den]` va `Tang 2 [Ga di]`
+  - neu uu tien SDK name thi buoc `Vao thang may` khong tinh duoc hoac tinh sai `len/xuong`
+- Dieu chinh:
+  - `resolveFloorDirection` uu tien ten tang da dich tu DB truoc SDK name
+  - ho tro tim floor bang `id`, `mappedinId`, hoac `code`
+  - `index.ts` truyen them `originalName` vao `TranslationManager.getFloorName`
+
+## Update 2026-05-14 - Navigation floor id rank
+
+- Yeu cau moi:
+  - khong dua vao ten tang de quyet dinh `len/xuong` vi ten co the doi
+- Dieu chinh:
+  - them rule rank theo floor id that:
+    - `m_dae8f26a40f6017f`: 0 - Tang tret, thap nhat
+    - `m_41a38d6d0411d397`: 1 - Tang 1
+    - `m_d4b5674c0b15e099`: 2 - Tang 2
+    - `m_1523f7dcde647c40`: 3 - Tang 3, cao nhat
+  - `resolveFloorDirection` uu tien floor id rank truoc ten tang, elevation, va thu tu array
+- Xac minh:
+  - them regression test cho case ten/elevation/array gay sai nhung floor id rank van tra `len`
+
+## Update 2026-05-15 - Navigation enter connection source floor
+
+- Nguyen nhan runtime:
+  - Mappedin co the gan coordinate cua buoc `takeconnection` vao floor dich, nen current floor va target floor trung nhau
+  - khi current floor == target floor, formatter bo qua `len/xuong`, tao cau `Vao thang may Tang 2`
+- Dieu chinh:
+  - voi enter connection, neu coordinate cua buoc dang o target floor thi quet nguoc route de lay floor gan nhat truoc do lam current floor
+  - floor id rank van la nguon quyet dinh len/xuong chinh
+- Xac minh:
+  - them regression test cho route Tang 1 -> elevator step coordinate Tang 2 -> exit Tang 2, ket qua `Vao thang may len Tang 2`

@@ -1,0 +1,449 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+
+import {
+  createInstructionFormatter,
+  findNearbyLandmark,
+  getInstructionDisplayDistance,
+  shouldRenderNavigationInstruction,
+  simplifyNavigationInstructions
+} from '../navigationInstructionRules.js';
+
+const floors = [
+  { id: 'floor-1', name: 'Tang 1 [Ga den]', elevation: 0 },
+  { id: 'floor-2', name: 'Tang 2 [Ga di]', elevation: 1 }
+];
+
+const elevator = {
+  id: 'elevator-a',
+  name: 'Thang may',
+  type: 'elevator'
+};
+
+const escalator = {
+  id: 'escalator-a',
+  type: 'escalator'
+};
+
+const t = (_key, fallback) => fallback;
+const getFloorName = (floorId) => floors.find((floor) => floor.id === floorId)?.name || '';
+
+test('keeps walking step before elevator, removes empty takeconnection, and merges exit with next turn', () => {
+  const simplified = simplifyNavigationInstructions([
+    {
+      action: { type: 'continue' },
+      coordinate: { floorId: 'floor-1', latitude: 10, longitude: 10 },
+      distance: 177
+    },
+    {
+      action: { type: 'takeconnection' },
+      coordinate: { floorId: 'floor-1', latitude: 10.001, longitude: 10 },
+      distance: 2
+    },
+    {
+      action: { type: 'takeconnection', connection: elevator },
+      coordinate: { floorId: 'floor-1', latitude: 10.002, longitude: 10 },
+      distance: 3
+    },
+    {
+      action: { type: 'exitconnection', connection: elevator },
+      coordinate: { floorId: 'floor-2', latitude: 10.003, longitude: 10 },
+      distance: 0
+    },
+    {
+      action: { type: 'turn', bearing: 'left' },
+      coordinate: { floorId: 'floor-2', latitude: 10.004, longitude: 10 },
+      distance: 8
+    },
+    {
+      action: { type: 'arrival' },
+      coordinate: { floorId: 'floor-2', latitude: 10.005, longitude: 10 },
+      distance: 0
+    }
+  ]);
+
+  assert.deepEqual(simplified.map((step) => step.action.type), [
+    'continue',
+    'takeconnection',
+    'exitconnection',
+    'arrival'
+  ]);
+  assert.equal(simplified[0].action.type, 'continue');
+  assert.equal(simplified[0].distance, 3);
+  assert.equal(simplified[1].distance, 3);
+  assert.equal(simplified[2]._mergedNextAction.type, 'turn');
+  assert.equal(simplified[2].distance, 8);
+});
+
+test('formats elevator transition with actual floor direction and exit turn', () => {
+  const simplified = simplifyNavigationInstructions([
+    {
+      action: { type: 'continue' },
+      coordinate: { floorId: 'floor-1', latitude: 10, longitude: 10 },
+      distance: 177
+    },
+    {
+      action: { type: 'takeconnection' },
+      coordinate: { floorId: 'floor-1', latitude: 10.001, longitude: 10 },
+      distance: 2
+    },
+    {
+      action: { type: 'takeconnection', connection: elevator },
+      coordinate: { floorId: 'floor-1', latitude: 10.002, longitude: 10 },
+      distance: 3
+    },
+    {
+      action: { type: 'exitconnection', connection: elevator },
+      coordinate: { floorId: 'floor-2', latitude: 10.003, longitude: 10 },
+      distance: 0
+    },
+    {
+      action: { type: 'turn', bearing: 'left' },
+      coordinate: { floorId: 'floor-2', latitude: 10.004, longitude: 10 },
+      distance: 8
+    }
+  ]);
+  const formatter = createInstructionFormatter({
+    floors,
+    mapObjects: [],
+    t,
+    getFloorName,
+    getName: (obj) => obj?.name
+  });
+
+  assert.equal(formatter.format(simplified[0], simplified, 0), 'Di thang');
+  assert.equal(formatter.format(simplified[1], simplified, 1), 'Vao thang may len Tang 2 [Ga di]');
+  assert.equal(formatter.format(simplified[2], simplified, 2), 'Ra thang may tai Tang 2 [Ga di] va re trai');
+});
+
+test('removes zero-distance walking turn immediately before entering a connection', () => {
+  const simplified = simplifyNavigationInstructions([
+    {
+      action: { type: 'turn', bearing: 'right' },
+      coordinate: { floorId: 'floor-1', latitude: 10, longitude: 10 },
+      distance: 0
+    },
+    {
+      action: { type: 'takeconnection', connection: elevator },
+      coordinate: { floorId: 'floor-1', latitude: 10.001, longitude: 10 },
+      distance: 3
+    },
+    {
+      action: { type: 'exitconnection', connection: elevator },
+      coordinate: { floorId: 'floor-2', latitude: 10.002, longitude: 10 },
+      distance: 0
+    }
+  ]);
+
+  assert.deepEqual(simplified.map((step) => step.action.type), [
+    'takeconnection',
+    'exitconnection'
+  ]);
+});
+
+test('uses explicit translation keys for merged exit phrases', () => {
+  const calls = [];
+  const formatter = createInstructionFormatter({
+    floors,
+    mapObjects: [],
+    t: (key, fallback) => {
+      calls.push(key);
+      return fallback;
+    },
+    getFloorName,
+    getName: (obj) => obj?.name
+  });
+  const instruction = {
+    action: { type: 'exitconnection', connection: elevator },
+    _mergedNextAction: { type: 'turn', bearing: 'left' },
+    coordinate: { floorId: 'floor-2', latitude: 10, longitude: 10 }
+  };
+
+  formatter.format(instruction, [instruction], 0);
+
+  assert.equal(calls.includes('direction_connector_and'), true);
+  assert.equal(calls.includes('action_turn_left_lower'), true);
+});
+
+test('detects up/down direction from translated floor names when floor objects have no names', () => {
+  const simplified = simplifyNavigationInstructions([
+    {
+      action: { type: 'takeconnection', connection: elevator },
+      coordinate: { floorId: 'floor-1', latitude: 10, longitude: 10 },
+      distance: 3
+    },
+    {
+      action: { type: 'exitconnection', connection: elevator },
+      coordinate: { floorId: 'floor-2', latitude: 10.001, longitude: 10 },
+      distance: 0
+    }
+  ]);
+  const formatter = createInstructionFormatter({
+    floors: [{ id: 'floor-1' }, { id: 'floor-2' }],
+    mapObjects: [],
+    t,
+    getFloorName,
+    getName: (obj) => obj?.name
+  });
+
+  assert.equal(formatter.format(simplified[0], simplified, 0), 'Vao thang may len Tang 2 [Ga di]');
+});
+
+test('prefers translated floor names over non-numeric SDK floor names for connection direction', () => {
+  const instructions = [
+    {
+      action: { type: 'takeconnection', connection: elevator },
+      coordinate: { floorId: 'floor-1', latitude: 10, longitude: 10 },
+      distance: 3
+    },
+    {
+      action: { type: 'exitconnection', connection: elevator },
+      coordinate: { floorId: 'floor-2', latitude: 10.001, longitude: 10 },
+      distance: 0
+    }
+  ];
+  const formatter = createInstructionFormatter({
+    floors: [
+      { id: 'floor-2', name: 'Ga di' },
+      { id: 'floor-1', name: 'Ga den' }
+    ],
+    mapObjects: [],
+    t,
+    getFloorName,
+    getName: (obj) => obj?.name
+  });
+
+  assert.equal(formatter.format(instructions[0], instructions, 0), 'Vao thang may len Tang 2 [Ga di]');
+});
+
+test('uses configured floor id rank before names, elevation, or array order', () => {
+  const instructions = [
+    {
+      action: { type: 'takeconnection', connection: elevator },
+      coordinate: { floorId: 'm_41a38d6d0411d397', latitude: 10, longitude: 10 },
+      distance: 3
+    },
+    {
+      action: { type: 'exitconnection', connection: elevator },
+      coordinate: { floorId: 'm_d4b5674c0b15e099', latitude: 10.001, longitude: 10 },
+      distance: 0
+    }
+  ];
+  const formatter = createInstructionFormatter({
+    floors: [
+      { id: 'm_d4b5674c0b15e099', name: 'Renamed lower-looking floor', elevation: 0 },
+      { id: 'm_41a38d6d0411d397', name: 'Renamed higher-looking floor', elevation: 10 }
+    ],
+    mapObjects: [],
+    t,
+    getFloorName: (floorId) => floorId,
+    getName: (obj) => obj?.name
+  });
+
+  assert.equal(formatter.format(instructions[0], instructions, 0), 'Vao thang may len m_d4b5674c0b15e099');
+});
+
+test('uses previous route floor as current floor when enter connection coordinate is already on target floor', () => {
+  const instructions = [
+    {
+      action: { type: 'turn', bearing: 'right' },
+      coordinate: { floorId: 'm_41a38d6d0411d397', latitude: 10, longitude: 10 },
+      distance: 28
+    },
+    {
+      action: { type: 'takeconnection', connection: elevator },
+      coordinate: { floorId: 'm_d4b5674c0b15e099', latitude: 10.001, longitude: 10 },
+      distance: 3
+    },
+    {
+      action: { type: 'exitconnection', connection: elevator },
+      coordinate: { floorId: 'm_d4b5674c0b15e099', latitude: 10.002, longitude: 10 },
+      distance: 0
+    }
+  ];
+  const formatter = createInstructionFormatter({
+    floors: [],
+    mapObjects: [],
+    t,
+    getFloorName: (floorId) => floorId === 'm_d4b5674c0b15e099' ? 'Tang 2 [Ga di]' : 'Tang 1 [Ga den]',
+    getName: (obj) => obj?.name
+  });
+
+  assert.equal(formatter.format(instructions[1], instructions, 1), 'Vao thang may len Tang 2 [Ga di]');
+});
+
+test('floor number direction wins over inverted elevation metadata', () => {
+  const simplified = simplifyNavigationInstructions([
+    {
+      action: { type: 'takeconnection', connection: elevator },
+      coordinate: { floorId: 'floor-1', latitude: 10, longitude: 10 },
+      distance: 3
+    },
+    {
+      action: { type: 'exitconnection', connection: elevator },
+      coordinate: { floorId: 'floor-2', latitude: 10.001, longitude: 10 },
+      distance: 0
+    }
+  ]);
+  const formatter = createInstructionFormatter({
+    floors: [
+      { id: 'floor-1', name: 'Tang 1 [Ga den]', elevation: 10 },
+      { id: 'floor-2', name: 'Tang 2 [Ga di]', elevation: 0 }
+    ],
+    mapObjects: [],
+    t,
+    getFloorName,
+    getName: (obj) => obj?.name
+  });
+
+  assert.equal(formatter.format(simplified[0], simplified, 0), 'Vao thang may len Tang 2 [Ga di]');
+});
+
+test('uses connection direction words for elevator down and escalator up', () => {
+  const downInstructions = [
+    {
+      action: { type: 'takeconnection', connection: elevator },
+      coordinate: { floorId: 'floor-2', latitude: 10, longitude: 10 },
+      distance: 3
+    },
+    {
+      action: { type: 'exitconnection', connection: elevator },
+      coordinate: { floorId: 'floor-1', latitude: 10.001, longitude: 10 },
+      distance: 0
+    }
+  ];
+  const upInstructions = [
+    {
+      action: { type: 'takeconnection', connection: escalator },
+      coordinate: { floorId: 'floor-1', latitude: 10, longitude: 10 },
+      distance: 6
+    },
+    {
+      action: { type: 'exitconnection', connection: escalator },
+      coordinate: { floorId: 'floor-2', latitude: 10.001, longitude: 10 },
+      distance: 0
+    }
+  ];
+  const formatter = createInstructionFormatter({
+    floors,
+    mapObjects: [],
+    t,
+    getFloorName,
+    getName: (obj) => obj?.name
+  });
+
+  assert.equal(formatter.format(downInstructions[0], downInstructions, 0), 'Vao thang may xuong Tang 1 [Ga den]');
+  assert.equal(formatter.format(upInstructions[0], upInstructions, 0), 'Di thang cuon len Tang 2 [Ga di]');
+});
+
+test('falls back to SDK floor height metadata when floor names are not numeric', () => {
+  const instructions = [
+    {
+      action: { type: 'takeconnection', connection: elevator },
+      coordinate: { floorId: 'mezzanine', latitude: 10, longitude: 10 },
+      distance: 3
+    },
+    {
+      action: { type: 'exitconnection', connection: elevator },
+      coordinate: { floorId: 'upper', latitude: 10.001, longitude: 10 },
+      distance: 0
+    }
+  ];
+  const formatter = createInstructionFormatter({
+    floors: [
+      { id: 'mezzanine', name: 'Mezzanine', elevation: 4 },
+      { id: 'upper', name: 'Upper Departures', elevation: 12 }
+    ],
+    mapObjects: [],
+    t,
+    getFloorName: (floorId) => floorId === 'upper' ? 'Upper Departures' : 'Mezzanine',
+    getName: (obj) => obj?.name
+  });
+
+  assert.equal(formatter.format(instructions[0], instructions, 0), 'Vao thang may len Upper Departures');
+});
+
+test('removes walking turn immediately before entering a connection even when raw distance is present', () => {
+  const simplified = simplifyNavigationInstructions([
+    {
+      action: { type: 'turn', bearing: 'right' },
+      coordinate: { floorId: 'floor-1', latitude: 10, longitude: 10 },
+      distance: 4
+    },
+    {
+      action: { type: 'takeconnection', connection: elevator },
+      coordinate: { floorId: 'floor-1', latitude: 10.001, longitude: 10 },
+      distance: 0
+    },
+    {
+      action: { type: 'exitconnection', connection: elevator },
+      coordinate: { floorId: 'floor-2', latitude: 10.002, longitude: 10 },
+      distance: 0
+    }
+  ]);
+
+  assert.deepEqual(simplified.map((step) => step.action.type), [
+    'takeconnection',
+    'exitconnection'
+  ]);
+});
+
+test('nearby landmark is constrained to the current floor and emitted once', () => {
+  const objects = [
+    {
+      name: 'Quay ca phe va banh ngot',
+      floor: { id: 'floor-2' },
+      anchor: { floorId: 'floor-2', latitude: 10, longitude: 10 }
+    },
+    {
+      name: 'Cua ra tau bay 40',
+      floor: { id: 'floor-1' },
+      anchor: { floorId: 'floor-1', latitude: 10, longitude: 10 }
+    }
+  ];
+
+  assert.equal(
+    findNearbyLandmark({ floorId: 'floor-2', latitude: 10, longitude: 10 }, 'floor-2', objects, { maxDist: 15, getName: (obj) => obj.name }),
+    'Quay ca phe va banh ngot'
+  );
+
+  const formatter = createInstructionFormatter({
+    floors,
+    mapObjects: objects,
+    t,
+    getFloorName,
+    getName: (obj) => obj?.name
+  });
+  const instructions = [
+    {
+      action: { type: 'continue' },
+      coordinate: { floorId: 'floor-2', latitude: 10, longitude: 10 },
+      distance: 5
+    },
+    {
+      action: { type: 'continue' },
+      coordinate: { floorId: 'floor-2', latitude: 10, longitude: 10 },
+      distance: 5
+    }
+  ];
+
+  assert.equal(formatter.format(instructions[0], instructions, 0), 'Di thang gan Quay ca phe va banh ngot');
+  assert.equal(formatter.format(instructions[1], instructions, 1), 'Di thang');
+});
+
+test('render filter removes non-arrival steps without display distance', () => {
+  const turnWithoutDistance = {
+    action: { type: 'turn', bearing: 'right' },
+    coordinate: { floorId: 'floor-1' },
+    distance: 0
+  };
+  const arrival = {
+    action: { type: 'arrival' },
+    coordinate: { floorId: 'floor-2' },
+    distance: 0
+  };
+
+  assert.equal(getInstructionDisplayDistance(turnWithoutDistance), 0);
+  assert.equal(shouldRenderNavigationInstruction(turnWithoutDistance), false);
+  assert.equal(shouldRenderNavigationInstruction(arrival), true);
+});

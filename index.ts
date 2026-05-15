@@ -12,6 +12,12 @@ import {
   normalizeOptionalNumber
 } from "./categoryPanelData.js";
 import { shouldRenderFlightNavigationActions } from "./flightNavigationActions.js";
+import {
+  createInstructionFormatter,
+  getInstructionDisplayDistance,
+  shouldRenderNavigationInstruction,
+  simplifyNavigationInstructions
+} from "./navigationInstructionRules.js";
 
 // Global Declarations to resolve scope issues
 let ApiService: any = null;
@@ -5761,7 +5767,8 @@ async function init() {
         let simplifiedInstructions: any[] = directions.instructions ? JSON.parse(JSON.stringify(directions.instructions)) : [];
 
         try {
-          if (simplifiedInstructions.length > 0) {
+          // Legacy inline simplification is kept inert while the tested helper below owns instruction rules.
+          if (false && simplifiedInstructions.length > 0) {
             // ============================================
             // INTELLIGENT MERGING STRATEGY (Siết chặt các bước rẽ thừa)
             // ============================================
@@ -5935,6 +5942,8 @@ async function init() {
         } catch (e) {
           console.warn("Error simplifying instructions:", e);
         }
+        simplifiedInstructions = simplifyNavigationInstructions(directions.instructions || [])
+          .filter((instruction: any) => shouldRenderNavigationInstruction(instruction));
 
         const navigationOptions: any = {
           pathOptions: {
@@ -6047,8 +6056,17 @@ async function init() {
           return bestLandmark;
         };
 
+        const instructionFormatter = createInstructionFormatter({
+          floors: mapData.getByType('floor') || [],
+          mapObjects: allMapObjects,
+          t: (key: string, def: string) => TranslationManager.t(key, def),
+          getFloorName: (floorId: string, originalName: string = '') => TranslationManager.getFloorName(floorId, originalName),
+          getName: (obj: any) => TranslationManager.getName(obj) || obj?.name
+        });
+
         // Translation logic
         const translateActionType = (instruction: any, allInstructions: any[], currentIndex: number): string => {
+          return instructionFormatter.format(instruction, allInstructions, currentIndex);
           const actionType = (instruction.action?.type || 'continue').toLowerCase();
           const bearing = (instruction.action?.bearing || '').toLowerCase();
           const connection = instruction.action?.connection;
@@ -6148,18 +6166,7 @@ async function init() {
 
               let distanceText = '';
               let timeText = '';
-              let currentDist = Math.round(instruction.distance || 0);
-
-              if (isConnection) {
-                const isEnter = actionType === 'takeconnection' || actionType === 'enter';
-                if (isEnter) {
-                  const connType = (instruction.action?.connection?.type || '').toLowerCase();
-                  const isElevator = connType.includes('elevator') || (instruction.action?.connection?.name || '').toLowerCase().includes('thang máy');
-                  currentDist = isElevator ? 3 : 6;
-                } else {
-                  currentDist = 0;
-                }
-              }
+              let currentDist = getInstructionDisplayDistance(instruction);
 
               if (currentDist > 0 && actionType !== 'arrive' && actionType !== 'arrival') {
                 distanceText = `${currentDist}m`;
@@ -6220,15 +6227,7 @@ async function init() {
           let totalDisplayDist = 0;
           simplifiedInstructions.forEach((inst, idx) => {
             const actType = (inst.action?.type || '').toLowerCase();
-            const isConn = actType.includes('connection') || actType.includes('elevator') || actType.includes('stair') || actType.includes('escalator');
-            let d = inst.distance || 0;
-            if (isConn) {
-              const isEnter = actType === 'takeconnection' || actType === 'enter';
-              if (isEnter) {
-                const isElev = (inst.action?.connection?.type || '').toLowerCase().includes('elevator') || (inst.action?.connection?.name || '').toLowerCase().includes('thang máy');
-                d = isElev ? 3 : 6;
-              } else d = 0;
-            }
+            let d = getInstructionDisplayDistance(inst);
             if (!actType.includes('arrive') && !actType.includes('arrival')) totalDisplayDist += Math.round(d);
           });
 
