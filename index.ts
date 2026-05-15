@@ -103,6 +103,23 @@ function isPointInPolygon(point: number[], polygon: number[][]): boolean {
   return inside;
 }
 
+/**
+ * Tính diện tích Polygon (m2) dựa trên tọa độ Lat/Lng
+ */
+function calculatePolygonArea(coordinates: any[]): number {
+  if (!coordinates || coordinates.length < 3) return 0;
+  let area = 0;
+  for (let i = 0; i < coordinates.length; i++) {
+    const j = (i + 1) % coordinates.length;
+    area += coordinates[i].longitude * coordinates[j].latitude;
+    area -= coordinates[j].longitude * coordinates[i].latitude;
+  }
+  area = Math.abs(area) / 2;
+  // Chuyển đổi từ độ sang mét vuông xấp xỉ (tại Long Thành: 1 deg lat ~ 111km, 1 deg lng ~ 109km)
+  return area * 111111 * 109000;
+}
+
+
 // (Legacy hardcoded model list removed - now loaded from database dynamically)
 
 // ============================================
@@ -128,24 +145,17 @@ class TranslationManager {
       const path = window.location.pathname;
       const params = new URLSearchParams(window.location.search);
       const langParam = params.get('lang');
-      const browserLang = (navigator.language || (navigator as any).userLanguage || 'vn').split('-')[0].toLowerCase();
-      const detectedBrowserLang = browserLang === 'vi' ? 'vn' : (['vn', 'en', 'zh', 'ja', 'ko'].includes(browserLang) ? browserLang : 'vn');
       const langSegment = (path.split('/')[1] || "").toLowerCase();
 
-      // Ưu tiên Tiếng Việt (vn) làm mặc định nếu không có tham số URL
-      this.currentLang = 'vn';
-
-      if (langParam && ['vn', 'en', 'zh', 'ja', 'ko'].includes(langParam.toLowerCase())) {
-        this.currentLang = langParam.toLowerCase();
+      if (langParam) {
+        const lpLower = langParam.toLowerCase();
+        if (['vn', 'en', 'zh', 'ja', 'ko'].includes(lpLower)) {
+          this.currentLang = lpLower;
+        }
       } else if (['vn', 'en', 'zh', 'ja', 'ko'].includes(langSegment)) {
         this.currentLang = langSegment;
       } else {
-        // Chỉ lấy theo trình duyệt nếu là các ngôn ngữ được hỗ trợ, còn lại mặc định vn
-        const mappedBrowserLang = browserLang === 'vi' ? 'vn' : browserLang;
-        if (['vn', 'en', 'zh', 'ja', 'ko'].includes(mappedBrowserLang)) {
-          // this.currentLang = mappedBrowserLang; 
-          // Tạm thời comment để ưu tiên VN tuyệt đối như yêu cầu
-        }
+        this.currentLang = 'vn';
       }
     } catch (e) {
       this.currentLang = 'vn';
@@ -6945,6 +6955,47 @@ async function init() {
   };
 
   // Helper: Focus camera on an object with a specific zoom level
+  /**
+   * Tính toán mức Zoom thông minh dựa trên diện tích và loại đối tượng
+   */
+  const getSmartZoomLevel = (obj: any): number => {
+    if (!obj) return 20.0;
+
+    // 1. Dựa vào diện tích Polygon (Nếu có)
+    try {
+      let coordinates = null;
+      if (obj.polygons && obj.polygons.length > 0) {
+        coordinates = obj.polygons[0].coordinates;
+      } 
+      else if (obj.geoJSON && obj.geoJSON.geometry && obj.geoJSON.geometry.type === 'Polygon') {
+        coordinates = obj.geoJSON.geometry.coordinates[0].map((c: any) => ({ longitude: c[0], latitude: c[1] }));
+      }
+
+      if (coordinates) {
+        const area = calculatePolygonArea(coordinates);
+        if (area < 15) return 22.0; 
+        if (area < 40) return 21.0; 
+        if (area < 100) return 20.0;
+      }
+    } catch (e) { }
+
+    // 2. Dựa vào Categories (Ưu tiên các khu vực quan trọng nhưng nhỏ)
+    const categories = obj.categories || [];
+    const isPriorityDetailed = categories.some((c: any) => {
+      const cname = (c.name || "").toLowerCase();
+      return cname.includes('gate') || cname.includes('cửa ra') || cname.includes('quầy') || 
+             cname.includes('check-in') || cname.includes('toilet') || cname.includes('vệ sinh');
+    });
+
+    if (isPriorityDetailed) return 21.5;
+
+    // 3. Fallback theo zone (dùng style màu để nhận diện quy mô lớn như Public/Hall)
+    const style = getObjectBaseStyle(obj);
+    const isLargeArea = (style.color === "#FFF176" || style.color === "#FFCDD2" || style.color === "#FBC02D" || style.color === "#EF9A9A");
+    
+    return isLargeArea ? 18.5 : 20.0;
+  };
+
   const focusOnObject = (obj: any, zoomLevel: number) => {
     try {
       if (!obj) return;
@@ -7246,7 +7297,7 @@ async function init() {
             drawNavigation();
           } else {
             updateHighlights();
-            focusOnObject(space, 19.0);
+            focusOnObject(space, getSmartZoomLevel(space));
 
             const statusEl = document.getElementById("wayfinding-status");
             if (statusEl) {
@@ -8152,7 +8203,7 @@ async function init() {
           }
 
           // USER REQUEST: Click khu vực dẫn đường thì cần focus vào khu vực đó lên 19x
-          focusOnObject(clickedObject, 19.0);
+          focusOnObject(clickedObject, getSmartZoomLevel(clickedObject));
 
           return;
         }
@@ -8198,13 +8249,8 @@ async function init() {
             // Bỏ qua nếu không có method này
           }
 
-          // Zoom IN: Adjust based on object type to prevent over-zooming
-          const style = getObjectBaseStyle(clickedObject);
-          const isSpecialArea = (style.color === "#FFF176" || style.color === "#FFCDD2" || style.color === "#FBC02D" || style.color === "#EF9A9A");
-
-          // Special areas (Public/Restricted) are larger, so use lower zoom to show context.
-          // Regular detailed items use the 20x zoom requested by user.
-          const targetZoom = isSpecialArea ? 18.0 : 20.0;
+          // Zoom IN: Tự động điều chỉnh mức độ Zoom dựa trên diện tích và loại khu vực
+          const targetZoom = getSmartZoomLevel(clickedObject);
 
           // Lấy anchor/coordinate của object để đưa ra giữa màn hình
           const anchor = getObjectAnchor(clickedObject);
@@ -13767,9 +13813,9 @@ export function initAreaColorUI(allMapObjects: any[], mapView: any, mapData: any
 }
 
 // Custom Speed Dropdown logic
-const speedDisplay = document.getElementById("speed-selected-display");
-const speedMenu = document.getElementById("speed-options-menu");
-const speedValueText = document.getElementById("speed-value-text");
+const speedDisplay = document.getElementById("speed-selected-display") as HTMLElement | null;
+const speedMenu = document.getElementById("speed-options-menu") as HTMLElement | null;
+const speedValueText = document.getElementById("speed-value-text") as HTMLElement | null;
 const speedItems = document.querySelectorAll(".speed-item");
 
 if (speedDisplay && speedMenu) {
@@ -13781,7 +13827,7 @@ if (speedDisplay && speedMenu) {
   });
 
   document.addEventListener("click", () => {
-    speedMenu.style.display = "none";
+    if (speedMenu) speedMenu.style.display = "none";
     if (speedDisplay) speedDisplay.style.borderColor = "#e9ecef";
   });
 
@@ -13789,7 +13835,7 @@ if (speedDisplay && speedMenu) {
     item.addEventListener("click", () => {
       const value = (item as HTMLElement).dataset.value;
       const text = (item as HTMLElement).textContent;
-      if (value && speedValueText) {
+      if (value && speedValueText && text) {
         const speed = parseFloat(value);
         if (typeof (window as any).setAnimationSpeed === 'function') {
           (window as any).setAnimationSpeed(speed);
