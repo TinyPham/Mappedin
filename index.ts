@@ -3475,8 +3475,8 @@ async function init() {
 
       // 2. BẬT ĐÈN SÂN KHẤU (SPOTLIGHT EFFECT)
       if (isTargetFocus) {
-        style.color = "#214ca6";     // Navy Blue
-        style.hoverColor = "#214ca6"; // KHÓA HOVER
+        style.color = "#4CAF50";     // Green
+        style.hoverColor = "#45a049"; // Green hover
       }
       // Dập tắt ánh sáng kết cấu xung quanh
       else if (hasAnyFocus) {
