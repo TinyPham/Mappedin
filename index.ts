@@ -119,6 +119,31 @@ function calculatePolygonArea(coordinates: any[]): number {
   return area * 111111 * 109000;
 }
 
+/**
+ * Loại bỏ dấu tiếng Việt để phục vụ tìm kiếm không dấu
+ */
+function removeVietnameseTones(str: string): string {
+  if (!str) return "";
+  str = str.replace(/à|á|ạ|ả|ã|â|ầ|ấ|ậ|ẩ|ẫ|ă|ằ|ắ|ặ|ẳ|ẵ/g, "a");
+  str = str.replace(/è|é|ẹ|ẻ|ẽ|ê|ề|ế|ệ|ể|ễ/g, "e");
+  str = str.replace(/ì|í|ị|ỉ|ĩ/g, "i");
+  str = str.replace(/ò|ó|ọ|ỏ|õ|ô|ồ|ố|ộ|ổ|ỗ|ơ|ờ|ớ|ợ|ở|ỡ/g, "o");
+  str = str.replace(/ù|ú|ụ|ủ|ũ|ư|ừ|ứ|ự|ử|ữ/g, "u");
+  str = str.replace(/ỳ|ý|ỵ|ỷ|ỹ/g, "y");
+  str = str.replace(/đ/g, "d");
+  str = str.replace(/À|Á|Ạ|Ả|Ã|Â|Ầ|Ấ|Ậ|Ẩ|Ẫ|Ă|Ằ|Ắ|Ặ|Ẳ|Ẵ/g, "A");
+  str = str.replace(/È|É|Ẹ|Ẻ|Ẽ|Ê|Ề|Ế|Ệ|Ể|Ễ/g, "E");
+  str = str.replace(/Ì|Í|Ị|Ỉ|Ĩ/g, "I");
+  str = str.replace(/Ò|Ó|Ọ|Ỏ|Õ|Ô|Ồ|Ố|Ộ|Ổ|Ỗ|Ơ|Ờ|Ớ|Ợ|Ở|Ỡ/g, "O");
+  str = str.replace(/Ù|Ú|Ụ|Ủ|Ũ|Ư|Ừ|Ứ|Ự|Ử|Ữ/g, "U");
+  str = str.replace(/Ỳ|Ý|Ỵ|Ỷ|Ỹ/g, "Y");
+  str = str.replace(/Đ/g, "D");
+  // Some system combine normal characters with combine characters
+  str = str.normalize('NFD').replace(/[\u0300-\u036f]/g, "");
+  return str;
+}
+
+
 
 // (Legacy hardcoded model list removed - now loaded from database dynamically)
 
@@ -1909,8 +1934,13 @@ async function init() {
       const q = query.toLowerCase().trim();
       const t = target.toLowerCase().trim();
 
-      // Standard includes
+      // Case 1: Direct match
       if (t.includes(q)) return true;
+
+      // Case 2: Accent-insensitive match
+      const qClean = removeVietnameseTones(q);
+      const tClean = removeVietnameseTones(t);
+      if (tClean.includes(qClean)) return true;
 
       // Token based matching
       const qTokens = q.split(/[\s\-\,]+/).filter(tk => tk.length > 0);
@@ -1918,14 +1948,17 @@ async function init() {
 
       if (qTokens.length === 0 || tTokens.length === 0) return false;
 
-      // A. Query words are ALL in target (Unordered)
-      const allQueryInTarget = qTokens.every(qt => tTokens.some(tt => tt.includes(qt)));
+      // Token clean (non-accented)
+      const qTokensClean = qTokens.map(tk => removeVietnameseTones(tk));
+      const tTokensClean = tTokens.map(tk => removeVietnameseTones(tk));
+
+      // A. Query words are ALL in target (Unordered, non-accented)
+      const allQueryInTarget = qTokensClean.every(qt => tTokensClean.some(tt => tt.includes(qt)));
       if (allQueryInTarget) return true;
 
-      // B. Target words are ALL in query (User's specific "Cửa ra tàu bay 30" -> "Cửa 30" request)
-      // Only if result is descriptive enough (2+ tokens) to avoid noisy single-letter matches
-      if (tTokens.length >= 2) {
-        const allTargetInQuery = tTokens.every(tt => qTokens.some(qt => qt.includes(tt)));
+      // B. Target words are ALL in query (non-accented)
+      if (tTokensClean.length >= 2) {
+        const allTargetInQuery = tTokensClean.every(tt => qTokensClean.some(qt => qt.includes(tt)));
         if (allTargetInQuery) return true;
       }
 
@@ -6809,14 +6842,27 @@ async function init() {
       if (!query || !target) return false;
       const q = query.toLowerCase().trim();
       const t = target.toLowerCase().trim();
+
+      // 1. Direct match
       if (t.includes(q)) return true;
+
+      // 2. Accent-insensitive
+      const qClean = removeVietnameseTones(q);
+      const tClean = removeVietnameseTones(t);
+      if (tClean.includes(qClean)) return true;
+
       const qTokens = q.split(/[\s\-\,]+/).filter(tk => tk.length > 0);
       const tTokens = t.split(/[\s\-\,]+/).filter(tk => tk.length > 0);
       if (qTokens.length === 0 || tTokens.length === 0) return false;
-      const allQueryInTarget = qTokens.every(qt => tTokens.some(tt => tt.includes(qt)));
+
+      const qTokensClean = qTokens.map(tk => removeVietnameseTones(tk));
+      const tTokensClean = tTokens.map(tk => removeVietnameseTones(tk));
+
+      const allQueryInTarget = qTokensClean.every(qt => tTokensClean.some(tt => tt.includes(qt)));
       if (allQueryInTarget) return true;
-      if (tTokens.length >= 2) {
-        const allTargetInQuery = tTokens.every(tt => qTokens.some(qt => qt.includes(tt)));
+
+      if (tTokensClean.length >= 2) {
+        const allTargetInQuery = tTokensClean.every(tt => qTokensClean.some(qt => qt.includes(tt)));
         if (allTargetInQuery) return true;
       }
       return false;
@@ -13613,7 +13659,10 @@ export function initAreaColorUI(allMapObjects: any[], mapView: any, mapData: any
     items.sort((a: any, b: any) => a.name.localeCompare(b.name));
 
     const term = filter.toLowerCase();
-    const visibleItems = items.filter((i: any) => i.name.toLowerCase().includes(term));
+    const visibleItems = items.filter((i: any) => {
+      const name = i.name.toLowerCase();
+      return name.includes(term) || removeVietnameseTones(name).includes(removeVietnameseTones(term));
+    });
 
     const allChecked = visibleItems.length > 0 && visibleItems.every((i: any) => selectedAreaIds.has(i.id));
 
