@@ -10227,8 +10227,8 @@ async function init() {
     // THIẾT LẬP NGƯỠNG (Điều chỉnh Unload 18.5 theo yêu cầu)
     const ZOOM_LOAD_THRESHOLD = 19.2;
     const ZOOM_UNLOAD_THRESHOLD = 18.8; // Đệm 0.4 đơn vị zoom
-    const LOAD_RADIUS = 180;
-    const UNLOAD_RADIUS = 220;
+    const LOAD_RADIUS = 120;
+    const UNLOAD_RADIUS = 150;
     const MAX_CONCURRENT_MODELS = 200;
 
     console.log(`📡 [STREAMING] Current Zoom: ${currentZoom.toFixed(2)} (Target > ${ZOOM_LOAD_THRESHOLD})`);
