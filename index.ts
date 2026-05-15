@@ -5668,9 +5668,23 @@ async function init() {
       // Mappedin JS tự động tránh cắt ngang qua khu vực bằng cách đi theo lối đi (paths)
 
       const statusEl = document.getElementById("wayfinding-status");
+      const instructionsListEl = document.getElementById("instructions-list");
+      
       if (statusEl) {
         statusEl.textContent = TranslationManager.t('loading_route', "Đang tìm đường đi...");
         statusEl.style.display = "block";
+      }
+
+      if (instructionsListEl) {
+        instructionsListEl.innerHTML = `
+          <div style="padding: 60px 20px; text-align: center; color: #64748b;">
+            <div style="display: inline-block; width: 32px; height: 32px; border: 3px solid #f3f4f6; border-top: 3px solid #214ca6; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 12px;"></div>
+            <div style="font-weight: 500; font-size: 15px;">${TranslationManager.t('loading_route', "Đang tìm đường đi...")}</div>
+          </div>
+          <style>
+            @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+          </style>
+        `;
       }
 
       // Helper: Lấy tọa độ anchor của một object (Internal to drawNavigation)
