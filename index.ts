@@ -648,6 +648,13 @@ class TranslationManager {
       'ja': 'おすすめの場所',
       'ko': '추천 장소'
     },
+    'loading_route': {
+      'vn': 'Đang tìm đường đi...',
+      'en': 'Finding route...',
+      'zh': '正在寻找路线...',
+      'ja': 'ルートを検索中...',
+      'ko': '경로를 찾는 중...'
+    },
     'stopover_label': {
       'vn': 'Điểm dừng',
       'en': 'Stopover',
