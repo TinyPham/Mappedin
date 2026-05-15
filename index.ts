@@ -18,6 +18,7 @@ import {
   shouldRenderNavigationInstruction,
   simplifyNavigationInstructions
 } from "./navigationInstructionRules.js";
+import { getCategoryAreaListStyle } from "./categoryDropdownLayout.js";
 
 // Global Declarations to resolve scope issues
 let ApiService: any = null;
@@ -4717,12 +4718,11 @@ async function init() {
               areaContainer.className = "category-area-list";
               areaContainer.style.cssText = `
                             margin: 0; width: 100%; box-sizing: border-box;
-                            max-height: 600px; overflow-y: auto;
+                            overflow-y: auto;
                             background: #fafbfd;
                             border-bottom: 2px solid #e8ecf4;
                             display: block !important;
                             visibility: visible !important;
-                            min-height: 100px;
                         `;
 
               // Show loading indicator immediately
@@ -4814,6 +4814,7 @@ async function init() {
                   const bName = b?.displayName || TranslationManager.getName(b?.dbRow) || TranslationManager.getName(b?.mapObject) || b?.dbRow?.VN || b?.dbRow?.Name || b?.dbRow?.name || b?.mappedinId || "";
                   return aName.localeCompare(bName);
                 });
+                Object.assign(areaContainer.style, getCategoryAreaListStyle(areaEntries.length));
 
                 if (areaEntries.length === 0) {
                   const emptyAreaState = document.createElement("div");
