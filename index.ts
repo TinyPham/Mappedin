@@ -6821,7 +6821,7 @@ async function init() {
     let itemsWrapper: HTMLElement;
     if (isSuggested) {
       const header = document.createElement("div");
-      header.style.cssText = "padding: 16px 15px 12px; display: flex; align-items: center; justify-content: space-between; font-size: 15px; font-weight: 700; color: #1a1a2e; background: white; cursor: pointer; border-bottom: 1px solid #f0f4f8;";
+      header.style.cssText = "position: sticky; top: 0; z-index: 10; padding: 16px 15px 12px; display: flex; align-items: center; justify-content: space-between; font-size: 15px; font-weight: 700; color: #1a1a2e; background: white; cursor: pointer; border-bottom: 1px solid #f0f4f8;";
       const arrowId = `wayfinding-dropdown-arrow`;
       header.innerHTML = `
         <span>${TranslationManager.t('suggested_places', 'Địa điểm gợi ý')}</span>
@@ -6855,9 +6855,9 @@ async function init() {
       const floorObj = result.primaryObject.floor || result.primaryObject.floorId;
       let floorName = '';
       if (floorObj) {
-        const fn = floorObj.name || floorObj;
-        const localizedLevel = TranslationManager.t('level_label', 'Tầng');
-        floorName = fn.includes('L') ? `${localizedLevel} ${fn.replace('L', '')}` : `${localizedLevel} ${fn}`;
+        const floorId = floorObj.id || floorObj;
+        const rawName = floorObj.name || '';
+        floorName = TranslationManager.getFloorName(floorId, rawName);
       }
 
       item.innerHTML = `
