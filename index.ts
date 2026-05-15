@@ -2018,7 +2018,8 @@ async function init() {
         }
       });
 
-      // Show up to 25 items individual locations
+      // Sort and Show up to 25 items individual locations (Natural Sort)
+      allMatchedObjects.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
       const uniqueResults = allMatchedObjects.slice(0, 25);
 
       if (uniqueResults.length === 0 && matchedCategories.length === 0 && matchedSubCategories.length === 0) {
@@ -4868,8 +4869,8 @@ async function init() {
 
                 areaEntries.sort((a: any, b: any) => {
                   const aName = a?.displayName || TranslationManager.getName(a?.dbRow) || TranslationManager.getName(a?.mapObject) || a?.dbRow?.VN || a?.dbRow?.Name || a?.dbRow?.name || a?.mappedinId || "";
-                  const bName = b?.displayName || TranslationManager.getName(b?.dbRow) || TranslationManager.getName(b?.mapObject) || b?.dbRow?.VN || b?.dbRow?.Name || b?.dbRow?.name || b?.mappedinId || "";
-                  return aName.localeCompare(bName);
+                  const bName = b?.displayName || TranslationManager.getName(b?.dbRow) || TranslationManager.getName(b?.dbRow) || TranslationManager.getName(b?.mapObject) || b?.dbRow?.VN || b?.dbRow?.Name || b?.dbRow?.name || b?.mappedinId || "";
+                  return aName.localeCompare(bName, undefined, { numeric: true, sensitivity: 'base' });
                 });
                 Object.assign(areaContainer.style, getCategoryAreaListStyle(areaEntries.length));
 
@@ -6877,8 +6878,8 @@ async function init() {
           allMatchedObjects.push({ name: localizedName, primaryObject: obj });
         }
       });
-      // Sort alphabetically for consistency
-      allMatchedObjects.sort((a, b) => a.name.localeCompare(b.name));
+      // Sort alphabetically (Natural Sort) for consistency
+      allMatchedObjects.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
     } else {
       allMapObjects.forEach((obj: any) => {
         const localizedName = TranslationManager.getName(obj);
@@ -6886,6 +6887,8 @@ async function init() {
           allMatchedObjects.push({ name: localizedName, primaryObject: obj });
         }
       });
+      // Sort search results (Natural Sort)
+      allMatchedObjects.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
     }
 
     // Lọc trùng lặp name để list suggested nhìn sạch hơn
@@ -13036,8 +13039,8 @@ function initAdminUI(allMapObjects: any[]) {
       })
       .filter((item: any) => item.name && item.name.trim().length > 0);
 
-    // Sort objects by name
-    items.sort((a: any, b: any) => a.name!.localeCompare(b.name!));
+    // Sort objects by name (Natural Sort)
+    items.sort((a: any, b: any) => a.name!.localeCompare(b.name!, undefined, { numeric: true, sensitivity: 'base' }));
 
     let foundCurrent = false;
     items.forEach((item: any) => {
@@ -13656,7 +13659,7 @@ export function initAreaColorUI(allMapObjects: any[], mapView: any, mapData: any
       return { id: s.id, name, floor: floorName || '' };
     });
 
-    items.sort((a: any, b: any) => a.name.localeCompare(b.name));
+    items.sort((a: any, b: any) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
 
     const term = filter.toLowerCase();
     const visibleItems = items.filter((i: any) => {
