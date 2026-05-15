@@ -619,7 +619,7 @@ const SUB_CATEGORY_MAP: Record<string, any> = {
     "accessible": { vn: "Hỗ trợ người khuyết tật", en: "Accessible", zh: "无障碍设施", ja: "バリアフリー", ko: "장애인 지원" },
 
     // Beauty
-    "cosmetic": { vn: "Mỹ phẩm", en: "Cosmetics", zh: "化妆品", ja: "化粧品", ko: "화장품" },
+    "cosmetic": { vn: "Cửa hàng mỹ phẩm", en: "Cosmetic Store", zh: "化妆品店", ja: "化粧品店", ko: "화장품 매장" },
     "spa-massage": { vn: "Spa & Massage", en: "Spa & Massage", zh: "SP & 按摩", ja: "スパ＆マッサージ", ko: "스파 & 마사지" },
 
     // Connection
@@ -644,7 +644,8 @@ const SUB_CATEGORY_MAP: Record<string, any> = {
     "eyewear": { vn: "Mắt kính", en: "Eyewear", zh: "眼镜", ja: "アイウェア", ko: "안경" },
     "footwear": { vn: "Giày dép", en: "Footwear", zh: "鞋子", ja: "フットウェア", ko: "신발" },
     "handbag": { vn: "Túi xách", en: "Handbags", zh: "手提包", ja: "ハンドバッグ", ko: "핸드백" },
-    "jewelry": { vn: "Trang sức", en: "Jewelry", zh: "珠宝", ja: "ジュエリー", ko: "보석" },
+    "jewelry": { vn: "Cửa hàng trang sức", en: "Jewelry Store", zh: "珠宝店", ja: "ジュエリーショップ", ko: "쥬얼리 매장" },
+    "fashion": { vn: "Cửa hàng thời trang", en: "Fashion Store", zh: "时尚店", ja: "ファッション店", ko: "패션 매장" },
     "luxury-fashion": { vn: "Thời trang cao cấp", en: "Luxury Fashion", zh: "奢华时尚", ja: "ラグジュアリーファッション", ko: "명품 패션" },
     "sleepwear": { vn: "Đồ ngủ", en: "Sleepwear", zh: "睡衣", ja: "スリープウェア", ko: "잠옷" },
 
@@ -656,7 +657,7 @@ const SUB_CATEGORY_MAP: Record<string, any> = {
     "bakery": { vn: "Tiệm bánh", en: "Bakery", zh: "面包店", ja: "ベーカリー", ko: "베이커리" },
     "bar": { vn: "Quầy Bar", en: "Bar", zh: "酒吧", ja: "バー", ko: "바" },
     "coffee": { vn: "Cà phê", en: "Coffee Shop", zh: "咖啡店", ja: "カフェ", ko: "커피숍" },
-    "fast-food": { vn: "Thức ăn nhanh", en: "Fast Food", zh: "快餐", ja: "ファストフード", ko: "패스트푸드" },
+    "fast-food": { vn: "Thức ăn nhanh và đồ uống", en: "Fast Food & Drink", zh: "快餐与饮料", ja: "ファストフード＆ドリンク", ko: "패스트푸드 및 음료" },
     "food-court": { vn: "Khu ẩm thực", en: "Food Court", zh: "美食广场", ja: "フードコート", ko: "푸드 코트" },
     "ice-cream": { vn: "Kem", en: "Ice Cream", zh: "冰淇淋", ja: "アイスクリーム", ko: "아이스크림" },
     "pizza": { vn: "Pizza", en: "Pizza", zh: "比萨", ja: "ピザ", ko: "피자" },

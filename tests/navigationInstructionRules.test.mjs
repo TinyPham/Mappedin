@@ -113,7 +113,75 @@ test('formats elevator transition with actual floor direction and exit turn', ()
 
   assert.equal(formatter.format(simplified[0], simplified, 0), 'Di thang');
   assert.equal(formatter.format(simplified[1], simplified, 1), 'Vao thang may len Tang 2 [Ga di]');
-  assert.equal(formatter.format(simplified[2], simplified, 2), 'Ra thang may tai Tang 2 [Ga di] va re trai');
+  assert.equal(formatter.format(simplified[2], simplified, 2), 'Ra thang may tai Tang 2 [Ga di] va di thang');
+});
+
+test('does not add nearby landmark to go straight instructions', () => {
+  const formatter = createInstructionFormatter({
+    floors,
+    mapObjects: [
+      {
+        name: 'Cua hang ban le',
+        floor: { id: 'floor-2' },
+        anchor: { floorId: 'floor-2', latitude: 10, longitude: 10 }
+      }
+    ],
+    t,
+    getFloorName,
+    getName: (obj) => obj?.name
+  });
+
+  assert.equal(formatter.format({
+    action: { type: 'continue' },
+    coordinate: { floorId: 'floor-2', latitude: 10, longitude: 10 },
+    distance: 100
+  }, [], 0), 'Di thang');
+});
+
+test('splits elevator exit at the first strong turn and keeps the short turn step', () => {
+  const pathCoordinates = [
+    { floorId: 'floor-2', latitude: 10, longitude: 10 },
+    { floorId: 'floor-2', latitude: 10, longitude: 10.0005 },
+    { floorId: 'floor-2', latitude: 10.0005, longitude: 10.0005 },
+    { floorId: 'floor-2', latitude: 10.00055, longitude: 10.00052 }
+  ];
+  const simplified = simplifyNavigationInstructions([
+    {
+      action: { type: 'takeconnection', connection: elevator },
+      coordinate: { floorId: 'floor-1', latitude: 10, longitude: 10 },
+      distance: 3
+    },
+    {
+      action: { type: 'exitconnection', connection: elevator },
+      coordinate: pathCoordinates[0],
+      distance: 0
+    },
+    {
+      action: { type: 'turn', bearing: 'left' },
+      coordinate: pathCoordinates[2],
+      distance: 291
+    },
+    {
+      action: { type: 'turn', bearing: 'left' },
+      coordinate: pathCoordinates[3],
+      distance: 8
+    },
+    {
+      action: { type: 'arrival' },
+      coordinate: pathCoordinates[3],
+      distance: 0
+    }
+  ], { pathCoordinates });
+
+  assert.deepEqual(simplified.map((step) => step.action.type), [
+    'takeconnection',
+    'exitconnection',
+    'turn',
+    'arrival'
+  ]);
+  assert.equal(getInstructionDisplayDistance(simplified[1]) > 0, true);
+  assert.equal(getInstructionDisplayDistance(simplified[2]) > 0, true);
+  assert.deepEqual(simplified[2].coordinate, pathCoordinates[1]);
 });
 
 test('removes zero-distance walking turn immediately before entering a connection', () => {
@@ -162,7 +230,8 @@ test('uses explicit translation keys for merged exit phrases', () => {
   formatter.format(instruction, [instruction], 0);
 
   assert.equal(calls.includes('direction_connector_and'), true);
-  assert.equal(calls.includes('action_turn_left_lower'), true);
+  assert.equal(calls.includes('action_go_straight_lower'), true);
+  assert.equal(calls.includes('action_turn_left_lower'), false);
 });
 
 test('detects up/down direction from translated floor names when floor objects have no names', () => {

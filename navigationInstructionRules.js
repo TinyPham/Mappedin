@@ -71,6 +71,95 @@ export function calcDistanceMeters(coord1, coord2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+function nearestPathIndex(coord, pathCoordinates) {
+  if (!coord || !Array.isArray(pathCoordinates) || pathCoordinates.length === 0) return -1;
+  const coordFloorId = getCoordinateFloorId(coord);
+  let bestIndex = -1;
+  let bestDistance = Infinity;
+  for (let i = 0; i < pathCoordinates.length; i++) {
+    const pathFloorId = getCoordinateFloorId(pathCoordinates[i]);
+    if (coordFloorId && pathFloorId && coordFloorId !== pathFloorId) continue;
+    const dist = calcDistanceMeters(coord, pathCoordinates[i]);
+    if (dist < bestDistance) {
+      bestDistance = dist;
+      bestIndex = i;
+    }
+  }
+  return bestIndex;
+}
+
+function pathDistanceBetween(pathCoordinates, startIndex, endIndex) {
+  if (!Array.isArray(pathCoordinates) || startIndex < 0 || endIndex <= startIndex) return 0;
+  let total = 0;
+  for (let i = startIndex; i < endIndex; i++) {
+    total += calcDistanceMeters(pathCoordinates[i], pathCoordinates[i + 1]);
+  }
+  return total;
+}
+
+function pathTurnAngle(prev, current, next) {
+  if (!prev || !current || !next) return 0;
+  const prevLng = prev.longitude ?? prev.lng;
+  const prevLat = prev.latitude ?? prev.lat;
+  const currLng = current.longitude ?? current.lng;
+  const currLat = current.latitude ?? current.lat;
+  const nextLng = next.longitude ?? next.lng;
+  const nextLat = next.latitude ?? next.lat;
+  if ([prevLng, prevLat, currLng, currLat, nextLng, nextLat].some((value) => value === undefined)) return 0;
+
+  const v1x = currLng - prevLng;
+  const v1y = currLat - prevLat;
+  const v2x = nextLng - currLng;
+  const v2y = nextLat - currLat;
+  const len1 = Math.hypot(v1x, v1y);
+  const len2 = Math.hypot(v2x, v2y);
+  if (len1 === 0 || len2 === 0) return 0;
+  const dot = Math.max(-1, Math.min(1, (v1x * v2x + v1y * v2y) / (len1 * len2)));
+  return Math.acos(dot) * 180 / Math.PI;
+}
+
+function findFirstStrongTurnIndexAfter(pathCoordinates, startIndex, endIndex) {
+  if (!Array.isArray(pathCoordinates) || startIndex < 0 || endIndex <= startIndex + 1) return -1;
+  const floorId = getCoordinateFloorId(pathCoordinates[startIndex]);
+  for (let i = Math.max(1, startIndex + 1); i < Math.min(endIndex, pathCoordinates.length - 1); i++) {
+    if (floorId && getCoordinateFloorId(pathCoordinates[i]) !== floorId) continue;
+    const beforeDistance = pathDistanceBetween(pathCoordinates, startIndex, i);
+    const afterDistance = pathDistanceBetween(pathCoordinates, i, endIndex);
+    if (beforeDistance < 5 || afterDistance <= 0) continue;
+    const angle = pathTurnAngle(pathCoordinates[i - 1], pathCoordinates[i], pathCoordinates[i + 1]);
+    if (angle >= 45) return i;
+  }
+  return -1;
+}
+
+function splitExitAtStrongTurn(exitStep, turnStep, followingStep, pathCoordinates) {
+  if (actionTypeOf(turnStep) !== 'turn' || !Array.isArray(pathCoordinates) || pathCoordinates.length < 3) return null;
+  const startIndex = nearestPathIndex(exitStep.coordinate, pathCoordinates);
+  const endCoord = followingStep?.coordinate || turnStep.coordinate || pathCoordinates[pathCoordinates.length - 1];
+  const endIndex = nearestPathIndex(endCoord, pathCoordinates);
+  if (startIndex < 0 || endIndex <= startIndex + 1) return null;
+
+  const turnIndex = findFirstStrongTurnIndexAfter(pathCoordinates, startIndex, endIndex);
+  if (turnIndex < 0) return null;
+
+  const beforeDistance = Math.round(pathDistanceBetween(pathCoordinates, startIndex, turnIndex));
+  const afterDistance = Math.round(pathDistanceBetween(pathCoordinates, turnIndex, endIndex));
+  if (beforeDistance <= 0 || afterDistance <= 0) return null;
+
+  exitStep._mergedNextAction = { type: 'continue' };
+  exitStep._mergedNextInstruction = '';
+  exitStep.distance = beforeDistance;
+  exitStep.originalDistance = beforeDistance;
+  exitStep._displayDistance = beforeDistance;
+
+  const splitTurn = JSON.parse(JSON.stringify(turnStep));
+  splitTurn.coordinate = pathCoordinates[turnIndex];
+  splitTurn.distance = afterDistance;
+  splitTurn.originalDistance = afterDistance;
+  splitTurn._displayDistance = afterDistance;
+  return splitTurn;
+}
+
 export function findNearbyLandmark(coord, currentFloorId, mapObjects, options = {}) {
   if (!coord || !currentFloorId) return null;
 
@@ -133,8 +222,9 @@ function tryMergeShortTurn(current, next, nextNext) {
   return false;
 }
 
-export function simplifyNavigationInstructions(instructions) {
+export function simplifyNavigationInstructions(instructions, options = {}) {
   const source = cloneInstructions(instructions);
+  const pathCoordinates = options.pathCoordinates || [];
   if (source.length === 0) return [];
 
   const merged = [];
@@ -225,14 +315,24 @@ export function simplifyNavigationInstructions(instructions) {
     const step = postMerged[i];
     const stepType = actionTypeOf(step);
     const nextStep = postMerged[i + 1];
+    const followingStep = postMerged[i + 2];
     const nextStepType = actionTypeOf(nextStep);
     if (isExitAction(stepType) && nextStep && (nextStepType === 'turn' || nextStepType === 'continue')) {
-      step._mergedNextAction = nextStep.action;
-      step._mergedNextInstruction = nextStep.instruction;
-      step.distance = nextStep.distance || 0;
-      if (nextStep.time !== undefined) step.time = (step.time || 0) + nextStep.time;
-      withExitMerged.push(step);
-      i++;
+      const followingStepType = actionTypeOf(followingStep);
+      const splitTurn = splitExitAtStrongTurn(step, nextStep, followingStep, pathCoordinates);
+      if (splitTurn) {
+        if (nextStep.time !== undefined) step.time = (step.time || 0) + nextStep.time;
+        withExitMerged.push(step);
+        withExitMerged.push(splitTurn);
+        i += followingStepType === 'turn' && (followingStep.distance || 0) <= 15 ? 2 : 1;
+      } else {
+        step._mergedNextAction = nextStep.action;
+        step._mergedNextInstruction = nextStep.instruction;
+        step.distance = nextStep.distance || 0;
+        if (nextStep.time !== undefined) step.time = (step.time || 0) + nextStep.time;
+        withExitMerged.push(step);
+        i++;
+      }
     } else {
       withExitMerged.push(step);
     }
@@ -410,14 +510,8 @@ export function createInstructionFormatter(options) {
       if (isExit) {
         const mergedAction = instruction._mergedNextAction;
         if (mergedAction) {
-          const mergedBearing = (mergedAction.bearing || '').toLowerCase();
-          const mergedType = (mergedAction.type || '').toLowerCase();
           let nextActionText = t('action_go_straight_lower', 'di thang');
-          if (mergedType === 'turn' || mergedBearing.includes('left') || mergedBearing.includes('right')) {
-            if (mergedBearing.includes('left')) nextActionText = t('action_turn_left_lower', 're trai');
-            else if (mergedBearing.includes('right')) nextActionText = t('action_turn_right_lower', 're phai');
-          }
-          return `${t('action_exit', 'Ra')} ${name}${floorText} ${t('direction_connector_and', 'va')} ${nextActionText}${landmarkTextFor(instruction)}`;
+          return `${t('action_exit', 'Ra')} ${name}${floorText} ${t('direction_connector_and', 'va')} ${nextActionText}`;
         }
         return `${t('action_exit', 'Ra')} ${name}${floorText}${landmarkTextFor(instruction)}`;
       }
@@ -453,7 +547,7 @@ export function createInstructionFormatter(options) {
     };
 
     const baseText = actionMap[actionType] || mappedinText || actionType;
-    return `${baseText}${actionType === 'continue' ? landmarkTextFor(instruction) : ''}`;
+    return baseText;
   }
 
   return { format };
@@ -472,6 +566,7 @@ export function isInstructionExit(instruction) {
 }
 
 export function getConnectionDisplayDistance(instruction) {
+  if (Number.isFinite(instruction?._displayDistance)) return Math.round(instruction._displayDistance);
   if (!isInstructionConnection(instruction)) return Math.round(instruction?.distance || 0);
   if (isInstructionEnter(instruction)) return isElevatorConnection(instruction?.action?.connection) ? 3 : 6;
   if (isInstructionExit(instruction) && instruction?._mergedNextAction) return Math.round(instruction.distance || 0);

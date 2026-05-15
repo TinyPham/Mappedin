@@ -301,3 +301,57 @@ Sau mỗi đợt sửa, append một block mới theo mẫu:
   - floor id rank van la nguon quyet dinh len/xuong chinh
 - Xac minh:
   - them regression test cho route Tang 1 -> elevator step coordinate Tang 2 -> exit Tang 2, ket qua `Vao thang may len Tang 2`
+
+## Update 2026-05-15 - Nearest turn after elevator exit
+
+- Yeu cau:
+  - khi sau `Ra thang may` co doan dai roi moi re, phai lay diem re gan nhat sau thang may tren polyline
+  - khong lay diem gan dich/cua ra tau bay lam buoc re
+- Dieu chinh:
+  - truyen `directions.coordinates` vao `simplifyNavigationInstructions`
+  - tim bend/goc re dau tien sau coordinate exitconnection tren polyline
+  - chia distance: exit -> bend va bend -> next/destination
+  - tao synthetic turn tai bend de landmark gan dung vi tri re, vi du `Cua hang ban le`
+- Xac minh:
+  - regression test dam bao turn coordinate la bend gan nhat sau elevator, distance exit va turn duoc chia rieng
+
+## Update 2026-05-15 - Smoothed path turn detection
+
+- Nguyen nhan runtime:
+  - Mappedin smoothing co the bien goc re thanh nhieu doan cong nho, nen check goc 3 diem lien ke khong bat duoc bend gan Cua hang ban le
+- Dieu chinh:
+  - tim goc re gan nhat sau thang may bang ca local angle va accumulated/window angle tren khoang cach truoc/sau diem dang xet
+  - giu rule lay bend dau tien sau exitconnection, khong lay bend gan dich
+- Xac minh:
+  - them test cho smoothed path voi nhieu goc nho lien tiep, van tach duoc `Ra thang may ... va di thang` va buoc `Re trai` rieng
+
+## Update 2026-05-15 - Continue then short turn after elevator exit
+
+- Nguyen nhan xac dinh:
+  - runtime co pattern `exitconnection -> continue 291m -> turn 8m -> arrival`
+  - code truoc chi split khi buoc ngay sau exit la `turn`, nen `continue 291m` bi gop vao exit va `turn 8m` gan dich van giu nguyen
+- Dieu chinh:
+  - neu sau exit la `continue` va tiep theo la `turn`, dung turn do lam action re nhung dat coordinate tai bend gan nhat sau thang may
+  - bo qua turn ngan gan dich khi da tao turn tai bend that
+- Xac minh:
+  - regression test cho pattern `exit -> continue 291m -> turn 8m`, ket qua turn coordinate nam tai bend gan Cua hang ban le
+
+## 2026-05-15 - Navigation exit split runtime diagnosis
+- Added structured NAV_DEBUG runtime payload to capture raw/simplified instructions, route coordinate counts, path node metadata, and exit-merge rule failure reasons.
+- Changed split geometry source to prefer Mappedin Directions.path node coordinates over smoothed Directions.coordinates, because SDK types show path is the navigation graph node list and coordinates may be simplified for display.
+- Verified: node --test tests/navigationInstructionRules.test.mjs; npm run build.
+
+## 2026-05-15 - Exit split late-turn fallback
+- Runtime NAV_DEBUG showed splitApplied=true but turnIndex=35, beforeDistance=291, afterDistance=8; rule was choosing a strong 87-degree turn too close to destination and ignoring earlier long-path candidates with small angles.
+- Updated post-elevator split selection: if the first strong turn leaves <=15m after it, choose the earliest prior candidate where both sides are meaningful (>=30m).
+- Added regression coverage for late short turn fallback. Verified: node --test tests/navigationInstructionRules.test.mjs; npm run build.
+
+## 2026-05-15 - Retail landmark at first post-elevator turn
+- Locked late-short-turn fallback to the first meaningful split candidate after elevator exit so it stays on the first bend after leaving the connection.
+- Added preferred landmark keywords on the generated post-elevator split turn to choose retail/ban le over nearby souvenir landmarks when both are near the same turn.
+- Added regression coverage for retail landmark preference. Verified: node --test tests/navigationInstructionRules.test.mjs; npm run build.
+
+## 2026-05-15 - Revert post-elevator split experiment
+- Reverted the runtime/path split experiment and NAV_DEBUG instrumentation from navigation instructions.
+- Kept the stable behavior requested by user: merged elevator exit says go straight, while the following short turn remains a separate step near the gate area.
+- Verified: node --test tests/navigationInstructionRules.test.mjs; npm run build.
