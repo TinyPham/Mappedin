@@ -205,7 +205,7 @@
         width: 100% !important;
         height: auto !important;
         max-height: 80vh !important;
-        z-index: 5000 !important;
+        z-index: 6000 !important;
         pointer-events: auto !important;
         margin-bottom: 0 !important;
         background: white !important;
