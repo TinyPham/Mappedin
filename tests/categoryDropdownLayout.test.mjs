@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {
   getCategoryAreaListHeight,
   getCategoryAreaListStyle,
+  getCategoryAreaListStyleForRows,
   shouldScrollCategoryAreaList
 } from '../categoryDropdownLayout.js';
 
@@ -29,18 +30,31 @@ test('category area list style fixes height to visible area rows and only scroll
     height: '50px',
     minHeight: '0px',
     maxHeight: '200px',
+    flexShrink: '0',
     overflowY: 'hidden'
   });
   assert.deepEqual(getCategoryAreaListStyle(3), {
     height: '150px',
     minHeight: '0px',
     maxHeight: '200px',
+    flexShrink: '0',
     overflowY: 'hidden'
   });
   assert.deepEqual(getCategoryAreaListStyle(7), {
     height: '200px',
     minHeight: '0px',
     maxHeight: '200px',
+    flexShrink: '0',
+    overflowY: 'auto'
+  });
+});
+
+test('category area list style uses source row count when rendered entries undercount available areas', () => {
+  assert.deepEqual(getCategoryAreaListStyleForRows(1, 16), {
+    height: '200px',
+    minHeight: '0px',
+    maxHeight: '200px',
+    flexShrink: '0',
     overflowY: 'auto'
   });
 });

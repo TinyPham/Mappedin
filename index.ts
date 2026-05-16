@@ -1409,6 +1409,39 @@ async function init() {
   `;
   document.head.appendChild(previewStyle);
 
+  // --- THEME SELECTOR LOGIC ---
+  const themeOptions = document.querySelectorAll('.theme-option');
+  const currentThemeNameDisp = document.getElementById('current-theme-name');
+
+  themeOptions.forEach(option => {
+    option.addEventListener('click', () => {
+      const themeUrl = option.getAttribute('data-url');
+      const themeName = option.querySelector('.theme-name')?.textContent;
+
+      if (themeUrl && (mapView as any).Outdoor) {
+        console.log(`🎨 Switching theme to: ${themeName} (${themeUrl})`);
+        
+        try {
+          (mapView as any).Outdoor.setStyle(themeUrl);
+          
+          // UI Updates
+          themeOptions.forEach(opt => opt.classList.remove('active'));
+          option.classList.add('active');
+          if (currentThemeNameDisp && themeName) {
+            currentThemeNameDisp.textContent = themeName;
+          }
+        } catch (e) {
+          console.warn("Failed to set outdoor style", e);
+        }
+
+        // Close the menu
+        document.getElementById('theme-selector-wrapper')?.classList.remove('open');
+      } else {
+        console.warn("Theme URL missing or Outdoor controller not available");
+      }
+    });
+  });
+
   // LƯU Ý: XÓA LOADING SCREEN KHI HOÀN TẤT
   if (progressInterval) clearInterval(progressInterval);
 

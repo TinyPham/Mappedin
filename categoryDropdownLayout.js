@@ -14,6 +14,13 @@ export function getCategoryAreaListStyle(itemCount, rowHeight = 50, maxVisibleIt
     height: `${getCategoryAreaListHeight(itemCount, rowHeight, maxVisibleItems)}px`,
     minHeight: '0px',
     maxHeight: `${maxHeight}px`,
+    flexShrink: '0',
     overflowY: shouldScrollCategoryAreaList(itemCount, maxVisibleItems) ? 'auto' : 'hidden'
   };
+}
+
+export function getCategoryAreaListStyleForRows(renderedItemCount, sourceItemCount, rowHeight = 50, maxVisibleItems = 4) {
+  const renderedCount = Math.max(0, Number(renderedItemCount) || 0);
+  const sourceCount = Math.max(0, Number(sourceItemCount) || 0);
+  return getCategoryAreaListStyle(Math.max(renderedCount, sourceCount), rowHeight, maxVisibleItems);
 }

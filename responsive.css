@@ -343,7 +343,7 @@
     /* 5. Tinh chỉnh các cụm điều khiển (Tầng/Ngôn ngữ) xuống Bottom (Incheon Style) */
     #map-top-controls {
         top: auto !important;
-        bottom: 25px !important;
+        bottom: 35px !important;
         left: 50% !important;
         right: auto !important;
         transform: translateX(-50%) !important;

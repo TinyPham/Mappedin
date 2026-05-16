@@ -1677,7 +1677,63 @@
       </select>
       <select id="floor-selector" style="display:none;"></select>
 
-      <!-- MAP CONTROLS HEADER (TOP RIGHT GÓP CHUNG) -->
+      <!-- MỚI: Theme Selector (Tách biệt để điều hướng độc lập) -->
+        <div class="theme-selector-wrapper" id="theme-selector-wrapper">
+          <div class="theme-selector-toggle" onclick="toggleThemeSelector(event)">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="white" stroke="#333" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;"><path d="m9.06 11.9 8.07-8.06a2.85 2.85 0 1 1 4.03 4.03l-8.06 8.08"/><path d="M7.07 14.94c-3.91.35-7.07 3.73-7.07 7.06v1h2c3.33 0 6.7-3.17 7.06-7.07l-2-2z"/></svg>
+            <span id="current-theme-name" data-i18n="theme_classic">Classic</span>
+            <svg class="arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </div>
+          <div class="theme-selector-menu" id="theme-selector-menu">
+            <div class="theme-option active" data-theme="classic" data-url="https://tiles-cdn.mappedin.com/styles/mappedin/style.json">
+              <div class="theme-thumb classic"></div>
+              <div class="theme-info">
+                <span class="theme-name" data-i18n="theme_classic">Classic</span>
+                <span class="theme-desc" data-i18n="theme_desc_classic">Neutral and minimal</span>
+              </div>
+            </div>
+            <div class="theme-option" data-theme="honeycrisp" data-url="https://tiles-cdn.mappedin.com/styles/honeycrisp/style.json">
+              <div class="theme-thumb honeycrisp"></div>
+              <div class="theme-info">
+                <span class="theme-name" data-i18n="theme_honeycrisp">Honeycrisp</span>
+                <span class="theme-desc" data-i18n="theme_desc_honeycrisp">Sharp and flavorful</span>
+              </div>
+            </div>
+            <div class="theme-option" data-theme="nightblue" data-url="https://tiles-cdn.mappedin.com/styles/midnightblue/style.json">
+              <div class="theme-thumb nightblue"></div>
+              <div class="theme-info">
+                <span class="theme-name" data-i18n="theme_nightblue">Night Blue</span>
+                <span class="theme-desc" data-i18n="theme_desc_nightblue">Serene and moody</span>
+              </div>
+            </div>
+            <div class="theme-option" data-theme="beachplease" data-url="https://tiles-cdn.mappedin.com/styles/beachplease/style.json">
+              <div class="theme-thumb beachplease"></div>
+              <div class="theme-info">
+                <span class="theme-name" data-i18n="theme_beachplease">Beach Please</span>
+                <span class="theme-desc" data-i18n="theme_desc_beachplease">Bright and breezy</span>
+              </div>
+            </div>
+            <div class="theme-option" data-theme="freshmint" data-url="https://tiles-cdn.mappedin.com/styles/freshmint/style.json">
+              <div class="theme-thumb freshmint"></div>
+              <div class="theme-info">
+                <span class="theme-name" data-i18n="theme_freshmint">Fresh Mint</span>
+                <span class="theme-desc" data-i18n="theme_desc_freshmint">Cool and refreshing</span>
+              </div>
+            </div>
+            <div class="theme-option" data-theme="starlight" data-url="https://tiles-cdn.mappedin.com/styles/starlight/style.json">
+              <div class="theme-thumb starlight"></div>
+              <div class="theme-info">
+                <span class="theme-name" data-i18n="theme_starlight">Starlight</span>
+                <span class="theme-desc" data-i18n="theme_desc_starlight">Enchanting and cosmic</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      <!-- MAP CONTROLS HEADER (GIỮ NGUYÊN VỊ TRÍ GỐC: TOP RIGHT) -->
       <div id="map-top-controls"
         style="position:absolute; top:20px; right:20px; z-index:1000; display:flex; gap:12px; align-items:center;">
 
@@ -2471,15 +2527,26 @@
       if (wrapper.classList.contains('open')) {
         wrapper.classList.remove('open');
       } else {
-        document.querySelectorAll('.pro-dropdown-wrapper.open').forEach(w => w.classList.remove('open'));
+        document.querySelectorAll('.pro-dropdown-wrapper.open, .theme-selector-wrapper.open').forEach(w => w.classList.remove('open'));
+        wrapper.classList.add('open');
+      }
+    }
+
+    function toggleThemeSelector(e) {
+      if (e) e.stopPropagation();
+      const wrapper = document.getElementById('theme-selector-wrapper');
+      if (wrapper.classList.contains('open')) {
+        wrapper.classList.remove('open');
+      } else {
+        document.querySelectorAll('.pro-dropdown-wrapper.open, .theme-selector-wrapper.open').forEach(w => w.classList.remove('open'));
         wrapper.classList.add('open');
       }
     }
 
     // Đóng khi click ra ngoài
     document.addEventListener('click', function (e) {
-      if (!e.target.closest('.pro-dropdown-wrapper')) {
-        document.querySelectorAll('.pro-dropdown-wrapper.open').forEach(w => w.classList.remove('open'));
+      if (!e.target.closest('.pro-dropdown-wrapper') && !e.target.closest('.theme-selector-wrapper')) {
+        document.querySelectorAll('.pro-dropdown-wrapper.open, .theme-selector-wrapper.open').forEach(w => w.classList.remove('open'));
       }
     });
 
