@@ -2090,3 +2090,11 @@ body.zoom-out-mode .mappedin-poi-marker {
   }
 }
 
+
+/* MOVE CAMERA ACTIONS HIGHER ON MOBILE TO AVOID OVERLAP */
+@media (max-width: 768px) {
+  #camera-actions {
+    top: 42% !important; /* D?ch lên trên m?t chút so v?i tâm tuy?t d?i */
+  }
+}
+
