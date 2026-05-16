@@ -1841,3 +1841,46 @@ body.zoom-out-mode .mappedin-poi-marker {
     color: #214ca6;
   }
 }
+
+/* Brightness Slider */
+.brightness-selector-wrapper {
+  position: absolute;
+  top: 20px;
+  left: 170px;
+  z-index: 9999;
+}
+
+.brightness-toggle {
+  background: white;
+  padding: 8px 16px;
+  border-radius: 30px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  height: 44px;
+  box-sizing: border-box;
+}
+
+#brightness-slider {
+  width: 100px;
+  cursor: pointer;
+  accent-color: #214ca6;
+}
+
+@media (max-width: 768px) {
+  .brightness-selector-wrapper {
+    top: 142px;
+    right: 120px;
+    left: auto;
+    z-index: 9999 !important;
+  }
+  .brightness-toggle {
+    height: 40px;
+    padding: 0 10px;
+  }
+  #brightness-slider {
+    width: 60px;
+  }
+}
+

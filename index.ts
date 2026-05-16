@@ -1506,6 +1506,23 @@ async function init() {
     });
   });
 
+  // --- BRIGHTNESS / ANTI-GLARE SLIDER LOGIC ---
+  const brightnessSlider = document.getElementById('brightness-slider') as HTMLInputElement;
+  const mapElem = document.getElementById('mappedin-map');
+
+  if (brightnessSlider && mapElem) {
+    brightnessSlider.addEventListener('input', (e) => {
+      const val = (e.target as HTMLInputElement).value;
+      const brightness = parseFloat(val);
+      
+      // Calculate contrast: as it gets darker (anti-glare), we boost contrast slightly
+      const contrast = 1 + (1 - brightness) * 0.33;
+      const saturate = 1 - (1 - brightness) * 0.5;
+
+      mapElem.style.filter = `brightness(${brightness}) contrast(${contrast}) saturate(${saturate})`;
+    });
+  }
+
   // LƯU Ý: XÓA LOADING SCREEN KHI HOÀN TẤT
   if (progressInterval) clearInterval(progressInterval);
 
