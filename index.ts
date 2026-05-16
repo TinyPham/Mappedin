@@ -4150,39 +4150,33 @@ async function init() {
     try {
       if ((window as any).syncURL) (window as any).syncURL(true);
 
-      if (connectionMarkersVisible) renderConnectionOverlaysForCurrentFloor();
-      // Re-render object markers cho floor mới
-      renderObjectMarkersForCurrentFloor();
-      // Cập nhật markers (ẩn/hiện Main Entrance và tên bản đồ)
-      updateMarkersForCurrentFloor();
-      // Cập nhật visibility của UI controls (ví dụ ẩn nút thêm model/phân loại khi ở overview)
-      updateUIVisibility();
+      // Defer heavy marker/UI operations to avoid blocking the floor transition animation
+      requestAnimationFrame(() => {
+        if (connectionMarkersVisible) renderConnectionOverlaysForCurrentFloor();
+        renderObjectMarkersForCurrentFloor();
+        updateMarkersForCurrentFloor();
+      });
 
-      // LAZY LOADING: Load models cho tầng mới nếu chưa load
-      if (_allModelMetadata.length > 0) {
-        _loadModelsForFloor(id);
-      }
+      // Defer UI updates to a separate frame to spread the workload
+      requestAnimationFrame(() => {
+        updateUIVisibility();
 
-      // Hook camera-change cho streaming
-      mapView.on("camera-change", (window as any).updateModelStreaming);
+        // LAZY LOADING: Load models cho tầng mới nếu chưa load
+        if (_allModelMetadata.length > 0) {
+          _loadModelsForFloor(id);
+        }
 
-      // BƯỚC 5: Comment vô hiệu hóa hàm tạo Clone Model 3D (Shadow copies)
-      // Hàm này đang gây bão Error 404 do file GLB không tồn tại làm đứt mạng & kẹt GPU!
-      /*
-      if (typeof (window as any).syncModelInstancesVisibility === 'function') {
-        setTimeout(() => {
-          (window as any).syncModelInstancesVisibility();
-        }, 300);
-      }
-      */
+        // NOTE: camera-change listener for streaming is registered ONCE at line 10481.
+        // Do NOT re-register here to avoid duplicate listeners accumulating on each floor switch.
 
-      // AUTO-REHIGHLIGHT: If a subcategory is active, re-pin locations on this floor
-      if (activeSubCategoryId) {
-        reapplyActiveSubCategoryPins();
-      }
+        // AUTO-REHIGHLIGHT: If a subcategory is active, re-pin locations on this floor
+        if (activeSubCategoryId) {
+          reapplyActiveSubCategoryPins();
+        }
 
-      // RE-RENDER CATEGORIES: Update sidebar to show only categories/subs for the new floor
-      renderCategories(activeCategoryId);
+        // RE-RENDER CATEGORIES: Update sidebar to show only categories/subs for the new floor
+        renderCategories(activeCategoryId);
+      });
     } catch { }
   });
 
@@ -4207,7 +4201,7 @@ async function init() {
     const floor = mapData.getByType("floor").find(f => f.id === floorId);
     const isOverview = floor?.name?.toLowerCase().match(/overview|tổng quan|tong quan|view/);
 
-    const targetZoom = isOverview ? 16.5 : 16; // Overview = 16.5x, Tầng = 16x
+    const targetZoom = 16.5; // Tất cả các tầng đều zoom về 16.5x
 
     console.log(`🖱️ Manual floor switch via drop-down. Targeted zoom: ${targetZoom}x, Centering: ${initialVenueCenter ? "Initial Center" : "Current Center"}`);
 
@@ -4234,8 +4228,8 @@ async function init() {
       _isWarmupSwitch = false; // Safety reset
       console.warn("Error setting floor:", err);
     } finally {
-      // Nhả khoá sau khi chuyển tầng hoàn tất
-      setTimeout(() => { isGlobalSwitchingFloor = false; }, 400);
+      // Nhả khoá sau khi camera animation hoàn tất (1000ms) + buffer
+      setTimeout(() => { isGlobalSwitchingFloor = false; }, 1200);
     }
 
     // Sau khi floor đã được set, animate camera
@@ -4383,16 +4377,14 @@ async function init() {
   const updateUIVisibility = () => {
     const isOverview = isMapInOverview();
     const topControls = document.getElementById("top-controls-container");
-    // Also manage floor selector explicitly if needed, but it stays visible usually
 
     if (isOverview) {
-      // Keep controls visible and don't clear results in overview if user wants full access
-      // if (topControls) topControls.style.display = "none"; 
-      renderCategories();
+      // Keep controls visible in overview
     } else {
       if (topControls) topControls.style.display = "flex";
-      renderCategories();
     }
+    // NOTE: renderCategories is called by the floor-change handler directly.
+    // Do NOT call it here to avoid redundant re-renders.
   };
 
   // Expose state for TranslationManager to enable dynamic updates
@@ -5253,8 +5245,8 @@ async function init() {
     const isZoomingOut = zoom < lastZoomLevel;
     lastZoomLevel = zoom;
 
-    // Bỏ qua nếu đang chuyển tầng (chặn spam) hoặc zoom do code (category)
-    if (isGlobalSwitchingFloor || isManualFloorSwitch || isProgrammaticZoom || isFloorSwitching) return;
+    // Bỏ qua nếu đang chuyển tầng (chặn spam), zoom do code (category), hoặc đang reset camera
+    if (isGlobalSwitchingFloor || isManualFloorSwitch || isProgrammaticZoom || isFloorSwitching || (window as any)._isResettingCamera) return;
 
     const currentFloor = mapView.currentFloor;
     const type = getFloorType(currentFloor);
@@ -9468,8 +9460,9 @@ async function init() {
   // ============================================
   const cameraAny = mapView.Camera as any;
 
-  // Lưu bearing ban đầu để dùng cho nút home
+  // Lưu bearing và pitch ban đầu để dùng cho nút home
   const initialBearing = mapView.Camera.bearing - 36;
+  const initialPitch = mapView.Camera.pitch;
 
   /**
    * Helper: Thiết lập sự kiện nhấn giữ (Long Press) cho nút bấm
@@ -9590,22 +9583,30 @@ async function init() {
     });
   }
 
-  // Nút Home (Reset) - đưa về trạng thái ban đầu: zoom 16, bearing = bearing - 36, center về giữa
+  // Nút Home (Reset) - đưa về trạng thái ban đầu
   const btnReset = document.getElementById("btn-reset");
   if (btnReset) {
     btnReset.addEventListener("click", () => {
       try {
-        cameraAny.animateTo({
+        // Chặn auto-floor-switch trong suốt quá trình animation
+        (window as any)._isResettingCamera = true;
+
+         cameraAny.animateTo({
           zoomLevel: 16.5, // Zoom về 16.5x
           bearing: initialBearing, // Bearing ban đầu (bearing - 36)
-          pitch: mapView.Camera.pitch,
+          pitch: initialPitch, // Pitch ban đầu (góc nhìn dọc)
           center: initialVenueCenter || mapView.Camera.center, // Trung tâm ban đầu
         }, {
           duration: 1000,
           easing: "easeInOut",
         });
-        console.log(`🏠 Reset camera: zoom=16.5, bearing=${initialBearing}, center=initial`);
+
+        // Nhả cờ sau khi animation hoàn tất + buffer
+        setTimeout(() => {
+          (window as any)._isResettingCamera = false;
+        }, 1200);
       } catch (e) {
+        (window as any)._isResettingCamera = false;
         console.warn("Error reset camera:", e);
       }
     });
