@@ -2070,3 +2070,23 @@ body.zoom-out-mode .mappedin-poi-marker {
   }
 }
 
+
+/* CENTER CAMERA ACTIONS ON MOBILE */
+@media (max-width: 768px) {
+  #camera-actions {
+    position: fixed !important;
+    right: 12px !important;
+    top: 50% !important;
+    bottom: auto !important;
+    transform: translateY(-50%) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+    z-index: 2500 !important; /* Above everything except modals */
+  }
+  
+  .camera-control-group {
+    margin: 0 !important;
+  }
+}
+
