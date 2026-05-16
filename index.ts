@@ -1352,6 +1352,12 @@ async function init() {
         floorGap: "auto", // Tự động tính khoảng cách tầng
         updateCameraElevationOnFloorChange: true,
       },
+      watermark: {
+        visible: false,
+      },
+      attribution: {
+        feedback: false,
+      },
       // BƯỚC 4: Comment out native preloadFloors
       // preloadFloors: allFloors,
     }
@@ -1376,6 +1382,64 @@ async function init() {
   } catch (e) {
     console.warn("Could not set camera sensitivity directly", e);
   }
+
+  // AGGRESSIVELY HIDE ATTRIBUTIONS VIA JAVASCRIPT (Shadow DOM safe)
+  const hideAttributions = () => {
+    const selectors = [
+      'details.mappedin-ctrl-attrib',
+      '.mappedin-ctrl-attrib',
+      '.mappedin-ctrl-attrib-bottom-right',
+      '.mapboxgl-ctrl-attrib',
+      '.mapboxgl-ctrl-attrib-inner',
+      '.mapboxgl-ctrl-bottom-right',
+      '.mappedin-attribution',
+      '.mappedin-feedback',
+      '.mappedin-watermark',
+      '[class*="attribution"]',
+      '[class*="mappedin-ctrl-attrib"]',
+      '[class*="copyright"]'
+    ];
+    
+    const applyStyle = (el: any) => {
+      if (!el) return;
+      el.style.setProperty('display', 'none', 'important');
+      el.style.setProperty('visibility', 'hidden', 'important');
+      el.style.setProperty('opacity', '0', 'important');
+      el.style.setProperty('pointer-events', 'none', 'important');
+    };
+
+    // 1. Target normal DOM
+    selectors.forEach(sel => {
+      try {
+        document.querySelectorAll(sel).forEach(applyStyle);
+      } catch (e) {}
+    });
+
+    // 2. Target Shadow DOM if any
+    const mapContainer = document.getElementById("mappedin-map");
+    if (mapContainer) {
+      const walkShadow = (root: Node) => {
+        if (!root) return;
+        if (root instanceof HTMLElement && root.shadowRoot) {
+          selectors.forEach(sel => {
+            try {
+              root.shadowRoot?.querySelectorAll(sel).forEach(applyStyle);
+            } catch (e) {}
+          });
+          walkShadow(root.shadowRoot);
+        }
+        root.childNodes?.forEach(child => walkShadow(child));
+      };
+      try { walkShadow(mapContainer); } catch (e) {}
+    }
+  };
+
+  // Run on interval to catch dynamic updates
+  setInterval(hideAttributions, 2000); // 2s to be safer on performance
+
+  // Run immediately and then on an interval to catch dynamic updates
+  hideAttributions();
+  setInterval(hideAttributions, 1000);
 
   // Expose mapView globally for easier debugging and access from console
   (window as any).mapView = mapView;
