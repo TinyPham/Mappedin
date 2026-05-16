@@ -1959,3 +1959,54 @@ body.zoom-out-mode .mappedin-poi-marker {
   }
 }
 
+
+/* FINAL MOBILE LAYOUT ADJUSTMENTS */
+@media (max-width: 768px) {
+  /* Column Left: Brightness (Bottom) & Floor (Bottom-most) */
+  #brightness-selector-wrapper {
+    top: auto !important;
+    bottom: 72px !important; /* Phía trên nút T?ng */
+    left: 12px !important;
+    right: auto !important;
+    z-index: 2000 !important; /* Ð?m b?o du?i Bottom Sheet n?u c?n */
+  }
+  
+  #custom-floor-wrapper {
+    position: absolute !important;
+    bottom: 12px !important; /* Sát mép du?i */
+    left: 12px !important;
+    top: auto !important;
+    right: auto !important;
+    z-index: 2000 !important;
+  }
+
+  /* Column Right: Theme (Bottom) & Language (Bottom-most) */
+  .theme-selector-wrapper {
+    top: auto !important;
+    bottom: 72px !important; /* Phía trên nút Ngôn ng? */
+    right: 12px !important;
+    left: auto !important;
+    z-index: 2000 !important;
+  }
+
+  #custom-lang-wrapper {
+    position: absolute !important;
+    bottom: 12px !important; /* Sát mép du?i */
+    right: 12px !important;
+    top: auto !important;
+    left: auto !important;
+    z-index: 2000 !important;
+  }
+
+  .brightness-toggle {
+    height: 44px;
+    padding: 0 10px;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(5px);
+  }
+  
+  #brightness-slider {
+    width: 60px;
+  }
+}
+
