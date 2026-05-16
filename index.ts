@@ -2880,12 +2880,19 @@ async function init() {
     }
   };
 
-  // Khởi tạo và setup listeners
+  // Khởi tạo và setup listeners (throttled để tránh lag khi zoom animation)
   updateConnectionMarkersVisibility();
+  let _connMarkerThrottleTimer: any = null;
+  const throttledConnectionMarkersUpdate = () => {
+    if (_connMarkerThrottleTimer) return;
+    _connMarkerThrottleTimer = setTimeout(() => {
+      _connMarkerThrottleTimer = null;
+      updateConnectionMarkersVisibility();
+    }, 200);
+  };
   try {
-    (mapView as any).on?.("camera-change", updateConnectionMarkersVisibility);
+    (mapView as any).on?.("camera-change", throttledConnectionMarkersUpdate);
   } catch { }
-  setInterval(updateConnectionMarkersVisibility, 250);
 
   // NEW: Listen for Language Change to refresh selected Info Panel
   window.addEventListener('language-change', () => {
@@ -4150,33 +4157,22 @@ async function init() {
     try {
       if ((window as any).syncURL) (window as any).syncURL(true);
 
-      // Defer heavy marker/UI operations to avoid blocking the floor transition animation
-      requestAnimationFrame(() => {
-        if (connectionMarkersVisible) renderConnectionOverlaysForCurrentFloor();
-        renderObjectMarkersForCurrentFloor();
-        updateMarkersForCurrentFloor();
-      });
-
-      // Defer UI updates to a separate frame to spread the workload
-      requestAnimationFrame(() => {
-        updateUIVisibility();
-
-        // LAZY LOADING: Load models cho tầng mới nếu chưa load
-        if (_allModelMetadata.length > 0) {
-          _loadModelsForFloor(id);
-        }
-
-        // NOTE: camera-change listener for streaming is registered ONCE at line 10481.
-        // Do NOT re-register here to avoid duplicate listeners accumulating on each floor switch.
-
-        // AUTO-REHIGHLIGHT: If a subcategory is active, re-pin locations on this floor
-        if (activeSubCategoryId) {
-          reapplyActiveSubCategoryPins();
-        }
-
-        // RE-RENDER CATEGORIES: Update sidebar to show only categories/subs for the new floor
-        renderCategories(activeCategoryId);
-      });
+      // TỐI ƯU: Chỉ render markers SAU KHI animation kết thúc (1200ms) để giữ camera mượt mà tuyệt đối
+      setTimeout(() => {
+        requestAnimationFrame(() => {
+          if (connectionMarkersVisible) renderConnectionOverlaysForCurrentFloor();
+          renderObjectMarkersForCurrentFloor();
+          updateMarkersForCurrentFloor();
+          
+          // Defer UI/Categories update to the next frame
+          requestAnimationFrame(() => {
+            updateUIVisibility();
+            if (_allModelMetadata.length > 0) _loadModelsForFloor(id);
+            if (activeSubCategoryId) reapplyActiveSubCategoryPins();
+            renderCategories(activeCategoryId);
+          });
+        });
+      }, 1200);
     } catch { }
   });
 
@@ -4232,13 +4228,13 @@ async function init() {
       setTimeout(() => { isGlobalSwitchingFloor = false; }, 1200);
     }
 
-    // Sau khi floor đã được set, animate camera
+    // Sau khi floor đã được set, animate camera (easeInOut cho mượt mà)
     mapView.Camera.animateTo({
       zoomLevel: targetZoom,
       center: initialVenueCenter || mapView.Camera.center,
       bearing: mapView.Camera.bearing,
       pitch: mapView.Camera.pitch
-    }, { duration: 1000 });
+    }, { duration: 1000, easing: "easeInOut" });
 
     // Reset cờ sau khi animation hoàn tất
     setTimeout(() => {
@@ -5303,17 +5299,19 @@ async function init() {
       }
     }
 
-    // Logic ẩn/hiện nhãn theo mức Zoom
-    const currentZoom = transform.zoomLevel;
-    if (currentZoom <= 17.5) {
-      document.body.classList.add('zoom-out-mode');
-    } else {
-      document.body.classList.remove('zoom-out-mode');
-    }
+    // Logic ẩn/hiện nhãn theo mức Zoom (bỏ qua khi đang animation để tránh layout thrashing)
+    if (!(window as any)._isResettingCamera && !isGlobalSwitchingFloor && !isManualFloorSwitch) {
+      const currentZoom = transform.zoomLevel;
+      if (currentZoom <= 17.5) {
+        document.body.classList.add('zoom-out-mode');
+      } else {
+        document.body.classList.remove('zoom-out-mode');
+      }
 
-    // Luôn cập nhật Marker Overview (Airport name)
-    if (type === "overview") {
-      checkZoomVisibility();
+      // Luôn cập nhật Marker Overview (Airport name)
+      if (type === "overview") {
+        checkZoomVisibility();
+      }
     }
   });
 
@@ -10370,6 +10368,8 @@ async function init() {
    * Thuật toán tải động giúp hiển thị được cả 166 models mà không sập WebGL
    */
   const updateModelStreaming = debounce(async () => {
+    // Bỏ qua khi đang reset camera (Home) hoặc chuyển tầng để tránh lag
+    if ((window as any)._isResettingCamera || isGlobalSwitchingFloor) return;
     const currentFloor = mapView.currentFloor;
     if (!currentFloor) return;
 
