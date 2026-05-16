@@ -1547,14 +1547,14 @@ async function init() {
   if (brightnessPlus) {
     brightnessPlus.addEventListener('click', () => {
       const val = parseInt(brightnessSlider?.value || "100");
-      if (val < 150) updateMapDisplay(val + 5);
+      if (val < 100) updateMapDisplay(val + 1);
     });
   }
 
   if (brightnessMinus) {
     brightnessMinus.addEventListener('click', () => {
       const val = parseInt(brightnessSlider?.value || "100");
-      if (val > 50) updateMapDisplay(val - 5);
+      if (val > 50) updateMapDisplay(val - 1);
     });
   }
 
