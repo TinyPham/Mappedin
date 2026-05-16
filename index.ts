@@ -5788,10 +5788,16 @@ async function init() {
         const origin = waypoints[i];
         const dest = waypoints[i + 1];
 
-        const dir = await mapData.getDirections(origin, dest, {
-          smoothing: smoothingConfig,
-          accessible: true,
-        });
+        // SMART ROUTING: Tính cả 2 đường (thang máy + thang cuốn), chọn đường ngắn nhất
+        const [dirEscalator, dirElevator] = await Promise.all([
+          mapData.getDirections(origin, dest, { smoothing: smoothingConfig, accessible: false }),
+          mapData.getDirections(origin, dest, { smoothing: smoothingConfig, accessible: true }),
+        ]);
+
+        // So sánh khoảng cách và chọn đường ngắn hơn
+        const distEsc = (dirEscalator?.distance ?? Infinity);
+        const distElev = (dirElevator?.distance ?? Infinity);
+        const dir = (distElev <= distEsc && dirElevator?.coordinates?.length > 0) ? dirElevator : dirEscalator;
 
         if (dir && dir.coordinates && dir.coordinates.length > 0) {
           if (i > 0 && allCoordinates.length > 0) {
