@@ -2098,3 +2098,139 @@ body.zoom-out-mode .mappedin-poi-marker {
   }
 }
 
+
+@media (min-width: 769px) and (max-width: 1200px) {
+  .theme-selector-wrapper {
+    top: 20px !important;
+    left: 12px !important;
+    right: auto !important;
+  }
+
+  .brightness-selector-wrapper {
+    top: 20px !important;
+    left: 142px !important;
+    right: auto !important;
+  }
+
+  #map-top-controls {
+    top: 20px !important;
+    right: 12px !important;
+    gap: 8px !important;
+    align-items: center !important;
+  }
+
+  .theme-selector-toggle,
+  .pro-dropdown-toggle {
+    height: 40px;
+    min-height: 40px;
+    padding: 0 12px;
+    gap: 6px;
+    font-size: 13px;
+    box-sizing: border-box;
+  }
+
+  .brightness-toggle {
+    height: 40px;
+    min-height: 40px;
+    padding: 0 10px;
+    gap: 6px;
+  }
+
+  .theme-selector-toggle span,
+  .pro-dropdown-toggle span {
+    font-size: 13px;
+    line-height: 1;
+    white-space: nowrap;
+  }
+
+  .theme-selector-toggle svg,
+  .pro-dropdown-toggle svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .theme-selector-toggle .arrow,
+  .pro-dropdown-toggle .arrow {
+    width: 12px;
+    height: 12px;
+  }
+
+  #brightness-slider {
+    width: 58px;
+  }
+
+  .brightness-btn {
+    width: 22px;
+    height: 22px;
+    flex: 0 0 22px;
+    font-size: 14px;
+  }
+
+  .brightness-value {
+    min-width: 20px;
+    font-size: 12px;
+  }
+}
+@media (min-width: 769px) and (max-width: 992px) {
+  .theme-selector-wrapper {
+    left: 8px !important;
+  }
+
+  .brightness-selector-wrapper {
+    left: 122px !important;
+  }
+
+  #map-top-controls {
+    right: 8px !important;
+    gap: 6px !important;
+  }
+
+  .theme-selector-toggle,
+  .pro-dropdown-toggle {
+    height: 36px;
+    min-height: 36px;
+    padding: 0 9px;
+    gap: 4px;
+    font-size: 12px;
+  }
+
+  .brightness-toggle {
+    height: 36px;
+    min-height: 36px;
+    padding: 0 8px;
+    gap: 4px;
+  }
+
+  .theme-selector-toggle span,
+  .pro-dropdown-toggle span {
+    font-size: 12px;
+  }
+
+  .theme-selector-toggle svg,
+  .pro-dropdown-toggle svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .theme-selector-toggle .arrow,
+  .pro-dropdown-toggle .arrow {
+    width: 10px;
+    height: 10px;
+  }
+
+  #brightness-slider {
+    width: 44px;
+  }
+
+  .brightness-btn {
+    width: 20px;
+    height: 20px;
+    flex: 0 0 20px;
+    font-size: 13px;
+  }
+
+  .brightness-value {
+    min-width: 18px;
+    font-size: 11px;
+  }
+}
