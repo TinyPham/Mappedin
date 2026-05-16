@@ -9471,87 +9471,122 @@ async function init() {
   // Lưu bearing ban đầu để dùng cho nút home
   const initialBearing = mapView.Camera.bearing - 36;
 
-  // Nút lên (Pitch Up) - xoay lên 5 độ (ĐẢO NGƯỢC: giảm pitch)
+  /**
+   * Helper: Thiết lập sự kiện nhấn giữ (Long Press) cho nút bấm
+   */
+  const setupContinuousClick = (el: HTMLElement, action: (isContinuous: boolean) => void, intervalTime = 100) => {
+    let timer: any = null;
+    let timeout: any = null;
+    let isHolding = false;
+
+    const start = (e: Event) => {
+      if (e instanceof MouseEvent && e.button !== 0) return;
+      isHolding = true;
+      action(false); 
+      timeout = setTimeout(() => {
+        if (isHolding) {
+          timer = setInterval(() => action(true), intervalTime);
+        }
+      }, 250);
+    };
+
+    const stop = () => {
+      isHolding = false;
+      if (timeout) clearTimeout(timeout);
+      if (timer) clearInterval(timer);
+      timeout = null;
+      timer = null;
+    };
+
+    el.addEventListener("mousedown", start);
+    window.addEventListener("mouseup", stop);
+    el.addEventListener("mouseleave", stop);
+    el.addEventListener("touchstart", (e) => {
+      if (e.cancelable) e.preventDefault();
+      start(e);
+    }, { passive: false });
+    el.addEventListener("touchend", stop);
+    el.addEventListener("touchcancel", stop);
+  };
+
+
+  // Nút lên (Pitch Up) - xoay lên
   const btnUp = document.getElementById("btn-up");
   if (btnUp) {
-    btnUp.addEventListener("click", () => {
+    setupContinuousClick(btnUp, (isContinuous) => {
       try {
         const currentPitch = mapView.Camera.pitch || 0;
+        const step = isContinuous ? 2 : 5;
         cameraAny.animateTo({
-          pitch: currentPitch - 5, // ĐẢO NGƯỢC: Xoay lên = giảm pitch
+          pitch: currentPitch - step,
           bearing: mapView.Camera.bearing,
           zoomLevel: cameraAny.zoomLevel ?? cameraAny.zoom ?? 16.5,
           center: mapView.Camera.center,
         }, {
-          duration: 300,
-          easing: "easeInOut",
+          duration: isContinuous ? 100 : 300,
+          easing: isContinuous ? "linear" : "easeInOut",
         });
-      } catch (e) {
-        console.warn("Error pitch up:", e);
-      }
+      } catch (e) { console.warn("Error pitch up:", e); }
     });
   }
 
-  // Nút xuống (Pitch Down) - xoay xuống 5 độ (ĐẢO NGƯỢC: tăng pitch)
+  // Nút xuống (Pitch Down) - xoay xuống
   const btnDown = document.getElementById("btn-down");
   if (btnDown) {
-    btnDown.addEventListener("click", () => {
+    setupContinuousClick(btnDown, (isContinuous) => {
       try {
         const currentPitch = mapView.Camera.pitch || 0;
+        const step = isContinuous ? 2 : 5;
         cameraAny.animateTo({
-          pitch: currentPitch + 5, // ĐẢO NGƯỢC: Xoay xuống = tăng pitch
+          pitch: currentPitch + step,
           bearing: mapView.Camera.bearing,
           zoomLevel: cameraAny.zoomLevel ?? cameraAny.zoom ?? 16.5,
           center: mapView.Camera.center,
         }, {
-          duration: 300,
-          easing: "easeInOut",
+          duration: isContinuous ? 100 : 300,
+          easing: isContinuous ? "linear" : "easeInOut",
         });
-      } catch (e) {
-        console.warn("Error pitch down:", e);
-      }
+      } catch (e) { console.warn("Error pitch down:", e); }
     });
   }
 
-  // Nút trái (Rotate Left) - xoay trái 5 độ (ĐẢO NGƯỢC: tăng bearing)
+  // Nút trái (Rotate Left) - xoay trái
   const btnLeft = document.getElementById("btn-left");
   if (btnLeft) {
-    btnLeft.addEventListener("click", () => {
+    setupContinuousClick(btnLeft, (isContinuous) => {
       try {
         const currentBearing = mapView.Camera.bearing || 0;
+        const step = isContinuous ? 2 : 5;
         cameraAny.animateTo({
-          bearing: currentBearing + 5, // ĐẢO NGƯỢC: Xoay trái = tăng bearing
+          bearing: currentBearing + step,
           pitch: mapView.Camera.pitch,
           zoomLevel: cameraAny.zoomLevel ?? cameraAny.zoom ?? 16.5,
           center: mapView.Camera.center,
         }, {
-          duration: 300,
-          easing: "easeInOut",
+          duration: isContinuous ? 100 : 300,
+          easing: isContinuous ? "linear" : "easeInOut",
         });
-      } catch (e) {
-        console.warn("Error rotate left:", e);
-      }
+      } catch (e) { console.warn("Error rotate left:", e); }
     });
   }
 
-  // Nút phải (Rotate Right) - xoay phải 5 độ (ĐẢO NGƯỢC: giảm bearing)
+  // Nút phải (Rotate Right) - xoay phải
   const btnRight = document.getElementById("btn-right");
   if (btnRight) {
-    btnRight.addEventListener("click", () => {
+    setupContinuousClick(btnRight, (isContinuous) => {
       try {
         const currentBearing = mapView.Camera.bearing || 0;
+        const step = isContinuous ? 2 : 5;
         cameraAny.animateTo({
-          bearing: currentBearing - 5, // ĐẢO NGƯỢC: Xoay phải = giảm bearing
+          bearing: currentBearing - step,
           pitch: mapView.Camera.pitch,
           zoomLevel: cameraAny.zoomLevel ?? cameraAny.zoom ?? 16.5,
           center: mapView.Camera.center,
         }, {
-          duration: 300,
-          easing: "easeInOut",
+          duration: isContinuous ? 100 : 300,
+          easing: isContinuous ? "linear" : "easeInOut",
         });
-      } catch (e) {
-        console.warn("Error rotate right:", e);
-      }
+      } catch (e) { console.warn("Error rotate right:", e); }
     });
   }
 
@@ -9561,7 +9596,7 @@ async function init() {
     btnReset.addEventListener("click", () => {
       try {
         cameraAny.animateTo({
-          zoomLevel: 16, // Zoom về 16x
+          zoomLevel: 16.5, // Zoom về 16.5x
           bearing: initialBearing, // Bearing ban đầu (bearing - 36)
           pitch: mapView.Camera.pitch,
           center: initialVenueCenter || mapView.Camera.center, // Trung tâm ban đầu
@@ -9569,7 +9604,7 @@ async function init() {
           duration: 1000,
           easing: "easeInOut",
         });
-        console.log(`🏠 Reset camera: zoom=16, bearing=${initialBearing}, center=initial`);
+        console.log(`🏠 Reset camera: zoom=16.5, bearing=${initialBearing}, center=initial`);
       } catch (e) {
         console.warn("Error reset camera:", e);
       }
@@ -9577,23 +9612,20 @@ async function init() {
   }
 
   // Nút Zoom In (+) - zoom in 0.2x (tối đa 20x)
+  // Nút Zoom In (+)
   const btnZoomIn = document.getElementById("btn-zoom-in");
   if (btnZoomIn) {
-    btnZoomIn.addEventListener("click", () => {
+    setupContinuousClick(btnZoomIn, (isContinuous) => {
       try {
-        // Lấy zoom hiện tại từ nhiều nguồn để đảm bảo chính xác
         let currentZoom = getCameraZoom();
         if (currentZoom === null) {
-          // Thử lấy từ camera trực tiếp
           const cam: any = mapView.Camera as any;
           currentZoom = cam?.zoom ?? cam?.zoomLevel ?? cam?.position?.zoom ?? 16.5;
         }
-        // Đảm bảo currentZoom là number
         const currentZoomValue: number = typeof currentZoom === 'number' ? currentZoom : 16.5;
+        const step = isContinuous ? 0.05 : 0.2;
+        const targetZoom = Math.min(currentZoomValue + step, 20.0);
 
-        const targetZoom = Math.min(currentZoomValue + 0.2, 20.0); // Zoom in 0.2x (tối đa 20x)
-
-        // Chỉ zoom nếu chưa đạt giới hạn
         if (targetZoom > currentZoomValue) {
           cameraAny.animateTo({
             zoomLevel: targetZoom,
@@ -9601,37 +9633,28 @@ async function init() {
             pitch: mapView.Camera.pitch,
             center: mapView.Camera.center,
           }, {
-            duration: 300,
-            easing: "easeInOut",
+            duration: isContinuous ? 100 : 300,
+            easing: isContinuous ? "linear" : "easeInOut",
           });
-          console.log(`🔍 Zoom In: ${currentZoomValue} → ${targetZoom}`);
-        } else {
-          console.log(`🔍 Zoom In: Đã đạt giới hạn tối đa (20x)`);
         }
-      } catch (e) {
-        console.warn("Error zoom in:", e);
-      }
-    });
+      } catch (e) { console.warn("Error zoom in:", e); }
+    }, 100);
   }
 
-  // Nút Zoom Out (-) - zoom out 0.2x (tối thiểu 10x)
+  // Nút Zoom Out (-)
   const btnZoomOut = document.getElementById("btn-zoom-out");
   if (btnZoomOut) {
-    btnZoomOut.addEventListener("click", () => {
+    setupContinuousClick(btnZoomOut, (isContinuous) => {
       try {
-        // Lấy zoom hiện tại từ nhiều nguồn để đảm bảo chính xác
         let currentZoom = getCameraZoom();
         if (currentZoom === null) {
-          // Thử lấy từ camera trực tiếp
           const cam: any = mapView.Camera as any;
           currentZoom = cam?.zoom ?? cam?.zoomLevel ?? cam?.position?.zoom ?? 16.5;
         }
-        // Đảm bảo currentZoom là number
         const currentZoomValue: number = typeof currentZoom === 'number' ? currentZoom : 16.5;
+        const step = isContinuous ? 0.05 : 0.2;
+        const targetZoom = Math.max(currentZoomValue - step, 10.0);
 
-        const targetZoom = Math.max(currentZoomValue - 0.2, 10.0); // Zoom out 0.2x (tối thiểu 10x)
-
-        // Chỉ zoom nếu chưa đạt giới hạn
         if (targetZoom < currentZoomValue) {
           cameraAny.animateTo({
             zoomLevel: targetZoom,
@@ -9639,17 +9662,12 @@ async function init() {
             pitch: mapView.Camera.pitch,
             center: mapView.Camera.center,
           }, {
-            duration: 300,
-            easing: "easeInOut",
+            duration: isContinuous ? 100 : 300,
+            easing: isContinuous ? "linear" : "easeInOut",
           });
-          console.log(`🔍 Zoom Out: ${currentZoomValue} → ${targetZoom}`);
-        } else {
-          console.log(`🔍 Zoom Out: Đã đạt giới hạn tối thiểu (10x)`);
         }
-      } catch (e) {
-        console.warn("Error zoom out:", e);
-      }
-    });
+      } catch (e) { console.warn("Error zoom out:", e); }
+    }, 100);
   }
 
   // Nút Fullscreen
