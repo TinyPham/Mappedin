@@ -2050,3 +2050,23 @@ body.zoom-out-mode .mappedin-poi-marker {
   }
 }
 
+
+/* Z-INDEX ADJUSTMENT TO BE UNDER OVERLAYS ON MOBILE */
+@media (max-width: 768px) {
+  #brightness-selector-wrapper {
+    z-index: 500 !important; /* N?m du?i Dropdown, Marker Info, Nav Info */
+  }
+  
+  .theme-selector-wrapper {
+    z-index: 500 !important; /* N?m du?i Dropdown, Marker Info, Nav Info */
+  }
+  
+  #custom-floor-wrapper {
+    z-index: 500 !important;
+  }
+  
+  #custom-lang-wrapper {
+    z-index: 500 !important;
+  }
+}
+
