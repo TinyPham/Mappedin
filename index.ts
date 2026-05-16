@@ -1340,11 +1340,23 @@ async function init() {
   const allFloors = mapData.getByType("floor");
 
   // Đợi DOM render xong để tránh lỗi Container size = 0
-  await new Promise(r => setTimeout(r, 100));
+  // Tăng thời gian chờ lên 500ms để chắc chắn layout đã ổn định
+  await new Promise(r => setTimeout(r, 500));
+
+  const container = document.getElementById("mappedin-map") as HTMLDivElement;
+  if (container) {
+    const rect = container.getBoundingClientRect();
+    console.log(`🗺️ Map Container Size: ${rect.width}x${rect.height}`);
+    if (rect.width === 0 || rect.height === 0) {
+      console.warn("⚠️ Warning: Map container has 0 dimensions! Forcing 100% height.");
+      container.style.height = "100%";
+      container.style.flex = "1";
+    }
+  }
 
   // Hiển thị map 3D
   const mapView = await show3dMap(
-    document.getElementById("mappedin-map") as HTMLDivElement,
+    container,
     mapData,
     {
       multiFloorView: {
@@ -1508,18 +1520,41 @@ async function init() {
 
   // --- BRIGHTNESS / ANTI-GLARE SLIDER LOGIC ---
   const brightnessSlider = document.getElementById('brightness-slider') as HTMLInputElement;
+  const brightnessValue = document.getElementById('brightness-value');
+  const brightnessPlus = document.getElementById('brightness-plus');
+  const brightnessMinus = document.getElementById('brightness-minus');
   const mapElem = document.getElementById('mappedin-map');
 
-  if (brightnessSlider && mapElem) {
-    brightnessSlider.addEventListener('input', (e) => {
-      const val = (e.target as HTMLInputElement).value;
-      const brightness = parseFloat(val);
-      
-      // Calculate contrast: as it gets darker (anti-glare), we boost contrast slightly
-      const contrast = 1 + (1 - brightness) * 0.33;
-      const saturate = 1 - (1 - brightness) * 0.5;
+  const updateMapDisplay = (val: number) => {
+    if (!mapElem) return;
+    const brightnessFactor = val / 100;
+    
+    // Calculate contrast: as it gets darker (anti-glare), we boost contrast slightly
+    const contrast = 1 + (1 - brightnessFactor) * 0.33;
+    const saturate = 1 - (1 - brightnessFactor) * 0.5;
 
-      mapElem.style.filter = `brightness(${brightness}) contrast(${contrast}) saturate(${saturate})`;
+    mapElem.style.filter = `brightness(${brightnessFactor}) contrast(${contrast}) saturate(${saturate})`;
+    if (brightnessValue) brightnessValue.textContent = val.toString();
+    if (brightnessSlider) brightnessSlider.value = val.toString();
+  };
+
+  if (brightnessSlider) {
+    brightnessSlider.addEventListener('input', (e) => {
+      updateMapDisplay(parseInt((e.target as HTMLInputElement).value));
+    });
+  }
+
+  if (brightnessPlus) {
+    brightnessPlus.addEventListener('click', () => {
+      const val = parseInt(brightnessSlider?.value || "100");
+      if (val < 150) updateMapDisplay(val + 5);
+    });
+  }
+
+  if (brightnessMinus) {
+    brightnessMinus.addEventListener('click', () => {
+      const val = parseInt(brightnessSlider?.value || "100");
+      if (val > 50) updateMapDisplay(val - 5);
     });
   }
 

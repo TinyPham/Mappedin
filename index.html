@@ -1678,6 +1678,19 @@
       <select id="floor-selector" style="display:none;"></select>
 
       <!-- MỚI: Theme Selector (Tách biệt để điều hướng độc lập) -->
+        <!-- MỚI: Thanh chỉnh độ sáng và chống chói (Redesigned) -->
+        <div class="brightness-selector-wrapper" id="brightness-selector-wrapper">
+          <div class="brightness-toggle">
+            <button class="brightness-btn minus" id="brightness-minus">−</button>
+            <div class="brightness-slider-container">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#214ca6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="18.36" x2="5.64" y2="16.92"/><line x1="18.36" y1="5.64" x2="19.78" y2="7.06"/></svg>
+              <input type="range" id="brightness-slider" min="50" max="150" step="1" value="100">
+            </div>
+            <button class="brightness-btn plus" id="brightness-plus">+</button>
+            <span class="brightness-value" id="brightness-value">100</span>
+          </div>
+        </div>
+
         <div class="theme-selector-wrapper" id="theme-selector-wrapper">
           <div class="theme-selector-toggle" onclick="toggleThemeSelector(event)">
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="white" stroke="#333" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;"><path d="m9.06 11.9 8.07-8.06a2.85 2.85 0 1 1 4.03 4.03l-8.06 8.08"/><path d="M7.07 14.94c-3.91.35-7.07 3.73-7.07 7.06v1h2c3.33 0 6.7-3.17 7.06-7.07l-2-2z"/></svg>
@@ -1730,14 +1743,6 @@
                 <span class="theme-desc" data-i18n="theme_desc_starlight">Enchanting and cosmic</span>
               </div>
             </div>
-          </div>
-        </div>
-
-        <!-- MỚI: Thanh chỉnh độ sáng và chống chói -->
-        <div class="brightness-selector-wrapper" id="brightness-selector-wrapper">
-          <div class="brightness-toggle">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#214ca6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="18.36" x2="5.64" y2="16.92"/><line x1="18.36" y1="5.64" x2="19.78" y2="7.06"/></svg>
-            <input type="range" id="brightness-slider" min="0.5" max="1.5" step="0.05" value="1" title="Chỉnh độ sáng / Chống chói">
           </div>
         </div>
 
@@ -1808,78 +1813,7 @@
 
 
 
-      <!-- Flight Information Modal -->
-      <div id="flight-modal" class="modal-overlay hidden">
-        <div class="flight-modal-shell">
-          <div class="flight-modal-header">
-            <h3 data-i18n="flight_info_title">Thông tin chuyến bay</h3>
-            <button id="btn-close-flight" class="close-btn" type="button">×</button>
-          </div>
-          <div class="flight-modal-body">
-            <!-- Sidebar: Filters -->
-            <div class="flight-modal-sidebar">
-              <div class="flight-mode-toggle">
-                <button id="flight-mode-dep" class="flight-mode-btn active" data-mode="D"
-                  data-i18n="flight_departure">Chuyến đi</button>
-                <button id="flight-mode-arr" class="flight-mode-btn" data-mode="A" data-i18n="flight_arrival">Chuyến
-                  đến</button>
-              </div>
 
-              <div class="flight-field-group">
-                <label data-i18n="flight_date_label">Ngày chuyến bay</label>
-                <div class="flight-date-wrapper">
-                  <input type="date" id="flight-date-input" class="flight-date-hidden">
-                  <div id="flight-date-display" class="flight-date-display">
-                    <span id="flight-date-text" data-i18n="today_label">Hôm nay</span>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                      stroke-linecap="round" stroke-linejoin="round">
-                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                      <line x1="16" y1="2" x2="16" y2="6"></line>
-                      <line x1="8" y1="2" x2="8" y2="6"></line>
-                      <line x1="3" y1="10" x2="21" y2="10"></line>
-                    </svg>
-                  </div>
-                </div>
-              </div>
-
-              <div class="flight-field-group">
-                <label data-i18n="flight_search_label">Tìm kiếm</label>
-                <div class="flight-search-box">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-                    stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="11" cy="11" r="8"></circle>
-                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                  </svg>
-                  <input type="text" id="flight-search-input" placeholder="Số hiệu, Hãng, Điểm đến..."
-                    data-i18n-placeholder="flight_search_placeholder">
-                </div>
-              </div>
-
-              <div id="flight-list-summary" class="flight-list-summary">
-                <span id="flight-count-val">0</span> <span data-i18n="flights_found">chuyến bay</span>
-              </div>
-            </div>
-
-            <!-- Main: Results List -->
-            <div class="flight-modal-results">
-              <div class="flight-results-toolbar">
-                <div class="flight-status-filter">
-                  <label data-i18n="flight_status_filter_label">Trạng thái</label>
-                  <select id="flight-status-select">
-                    <option value="ALL" data-i18n="flight_status_all">Tất cả trạng thái</option>
-                  </select>
-                </div>
-              </div>
-              <div id="flight-list-container" class="flight-list-container">
-                <!-- Cards render here -->
-              </div>
-            </div>
-          </div>
-          <div class="flight-modal-footer">
-            <button id="btn-close-flight-footer" class="flight-close-action" data-i18n="close_btn">Đóng</button>
-          </div>
-        </div>
-      </div>
 
       <div id="mappedin-map"></div>
 
@@ -2488,24 +2422,7 @@
         </div>
       </div>
 
-      <!-- Success Popup (Moved inside main-content for alignment) -->
-      <div id="success-popup"
-        style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); z-index: 20500; align-items:center; justify-content:center;">
-        <div
-          style="background:white; padding:30px; border-radius:12px; text-align:center; box-shadow:0 10px 30px rgba(0,0,0,0.2); width: 300px;">
-          <div
-            style="width:60px; height:60px; background:#4CAF50; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 20px auto;">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"
-              stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="20 6 9 17 4 12"></polyline>
-            </svg>
-          </div>
-          <h3 style="margin:0 0 10px 0; color:#333; font-size:18px;">Thành công!</h3>
-          <p style="margin:0 0 25px 0; color:#666; font-size:14px;">Lưu thay đổi phân loại khu vực thành công.</p>
-          <button id="btn-success-ok"
-            style="background:#085ebb; color:white; border:none; padding:10px 30px; border-radius:6px; font-weight:600; cursor:pointer; width:100%;">OK</button>
-        </div>
-      </div>
+
 
     </div>
   </div>

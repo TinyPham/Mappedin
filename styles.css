@@ -1842,45 +1842,120 @@ body.zoom-out-mode .mappedin-poi-marker {
   }
 }
 
-/* Brightness Slider */
+/* New Brightness Slider Styles are below */
+
+
+/* Brightness Slider Redesign & Mobile Layout Fixes */
 .brightness-selector-wrapper {
   position: absolute;
   top: 20px;
-  left: 170px;
+  left: 180px;
   z-index: 9999;
 }
 
 .brightness-toggle {
   background: white;
-  padding: 8px 16px;
+  padding: 6px 14px;
   border-radius: 30px;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
   display: flex;
   align-items: center;
+  gap: 8px;
   border: 1px solid rgba(0, 0, 0, 0.05);
   height: 44px;
   box-sizing: border-box;
 }
 
+.brightness-slider-container {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 #brightness-slider {
-  width: 100px;
+  width: 80px;
   cursor: pointer;
   accent-color: #214ca6;
 }
 
+.brightness-btn {
+  background: #f0f4ff;
+  border: 1px solid rgba(33, 76, 166, 0.2);
+  color: #214ca6;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 16px;
+  transition: all 0.2s;
+  padding: 0;
+  line-height: 1;
+}
+
+.brightness-btn:hover {
+  background: #214ca6;
+  color: white;
+}
+
+.brightness-value {
+  font-size: 13px;
+  font-weight: 700;
+  color: #214ca6;
+  min-width: 28px;
+  text-align: right;
+}
+
 @media (max-width: 768px) {
-  .brightness-selector-wrapper {
-    top: 142px;
-    right: 120px;
-    left: auto;
+  /* Column Left: Brightness (Top) & Floor (Bottom) */
+  #brightness-selector-wrapper {
+    top: 142px !important;
+    left: 8px !important;
+    right: auto !important;
     z-index: 9999 !important;
   }
+  
+  #custom-floor-wrapper {
+    position: absolute !important;
+    bottom: 84px !important;
+    left: 8px !important;
+    top: auto !important;
+    right: auto !important;
+    z-index: 1900 !important;
+  }
+
+  /* Column Right: Theme (Top) & Language (Bottom) */
+  .theme-selector-wrapper {
+    top: 142px !important;
+    right: 8px !important;
+    left: auto !important;
+    z-index: 1900 !important;
+  }
+
+  #custom-lang-wrapper {
+    position: absolute !important;
+    bottom: 84px !important;
+    right: 8px !important;
+    top: auto !important;
+    left: auto !important;
+    z-index: 1900 !important;
+  }
+
   .brightness-toggle {
     height: 40px;
-    padding: 0 10px;
+    padding: 0 8px;
   }
+  
   #brightness-slider {
-    width: 60px;
+    width: 50px;
+  }
+  
+  .brightness-value {
+    font-size: 11px;
+    min-width: 22px;
   }
 }
 
