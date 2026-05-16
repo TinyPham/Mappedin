@@ -2010,3 +2010,43 @@ body.zoom-out-mode .mappedin-poi-marker {
   }
 }
 
+
+/* CORRECTED MOBILE LAYOUT */
+@media (max-width: 768px) {
+  /* Brightness & Theme back to TOP positions */
+  #brightness-selector-wrapper {
+    top: 142px !important;
+    left: 8px !important;
+    right: auto !important;
+    bottom: auto !important;
+    z-index: 9999 !important;
+  }
+  
+  .theme-selector-wrapper {
+    top: 142px !important;
+    right: 8px !important;
+    left: auto !important;
+    bottom: auto !important;
+    z-index: 9999 !important;
+  }
+
+  /* Floor & Language moved to BOTTOM EDGE */
+  #custom-floor-wrapper {
+    position: absolute !important;
+    bottom: 12px !important;
+    left: 8px !important;
+    top: auto !important;
+    right: auto !important;
+    z-index: 2000 !important;
+  }
+
+  #custom-lang-wrapper {
+    position: absolute !important;
+    bottom: 12px !important;
+    right: 8px !important;
+    top: auto !important;
+    left: auto !important;
+    z-index: 2000 !important;
+  }
+}
+
