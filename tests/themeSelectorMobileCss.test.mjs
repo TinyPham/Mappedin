@@ -65,6 +65,16 @@ test('mobile theme selector uses compact floor and language dropdown styling', (
   assert.match(mobileToggleIconBlock, /stroke:\s*#333/);
 });
 
+test('mobile brightness control has the same final height as the theme button', () => {
+  const lastBrightnessToggleIndex = css.lastIndexOf('.brightness-toggle');
+  assert.notEqual(lastBrightnessToggleIndex, -1, 'Missing brightness toggle styles');
+
+  const finalBrightnessBlock = getRuleBlock('.brightness-toggle', lastBrightnessToggleIndex);
+  assert.match(finalBrightnessBlock, /height:\s*40px/);
+  assert.match(finalBrightnessBlock, /padding:\s*0 8px/);
+  assert.match(finalBrightnessBlock, /box-sizing:\s*border-box/);
+});
+
 test('mobile theme selector sits closer to the iframe corner and below active panels', () => {
   const mobileMediaIndex = css.indexOf('@media (max-width: 768px)');
   const mobileWrapperBlock = getRuleBlock('.theme-selector-wrapper', mobileMediaIndex);

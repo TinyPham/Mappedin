@@ -2234,3 +2234,11 @@ body.zoom-out-mode .mappedin-poi-marker {
     font-size: 11px;
   }
 }
+@media (max-width: 768px) {
+  .brightness-toggle {
+    height: 40px;
+    min-height: 40px;
+    padding: 0 8px;
+    box-sizing: border-box;
+  }
+}
