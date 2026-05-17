@@ -15,8 +15,8 @@ test('desktop model streaming keeps existing zoom thresholds', () => {
 
 test('mobile model streaming loads 3D models at lower zoom for wider map context', () => {
   assert.deepEqual(getModelStreamingZoomThresholds(true), {
-    load: 17.2,
-    unload: 17,
+    load: 16.8,
+    unload: 16.6,
     loadRadius: 180,
     unloadRadius: 230
   });
