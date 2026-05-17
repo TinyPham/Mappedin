@@ -8506,7 +8506,7 @@ async function init() {
     // ============================================
     // -1. HANDLE MULTI-MODEL PLACEMENT (PRIORITY)
     // ============================================
-    if (isMultiPlacingMode && multiPlaceSourceModels.length > 0 && event.coordinate) {
+    if (!isViewOnly && isMultiPlacingMode && multiPlaceSourceModels.length > 0 && event.coordinate) {
       console.log(`🎯 Multi-Place Mode: ${multiPlaceMode} (${multiPlaceSourceModels.length} models)`);
       try {
         const { latitude, longitude } = event.coordinate;
@@ -8586,7 +8586,7 @@ async function init() {
     // ============================================
     // 0. HANDLE 3D MODEL PLACEMENT (PRIORITY)
     // ============================================
-    if (placingModelConfig && event.coordinate) {
+    if (!isViewOnly && placingModelConfig && event.coordinate) {
       console.log(`🎯 Placement Mode: ${placingMode}`);
       try {
         const { latitude, longitude } = event.coordinate;
@@ -8695,7 +8695,7 @@ async function init() {
     // 1. SELECT EXISTING 3D MODEL (Alt+Click or Shift+Click only)
     // Normal click → skip models, fall through to area/space selection
     // ============================================
-    if (event.models && event.models.length > 0) {
+    if (!isViewOnly && event.models && event.models.length > 0) {
       const clickedModel = event.models[0];
       const meta = MODEL_ID_REGISTRY.get(clickedModel.id);
       const isShiftHeld = event.originalEvent?.shiftKey === true || isShiftPressed;
@@ -11018,6 +11018,8 @@ async function init() {
 
   // Expose function for Marker Clicks
   (window as any).selectModelByUUID = (uuid: string) => {
+    if (isViewOnly) return;
+
     // Find model ID by UUID
     for (const [id, meta] of MODEL_ID_REGISTRY.entries()) {
       if (meta.uuid === uuid) {
