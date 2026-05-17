@@ -73,3 +73,26 @@ test('narrow tablet top controls use extra compact sizing between 769px and 992p
   const sliderBlock = getRuleBlock('#brightness-slider', narrowTabletMediaIndex);
   assert.match(sliderBlock, /width:\s*44px/);
 });
+
+test('ipad air tablet controls use ultra compact sizing between 769px and 900px', () => {
+  const ipadAirMediaIndex = css.indexOf('@media (min-width: 769px) and (max-width: 900px)');
+  assert.notEqual(ipadAirMediaIndex, -1, 'Missing iPad Air tablet controls media query');
+
+  const sharedButtonBlock = getRuleBlock('.theme-selector-toggle,', ipadAirMediaIndex);
+  assert.match(sharedButtonBlock, /height:\s*32px/);
+  assert.match(sharedButtonBlock, /padding:\s*0 7px/);
+  assert.match(sharedButtonBlock, /font-size:\s*10px/);
+  assert.match(sharedButtonBlock, /gap:\s*3px/);
+
+  const brightnessBlock = getRuleBlock('.brightness-toggle', ipadAirMediaIndex);
+  assert.match(brightnessBlock, /height:\s*32px/);
+  assert.match(brightnessBlock, /padding:\s*0 6px/);
+  assert.match(brightnessBlock, /gap:\s*3px/);
+
+  const sliderBlock = getRuleBlock('#brightness-slider', ipadAirMediaIndex);
+  assert.match(sliderBlock, /width:\s*30px/);
+
+  const categoryLabelBlock = getRuleBlock('.category-label-box', ipadAirMediaIndex);
+  assert.match(categoryLabelBlock, /font-size:\s*12px\s*!important/);
+  assert.match(categoryLabelBlock, /padding:\s*7px 9px\s*!important/);
+});

@@ -66,8 +66,8 @@ test('mobile theme selector uses compact floor and language dropdown styling', (
 });
 
 test('mobile brightness control has the same final height as the theme button', () => {
-  const lastBrightnessToggleIndex = css.lastIndexOf('.brightness-toggle');
-  assert.notEqual(lastBrightnessToggleIndex, -1, 'Missing brightness toggle styles');
+  const lastBrightnessToggleIndex = css.lastIndexOf('@media (max-width: 768px) {\n  .brightness-toggle');
+  assert.notEqual(lastBrightnessToggleIndex, -1, 'Missing mobile brightness toggle styles');
 
   const finalBrightnessBlock = getRuleBlock('.brightness-toggle', lastBrightnessToggleIndex);
   assert.match(finalBrightnessBlock, /height:\s*40px/);

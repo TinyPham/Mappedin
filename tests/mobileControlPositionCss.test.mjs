@@ -23,10 +23,10 @@ function getRuleBlock(selector, startIndex = 0) {
   assert.fail(`Missing block end for: ${selector}`);
 }
 
-test('mobile floor and language controls sit 10px higher above the bottom edge', () => {
+test('mobile floor and language controls sit 15px higher above the bottom edge', () => {
   const mobileMediaIndex = css.indexOf('@media (max-width: 768px)');
   assert.notEqual(mobileMediaIndex, -1, 'Missing mobile media query');
 
   const controlsBlock = getRuleBlock('#map-top-controls', mobileMediaIndex);
-  assert.match(controlsBlock, /bottom:\s*35px\s*!important/);
+  assert.match(controlsBlock, /bottom:\s*40px\s*!important/);
 });
