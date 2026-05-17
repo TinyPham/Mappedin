@@ -20,6 +20,7 @@ import {
 } from "./navigationInstructionRules.js";
 import { getCategoryAreaListStyle } from "./categoryDropdownLayout.js";
 import { getModelStreamingZoomThresholds } from "./modelStreamingThresholds.js";
+import { shouldAutoOpenUserGuide } from "./tutorialAutoOpen.js";
 import { getTutorialDevice } from "./tutorialDevice.js";
 import { tutorialSteps } from "./tutorialSteps.js";
 
@@ -2008,6 +2009,21 @@ async function init() {
   };
 
   const USER_GUIDE_COMPLETED_KEY = "mappedinUserGuideCompleted";
+  const LAST_AUTO_SHOW_KEY = "mappedinUserGuideLastAutoShowTime";
+  let shouldShowGuideOnLoad = false;
+  let resolveLoadingOverlayDismissed: () => void = () => { };
+  const loadingOverlayDismissedPromise = new Promise<void>((resolve) => {
+    resolveLoadingOverlayDismissed = resolve;
+  });
+  try {
+    const lastAutoShow = localStorage.getItem(LAST_AUTO_SHOW_KEY);
+    shouldShowGuideOnLoad = shouldAutoOpenUserGuide(lastAutoShow);
+    if (shouldShowGuideOnLoad) {
+      localStorage.setItem(LAST_AUTO_SHOW_KEY, Date.now().toString());
+    }
+  } catch (e) {
+    console.warn("Failed to check auto user guide schedule", e);
+  }
   const userGuideButton = document.getElementById('btn-user-guide') as HTMLButtonElement | null;
   const userGuideModal = document.getElementById('user-guide-modal') as HTMLDivElement | null;
   const userGuidePanel = userGuideModal?.querySelector('.user-guide-panel') as HTMLDivElement | null;
@@ -2280,8 +2296,13 @@ async function init() {
     // Đợi 400ms để hiệu ứng animation % chạy tới đích, rồi mới ẩn Overlay
     setTimeout(() => {
       loadingScreen.classList.add("hidden");
-      setTimeout(() => loadingScreen.style.display = "none", 500);
+      setTimeout(() => {
+        loadingScreen.style.display = "none";
+        resolveLoadingOverlayDismissed();
+      }, 500);
     }, 400);
+  } else {
+    resolveLoadingOverlayDismissed();
   }
 
   // Tải ngầm cực chậm trong Background (Không block UI/Lag máy)
@@ -2357,10 +2378,25 @@ async function init() {
   // Lưu tọa độ trung tâm khởi tạo để dùng cho việc căn giữa sau này
   initialVenueCenter = { ...mapView.Camera.center };
 
-  // Xoay camera một góc để có góc nhìn tốt hơn
-  mapView.Camera.animateTo({
+  // Xoay camera một góc để có góc nhìn tốt hơn (Chạy không chặn luồng khởi động)
+  const cameraRotationPromise = mapView.Camera.animateTo({
     bearing: mapView.Camera.bearing - 36.7,
   });
+
+  // ============================================
+  // TỰ ĐỘNG BẬT HƯỚNG DẪN SAU KHI XOAY CAMERA XONG
+  // ============================================
+  if (shouldShowGuideOnLoad) {
+    Promise.all([
+      cameraRotationPromise.catch(() => undefined),
+      loadingOverlayDismissedPromise
+    ]).then(() => {
+      setTimeout(() => {
+        console.log("🚀 Mappedin: Startup Camera rotation completed. Popping up User Guide.");
+        openUserGuide();
+      }, 300); // 300ms buffer cho mượt mà tuyệt đối
+    });
+  }
 
   // ============================================
   // KHỞI TẠO BLUE DOT

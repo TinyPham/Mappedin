@@ -2694,6 +2694,11 @@
     let deferredPrompt;
     const installContainer = document.getElementById('pwa-install-container');
     const installBtn = document.getElementById('pwa-install-btn');
+    function shouldShowPwaInstallPrompt() {
+      const isMobileViewport = window.innerWidth <= 768;
+      const isMobileAgent = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+      return !isMobileViewport && !isMobileAgent;
+    }
 
     window.addEventListener('beforeinstallprompt', (e) => {
       console.log('📢 PWA: beforeinstallprompt event fired!');
@@ -2702,9 +2707,17 @@
       // Stash the event so it can be triggered later.
       deferredPrompt = e;
       // Update UI notify the user they can install the PWA
-      if (installContainer) {
+      if (installContainer && shouldShowPwaInstallPrompt()) {
         installContainer.style.display = 'flex';
         console.log('✅ PWA: Install button shown.');
+      } else if (installContainer) {
+        installContainer.style.display = 'none';
+      }
+    });
+
+    window.addEventListener('resize', () => {
+      if (!shouldShowPwaInstallPrompt() && installContainer) {
+        installContainer.style.display = 'none';
       }
     });
 

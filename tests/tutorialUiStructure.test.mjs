@@ -40,8 +40,8 @@ test('user guide modal skeleton contains required controls', () => {
 
 test('user guide uses compact transparent copy surface and chevron controls', () => {
   assert.match(html, /class="user-guide-copy-card"/);
-  assert.match(html, /id="user-guide-back"[^>]*>‹<\/button>/);
-  assert.match(html, /id="user-guide-next"[^>]*>›<\/button>/);
+  assert.match(html, /id="user-guide-back"[\s\S]*?<path d="M15 19l-7-7 7-7"\/>[\s\S]*?<\/button>/);
+  assert.match(html, /id="user-guide-next"[\s\S]*?<path d="M9 19l7-7-7-7"\/>[\s\S]*?<\/button>/);
   assert.match(html, /markerWidth="8"/);
   assert.match(html, /markerHeight="8"/);
 });
