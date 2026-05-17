@@ -2033,7 +2033,7 @@ body.zoom-out-mode .mappedin-poi-marker {
   /* Floor & Language moved to BOTTOM EDGE */
   #custom-floor-wrapper {
     position: absolute !important;
-    bottom: 12px !important;
+    bottom: 17px !important;
     left: 8px !important;
     top: auto !important;
     right: auto !important;
@@ -2042,7 +2042,7 @@ body.zoom-out-mode .mappedin-poi-marker {
 
   #custom-lang-wrapper {
     position: absolute !important;
-    bottom: 12px !important;
+    bottom: 17px !important;
     right: 8px !important;
     top: auto !important;
     left: auto !important;
