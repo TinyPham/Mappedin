@@ -20,7 +20,15 @@ import {
 } from "./navigationInstructionRules.js";
 import { getCategoryAreaListStyle } from "./categoryDropdownLayout.js";
 import { getModelStreamingZoomThresholds } from "./modelStreamingThresholds.js";
-import { shouldAutoOpenUserGuide } from "./tutorialAutoOpen.js";
+import {
+  STARTUP_CAMERA_ROTATION_DURATION_MS,
+  STARTUP_CAMERA_ZOOM_DELAY_MS,
+  STARTUP_CAMERA_ZOOM_DURATION_MS,
+  STARTUP_GUIDE_AFTER_ROTATION_BUFFER_MS,
+  STARTUP_GUIDE_OPEN_DELAY_MS,
+  shouldAutoOpenUserGuide,
+  waitForStartupCameraRotation
+} from "./tutorialAutoOpen.js";
 import { getTutorialDevice } from "./tutorialDevice.js";
 import { tutorialSteps } from "./tutorialSteps.js";
 
@@ -2015,6 +2023,10 @@ async function init() {
   const loadingOverlayDismissedPromise = new Promise<void>((resolve) => {
     resolveLoadingOverlayDismissed = resolve;
   });
+  let resolveStartupCameraSequenceCompleted: () => void = () => { };
+  const startupCameraSequenceCompletedPromise = new Promise<void>((resolve) => {
+    resolveStartupCameraSequenceCompleted = resolve;
+  });
   try {
     const lastAutoShow = localStorage.getItem(LAST_AUTO_SHOW_KEY);
     shouldShowGuideOnLoad = shouldAutoOpenUserGuide(lastAutoShow);
@@ -2379,8 +2391,10 @@ async function init() {
   initialVenueCenter = { ...mapView.Camera.center };
 
   // Xoay camera một góc để có góc nhìn tốt hơn (Chạy không chặn luồng khởi động)
-  const cameraRotationPromise = mapView.Camera.animateTo({
+  const cameraRotationResult = mapView.Camera.animateTo({
     bearing: mapView.Camera.bearing - 36.7,
+  }, {
+    duration: STARTUP_CAMERA_ROTATION_DURATION_MS
   });
 
   // ============================================
@@ -2388,13 +2402,14 @@ async function init() {
   // ============================================
   if (shouldShowGuideOnLoad) {
     Promise.all([
-      cameraRotationPromise.catch(() => undefined),
+      waitForStartupCameraRotation(cameraRotationResult),
+      startupCameraSequenceCompletedPromise,
       loadingOverlayDismissedPromise
     ]).then(() => {
       setTimeout(() => {
-        console.log("🚀 Mappedin: Startup Camera rotation completed. Popping up User Guide.");
+        console.log("🚀 Mappedin: Startup camera sequence completed. Popping up User Guide.");
         openUserGuide();
-      }, 300); // 300ms buffer cho mượt mà tuyệt đối
+      }, STARTUP_GUIDE_OPEN_DELAY_MS);
     });
   }
 
@@ -2516,14 +2531,19 @@ async function init() {
         pitch: mapView.Camera.pitch,
         center: mapView.Camera.center, // Giữ nguyên center
       }, {
-        duration: 3000, // 3 giây để zoom IN mượt mà
+        duration: STARTUP_CAMERA_ZOOM_DURATION_MS, // 3 giây để zoom IN mượt mà
         easing: "easeInOut",
       });
+      setTimeout(
+        resolveStartupCameraSequenceCompleted,
+        STARTUP_CAMERA_ZOOM_DURATION_MS + STARTUP_GUIDE_AFTER_ROTATION_BUFFER_MS
+      );
       console.log(`🎬 Initial animation: Zoom IN lên ${targetZoom} tại Overview`);
     } catch (e) {
+      resolveStartupCameraSequenceCompleted();
       console.warn("Error in initial camera animation:", e);
     }
-  }, 1000); // Delay 1 giây 
+  }, STARTUP_CAMERA_ZOOM_DELAY_MS); // Delay 1 giây 
 
   // ============================================
   // 2. THIẾT LẬP FLOOR SELECTOR

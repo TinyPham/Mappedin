@@ -2746,3 +2746,11 @@ body.user-guide-open {
   stroke-width: 4;
   stroke-dasharray: 12 10;
 }
+@media (min-width: 1201px) {
+  .brightness-toggle {
+    height: 40px !important;
+    min-height: 40px !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+  }
+}

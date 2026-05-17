@@ -6,9 +6,19 @@ const ts = fs.readFileSync('index.ts', 'utf8');
 const html = fs.readFileSync('index.html', 'utf8');
 
 test('startup user guide waits for loading overlay and camera rotation before opening', () => {
-  assert.match(ts, /import\s+\{\s*shouldAutoOpenUserGuide\s*\}\s+from\s+"\.\/tutorialAutoOpen\.js"/);
+  assert.match(ts, /shouldAutoOpenUserGuide/);
+  assert.match(ts, /waitForStartupCameraRotation/);
+  assert.match(ts, /STARTUP_CAMERA_ROTATION_DURATION_MS/);
+  assert.match(ts, /STARTUP_CAMERA_ZOOM_DELAY_MS/);
+  assert.match(ts, /STARTUP_CAMERA_ZOOM_DURATION_MS/);
+  assert.match(ts, /STARTUP_GUIDE_OPEN_DELAY_MS/);
   assert.match(ts, /loadingOverlayDismissedPromise/);
-  assert.match(ts, /Promise\.all\(\[\s*cameraRotationPromise\.catch\(\(\)\s*=>\s*undefined\),\s*loadingOverlayDismissedPromise\s*\]\)/);
+  assert.match(ts, /startupCameraSequenceCompletedPromise/);
+  assert.match(ts, /mapView\.Camera\.animateTo\(\{\s*bearing:\s*mapView\.Camera\.bearing - 36\.7,\s*\},\s*\{\s*duration:\s*STARTUP_CAMERA_ROTATION_DURATION_MS\s*\}\)/);
+  assert.match(ts, /duration:\s*STARTUP_CAMERA_ZOOM_DURATION_MS/);
+  assert.match(ts, /},\s*STARTUP_CAMERA_ZOOM_DELAY_MS\)/);
+  assert.match(ts, /Promise\.all\(\[\s*waitForStartupCameraRotation\(cameraRotationResult\),\s*startupCameraSequenceCompletedPromise,\s*loadingOverlayDismissedPromise\s*\]\)/);
+  assert.match(ts, /setTimeout\(\(\)\s*=>\s*\{\s*console\.log\("🚀 Mappedin: Startup camera sequence completed\. Popping up User Guide\."\);\s*openUserGuide\(\);\s*\},\s*STARTUP_GUIDE_OPEN_DELAY_MS\)/);
   assert.match(ts, /openUserGuide\(\)/);
 });
 
