@@ -2242,3 +2242,26 @@ body.zoom-out-mode .mappedin-poi-marker {
     box-sizing: border-box;
   }
 }
+@media (max-width: 768px) {
+  .theme-selector-wrapper.open {
+    z-index: 6500 !important;
+  }
+
+  .theme-selector-wrapper.open .theme-selector-menu {
+    z-index: 6500 !important;
+  }
+}
+@media (max-width: 768px) {
+  .pro-dropdown-wrapper.open {
+    z-index: 6500 !important;
+  }
+
+  .pro-dropdown-wrapper.open .pro-dropdown-menu {
+    z-index: 6500 !important;
+  }
+}
+@media (max-width: 768px) {
+  #map-top-controls:has(.pro-dropdown-wrapper.open) {
+    z-index: 6500 !important;
+  }
+}

@@ -87,3 +87,38 @@ test('mobile theme selector sits closer to the iframe corner and below active pa
   assert.match(mobileMenuBlock, /z-index:\s*1900\s*!important/);
   assert.match(mobileMenuBlock, /max-height:\s*calc\(100dvh - 190px\)/);
 });
+
+test('open mobile theme menu appears above floor language and camera controls', () => {
+  const openWrapperIndex = css.lastIndexOf('.theme-selector-wrapper.open');
+  assert.notEqual(openWrapperIndex, -1, 'Missing open theme wrapper z-index rule');
+
+  const openWrapperBlock = getRuleBlock('.theme-selector-wrapper.open', openWrapperIndex);
+  assert.match(openWrapperBlock, /z-index:\s*6500\s*!important/);
+
+  const openMenuIndex = css.lastIndexOf('.theme-selector-wrapper.open .theme-selector-menu');
+  assert.notEqual(openMenuIndex, -1, 'Missing open theme menu z-index rule');
+
+  const openMenuBlock = getRuleBlock('.theme-selector-wrapper.open .theme-selector-menu', openMenuIndex);
+  assert.match(openMenuBlock, /z-index:\s*6500\s*!important/);
+}
+);
+
+test('open mobile floor and language menus appear above camera controls', () => {
+  const openMapControlsIndex = css.lastIndexOf('#map-top-controls:has(.pro-dropdown-wrapper.open)');
+  assert.notEqual(openMapControlsIndex, -1, 'Missing open map controls z-index rule');
+
+  const openMapControlsBlock = getRuleBlock('#map-top-controls:has(.pro-dropdown-wrapper.open)', openMapControlsIndex);
+  assert.match(openMapControlsBlock, /z-index:\s*6500\s*!important/);
+
+  const openDropdownIndex = css.lastIndexOf('.pro-dropdown-wrapper.open');
+  assert.notEqual(openDropdownIndex, -1, 'Missing open pro dropdown z-index rule');
+
+  const openDropdownBlock = getRuleBlock('.pro-dropdown-wrapper.open', openDropdownIndex);
+  assert.match(openDropdownBlock, /z-index:\s*6500\s*!important/);
+
+  const openDropdownMenuIndex = css.lastIndexOf('.pro-dropdown-wrapper.open .pro-dropdown-menu');
+  assert.notEqual(openDropdownMenuIndex, -1, 'Missing open pro dropdown menu z-index rule');
+
+  const openDropdownMenuBlock = getRuleBlock('.pro-dropdown-wrapper.open .pro-dropdown-menu', openDropdownMenuIndex);
+  assert.match(openDropdownMenuBlock, /z-index:\s*6500\s*!important/);
+});
