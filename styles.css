@@ -2754,3 +2754,113 @@ body.user-guide-open {
     padding-bottom: 0 !important;
   }
 }
+@media (max-width: 768px) and (min-height: 450px) and (max-height: 550px) {
+  #camera-actions {
+    gap: 8px !important;
+  }
+
+  #camera-actions .camera-btn,
+  #camera-actions #btn-open-flight-info {
+    width: 28px !important;
+    height: 28px !important;
+    border-radius: 6px !important;
+  }
+
+  #camera-actions .camera-btn svg,
+  #camera-actions #btn-open-flight-info svg {
+    width: 15px !important;
+    height: 15px !important;
+  }
+
+  #btn-user-guide .user-guide-icon {
+    font-size: 16px !important;
+  }
+
+  #custom-floor-wrapper {
+    bottom: 2px !important;
+  }
+
+  #custom-lang-wrapper {
+    bottom: 2px !important;
+  }
+}
+@media (max-width: 768px) and (min-height: 450px) and (max-height: 550px) {
+  #camera-actions {
+    gap: 8px !important;
+  }
+
+  .mobile-camera-stack {
+    gap: 8px !important;
+  }
+
+  .mobile-camera-stack .camera-btn,
+  .mobile-camera-stack #btn-open-flight-info {
+    width: 28px !important;
+    height: 28px !important;
+    border-radius: 6px !important;
+  }
+
+  .mobile-camera-stack .camera-btn svg,
+  .mobile-camera-stack #btn-open-flight-info svg {
+    width: 15px !important;
+    height: 15px !important;
+  }
+
+  #btn-user-guide .user-guide-icon {
+    font-size: 16px !important;
+  }
+
+  #map-top-controls {
+    bottom: 25px !important;
+  }
+
+  #custom-floor-wrapper {
+    bottom: 2px !important;
+  }
+
+  #custom-lang-wrapper {
+    bottom: 2px !important;
+  }
+}
+@media (max-width: 768px) and (max-height: 550px) {
+  #camera-controls {
+    top: calc(50% + 60px) !important;
+  }
+
+  #camera-actions {
+    gap: 8px !important;
+  }
+
+  .mobile-camera-stack {
+    gap: 8px !important;
+  }
+
+  .mobile-camera-stack .camera-btn,
+  .mobile-camera-stack #btn-open-flight-info {
+    width: 28px !important;
+    height: 28px !important;
+    border-radius: 6px !important;
+  }
+
+  .mobile-camera-stack .camera-btn svg,
+  .mobile-camera-stack #btn-open-flight-info svg {
+    width: 15px !important;
+    height: 15px !important;
+  }
+
+  #btn-user-guide .user-guide-icon {
+    font-size: 16px !important;
+  }
+
+  #map-top-controls {
+    bottom: 25px !important;
+  }
+
+  #custom-floor-wrapper {
+    bottom: 2px !important;
+  }
+
+  #custom-lang-wrapper {
+    bottom: 2px !important;
+  }
+}
