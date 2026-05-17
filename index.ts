@@ -20,6 +20,8 @@ import {
 } from "./navigationInstructionRules.js";
 import { getCategoryAreaListStyle } from "./categoryDropdownLayout.js";
 import { getModelStreamingZoomThresholds } from "./modelStreamingThresholds.js";
+import { getTutorialDevice } from "./tutorialDevice.js";
+import { tutorialSteps } from "./tutorialSteps.js";
 
 // Global Declarations to resolve scope issues
 let ApiService: any = null;
@@ -303,6 +305,420 @@ class TranslationManager {
 
   // Hardcoded fallbacks for critical UI keys missing from DB
   static STATIC_UI_FALLBACKS: any = {
+    'guide_btn_done': {
+      'vn': 'Đã xong',
+      'en': 'Done',
+      'zh': '完成',
+      'ja': '完了',
+      'ko': '완료'
+    },
+    'guide_title_mobile_map_overview': {
+      'vn': 'Làm quen bản đồ',
+      'en': 'Explore the 3D Map',
+      'zh': '熟悉地图',
+      'ja': '3Dマップの操作',
+      'ko': '3D 지도 시작하기'
+    },
+    'guide_desc_mobile_map_overview': {
+      'vn': 'Chào mừng bạn đến với Bản đồ 3D! Hãy thử dùng 1 ngón tay vuốt nhẹ để di chuyển bản đồ, hoặc chụm/mở 2 ngón để phóng to, thu nhỏ và khám phá toàn cảnh sân bay nhé.',
+      'en': 'Welcome to the 3D Map! Simply swipe with 1 finger to move the map, or pinch/spread 2 fingers to zoom in and out to explore the entire airport.',
+      'zh': '欢迎来到3D地图！只需用单指滑动即可移动地图，或者用双指捏合/张开以进行缩放，探索机场的全景。',
+      'ja': '3Dマップへようこそ！指1本でスワイプして地図を移動し、指2本でピンチイン・アウトしてズームし、空港の全景を探索できます。',
+      'ko': '3D 지도에 오신 것을 환영합니다! 한 손가락으로 가볍게 밀어 지도를 이동하거나, 두 손가락을 모으고 벌려 공항 전체를 확대/축소하여 탐색해 보세요.'
+    },
+    'guide_title_mobile_search': {
+      'vn': 'Tìm kiếm nhanh',
+      'en': 'Quick Search',
+      'zh': '快速搜索',
+      'ja': 'クイック検索',
+      'ko': '빠른 검색'
+    },
+    'guide_desc_mobile_search': {
+      'vn': 'Bạn muốn đi đâu? Chỉ cần nhập tên cửa hàng, quầy thủ tục hoặc dịch vụ vào ô này. Chạm vào kết quả và bản đồ sẽ tự động xoay và di chuyển mượt mà đưa bạn tới vị trí đó ngay lập tức.',
+      'en': 'Where would you like to go? Just enter the name of a shop, check-in counter, or service. Tap the result and the map will smoothly fly you to its location instantly.',
+      'zh': '您想去哪里？只需在此输入商店、值机柜台或服务的名称。点击结果，地图将立即平滑地移动并带您前往该位置。',
+      'ja': 'どこへ行きたいですか？ショップ、チェックインカウンター、サービスの名称を入力するだけです。結果をタップすると、地図がスムーズに移動してその場所に案内します。',
+      'ko': '어디로 가고 싶으신가요? 상점, 체크인 카운터 또는 서비스 이름을 입력해 보세요. 결과를 터치하면 지도가 부드럽게 회전 및 이동하여 해당 위치로 즉시 안내해 드립니다.'
+    },
+    'guide_title_mobile_category_toggle': {
+      'vn': 'Mở nhanh danh mục',
+      'en': 'Quick Categories',
+      'zh': '快速分类',
+      'ja': 'クイックカテゴリー',
+      'ko': '카테고리 퀵 메뉴'
+    },
+    'guide_desc_mobile_category_toggle': {
+      'vn': 'Khám phá thêm bằng cách chạm vào nút mũi tên nhỏ ở góc ô tìm kiếm để mở hoặc đóng nhanh danh sách dịch vụ đa dạng trên tầng hiện tại.',
+      'en': 'Discover more by tapping the small arrow button in the search box to quickly open or close the rich service categories available on the current floor.',
+      'zh': '点击搜索栏角落的小箭头按钮，即可快速打开或关闭当前楼层可用的丰富服务分类，发现更多精彩。',
+      'ja': '検索ボックスの角にある小さな矢印ボタンをタップすると、現在のフロアで利用可能な豊富なサービスカテゴリーを素早く開閉できます。',
+      'ko': '검색창 모퉁이에 있는 작은 화살표 버튼을 터치하여 현재 층의 다양한 서비스 카테고리를 빠르게 열고 닫으며 더 많은 서비스를 발견해 보세요.'
+    },
+    'guide_title_mobile_category_list': {
+      'vn': 'Khám phá dịch vụ',
+      'en': 'Discover Services',
+      'zh': '探索服务',
+      'ja': 'サービスを検索',
+      'ko': '서비스 탐색'
+    },
+    'guide_desc_mobile_category_list': {
+      'vn': 'Từ Ăn uống, Mua sắm đến Nhà thuốc hay Thư giãn... Chỉ một chạm vào danh mục, tất cả các địa điểm liên quan sẽ hiển thị rõ ràng trên bản đồ để bạn tha hồ lựa chọn.',
+      'en': 'From Dining and Shopping to Pharmacy or Relaxation... With just one tap on a category, all related locations will be highlighted on the map for your convenience.',
+      'zh': '从餐饮、购物到药房或放松休闲……只需点击一个分类，所有相关地点都将清晰地在地图上标出，方便您挑选。',
+      'ja': 'レストランやショップから薬局、リラクゼーションまで… カテゴリーを1回タップするだけで、関連するすべての場所が地図上に明確に表示され、選択しやすくなります。',
+      'ko': '식음료, 쇼핑부터 약국, 휴식 공간까지... 카테고리를 한 번만 터치하면 관련된 모든 장소가 지도 위에 명확히 표시되어 편리하게 선택하실 수 있습니다.'
+    },
+    'guide_title_mobile_floor': {
+      'vn': 'Chuyển tầng dễ dàng',
+      'en': 'Easy Floor Selector',
+      'zh': '轻松切换楼层',
+      'ja': '簡単な階層切替',
+      'ko': '편리한 층간 이동'
+    },
+    'guide_desc_mobile_floor': {
+      'vn': 'Sân bay có nhiều tầng? Đừng lo, hãy chạm nút chọn tầng ở góc dưới này để dễ dàng chuyển qua lại giữa các tầng hoặc xem toàn cảnh 3D của nhà ga.',
+      'en': 'Multiple floors in the airport? Don\'t worry, just tap the floor selector at the bottom to easily switch between floors or view the 3D terminal overview.',
+      'zh': '机场有多楼层？别担心，只需点击底部的楼层选择器，即可轻松切换楼层或查看航站楼的3D全景。',
+      'ja': '空港に複数のフロアがありますか？心配いりません。底部のフロアセレクターをタップするだけで、フロア間を簡単に切り替えるか、ターミナルの3D全景を表示できます。',
+      'ko': '공항에 여러 층이 있어도 걱정 마세요! 아래에 있는 층 선택 버튼을 터치하여 각 층 사이를 간편하게 전환하거나 여객터미널의 3D 전체 전경을 확인해 보세요.'
+    },
+    'guide_title_mobile_language': {
+      'vn': 'Ngôn ngữ toàn cầu',
+      'en': 'Global Languages',
+      'zh': '全球语言',
+      'ja': '多言語対応',
+      'ko': '글로벌 언어 지원'
+    },
+    'guide_desc_mobile_language': {
+      'vn': 'Bản đồ hỗ trợ đa ngôn ngữ! Bạn có thể chuyển đổi nhanh chóng sang Tiếng Việt, Tiếng Anh, Trung, Nhật, Hàn... để việc tìm đường và tra cứu thuận tiện nhất.',
+      'en': 'The map supports multiple languages! You can quickly switch to Vietnamese, English, Chinese, Japanese, Korean... for the most convenient navigation.',
+      'zh': '地图支持多语言！您可以快速切换到越南语、英语、中文、日语、韩语……以便更方便地寻找路线和查询信息。',
+      'ja': '地図は多言語に対応しています！ベトナム語、英語、中国語、日本語、韓国語に素早く切り替えることができ、最も便利なルート検索と照会が可能です。',
+      'ko': '지도는 다국어를 지원합니다! 한국어, 베트남어, 영어, 중국어, 일본어 등으로 빠르게 전환하여 가장 편리하게 길을 찾고 정보를 검색하실 수 있습니다.'
+    },
+    'guide_title_mobile_theme': {
+      'vn': 'Giao diện bản đồ',
+      'en': 'Map Styles',
+      'zh': '地图风格',
+      'ja': '地図スタイル',
+      'ko': '지도 테마 변경'
+    },
+    'guide_desc_mobile_theme': {
+      'vn': 'Cá nhân hóa trải nghiệm với 4 tông màu độc đáo: Cổ điển tinh tế, Rực rỡ năng động, Xanh đêm dịu mắt hay Biển xanh mát mẻ để tối ưu tầm nhìn của bạn.',
+      'en': 'Personalize your experience with 4 unique themes: Classic, Vibrant, Night Blue, or Beach Please to match your taste and optimize visibility.',
+      'zh': '个性化您的体验！拥有4个独特的主题：经典、活力、夜蓝或阳光沙滩，以符合您的口味并优化可视性。',
+      'ja': '個性を表現できる4つのユニークなテーマ：クラシック、バイブラント、ナイトブルー、ビーチプリーズからお好みに合わせて選択し、見やすさを最適化できます。',
+      'ko': '취향에 따라 4가지 독특한 테마(클래식, 바이브런트, 나이트 블루, 비치 플리즈) 중 하나를 선택해 화면 밝기를 최적화하고 나만의 지도를 꾸며보세요.'
+    },
+    'guide_title_mobile_brightness': {
+      'vn': 'Chế độ bảo vệ mắt',
+      'en': 'Eye Comfort Brightness',
+      'zh': '护眼亮度',
+      'ja': 'アイケア輝度',
+      'ko': '눈 보호 밝기 조절'
+    },
+    'guide_desc_mobile_brightness': {
+      'vn': 'Dễ dàng điều chỉnh độ sáng bản đồ bằng thanh trượt hoặc nút cộng/trừ (+/-) để mắt bạn luôn dễ chịu dù ở trong nhà ga hay dưới trời nắng.',
+      'en': 'Easily adjust the map brightness using the slider or +/- buttons to keep your eyes comfortable, whether you\'re inside the terminal or under the sun.',
+      'zh': '使用滑块或 +/- 按钮轻松调节地图亮度，让您的眼睛保持舒适，无论是在航站楼内还是在烈日下。',
+      'ja': 'スライダーや +/- ボタンで地図の明るさを簡単に調整できます。ターミナル内でも日差しの下でも、目を快適な状態に保ちます。',
+      'ko': '터미널 내부나 야외 햇빛 아래에서도 눈이 편안할 수 있도록 슬라이더나 +/- 버튼을 이용해 지도의 밝기를 간편하게 조절해 보세요.'
+    },
+    'guide_title_mobile_wayfinding_entry': {
+      'vn': 'Bắt đầu chỉ đường',
+      'en': 'Get Directions',
+      'zh': '开始导航',
+      'ja': '経路案内を開始',
+      'ko': '길찾기 시작'
+    },
+    'guide_desc_mobile_wayfinding_entry': {
+      'vn': 'Cần tìm đường đi ngắn nhất? Hãy chạm vào tab "Chỉ đường" để bắt đầu thiết lập lộ trình di chuyển thông minh và tối ưu nhất của riêng bạn.',
+      'en': 'Need the shortest route? Tap the "Directions" tab to start setting up your own smart and optimal transit route across the airport.',
+      'zh': '需要最短的路线？点击“路线”标签，开始为您量身定制贯穿整个机场的最优智能路线。',
+      'ja': '最短ルートが必要ですか？「経路」タブをタップして、空港内を移動するための独自のスマートで最適なルートの設定を開始します。',
+      'ko': '가장 빠른 경로를 찾고 싶으신가요? \'길찾기\' 탭을 터치하여 나만의 스마트하고 최적화된 공항 내 이동 경로 설정을 시작해 보세요.'
+    },
+    'guide_title_mobile_wayfinding_points': {
+      'vn': 'Lập lộ trình linh hoạt',
+      'en': 'Flexible Routing',
+      'zh': '灵活路径规划',
+      'ja': '柔軟なルート設定',
+      'ko': '자유로운 경로 설정'
+    },
+    'guide_desc_mobile_wayfinding_points': {
+      'vn': 'Chỉ cần chọn điểm xuất phát và điểm đến mong muốn. Bạn cũng có thể thêm các điểm dừng chân trung gian (như quầy nước, nhà vệ sinh) trên đường đi.',
+      'en': 'Simply choose your starting point and destination. You can also add intermediate stops (like cafes, lounges, or restrooms) along your way.',
+      'zh': '只需选择您的起点和终点即可。您还可以在途中添加中间经停点（例如咖啡馆、贵宾厅或洗手间）。',
+      'ja': '出発地と目的地を選択するだけです。移動の途中に経由地（カフェ、ラウンジ、トイレなど）を追加することもできます。',
+      'ko': '출발지와 목적지를 선택하기만 하면 됩니다. 경로에 카페, 라운지, 화장실과 같은 경유지를 추가하여 이동할 수도 있습니다.'
+    },
+    'guide_title_mobile_wayfinding_route': {
+      'vn': 'Chỉ dẫn chi tiết',
+      'en': 'Step-by-Step Guide',
+      'zh': '详细指示',
+      'ja': '詳細な道案内',
+      'ko': '단계별 상세 안내'
+    },
+    'guide_desc_mobile_wayfinding_route': {
+      'vn': 'Tuyến đường tối ưu sẽ được vẽ trực quan trên bản đồ 3D kèm danh sách chỉ dẫn chi tiết từng bước, giúp bạn di chuyển cực kỳ tự tin và thong thả.',
+      'en': 'The optimal route will be drawn visually on the 3D map with a step-by-step navigation list, helping you travel with total confidence and ease.',
+      'zh': '最优路线将以可视化方式绘制在3D地图上，并配有详细的步骤指示列表，帮助您充满信心、轻松地前往目的地。',
+      'ja': '最適なルートが3Dマップ上に視覚的に描かれ、詳細なステップバイステップの案内リストが表示されます。自信を持って快適に移動できます。',
+      'ko': '최적의 경로가 3D 지도 위에 실시간으로 표시되며 단계별 상세 안내 목록이 제공되므로 낯선 공항에서도 자신 있게 이동하실 수 있습니다.'
+    },
+    'guide_title_mobile_location_detail': {
+      'vn': 'Thông tin địa điểm',
+      'en': 'Location Details',
+      'zh': '地点信息',
+      'ja': 'スポット情報',
+      'ko': '상세 위치 정보'
+    },
+    'guide_desc_mobile_location_detail': {
+      'vn': 'Chạm vào bất kỳ vị trí hay biểu tượng nào trên bản đồ để xem ngay hình ảnh thực tế, mô tả chi tiết, giờ hoạt động và nhanh chóng nhấn "Chỉ đường đến" hoặc "Đi từ đây".',
+      'en': 'Tap any shop, gate, or marker on the map to see its photos, details, opening hours, and quickly hit "Directions to" or "Start from here".',
+      'zh': '点击地图上的任意商店、登机口或标记，查看实景照片、详细描述、营业时间，并快速点击“导航至此”或“从此出发”。',
+      'ja': '地図上の任意のショップ、搭乗口、マーカーをタップすると、実物写真、詳細、営業時間を確認でき、素早く「目的地に設定」や「出発地に設定」を実行できます。',
+      'ko': '지도 위의 매장, 탑승구 또는 마커를 터치하여 실제 사진, 상세 정보, 운영 시간을 바로 확인하고 \'도착지로 설정\' 또는 \'출발지로 설정\'할 수 있습니다.'
+    },
+    'guide_title_mobile_flight_info': {
+      'vn': 'Tra cứu chuyến bay',
+      'en': 'Flight Board',
+      'zh': '航班查询',
+      'ja': 'フライト検索',
+      'ko': '실시간 항공편 조회'
+    },
+    'guide_desc_mobile_flight_info': {
+      'vn': 'Theo dõi lịch trình bay trực tiếp! Nhấn biểu tượng máy bay để tìm chuyến bay, sau đó nhấp vào Cổng bay hoặc Băng chuyền hành lý để bản đồ vẽ đường đi đón/tiễn ngay lập tức.',
+      'en': 'Track your flights live! Tap the flight icon to search for your flight, then click on the gate or baggage belt for immediate pathfinding to greet or board.',
+      'zh': '实时跟踪您的航班！点击航班图标搜索您的航班，然后点击登机口或行李提取传送带，即可立即规划路线去接机或登机。',
+      'ja': 'フライトスケジュールをリアルタイム追跡！飛行機アイコンをタップしてフライトを検索し、搭乗口や手荷物受取所をクリックすると、すぐに出迎えや搭乗のためのルートが描かれます。',
+      'ko': '실시간 항공편 일정을 확인해 보세요! 비행기 아이콘을 터치하여 항공편을 조회한 뒤, 표시된 탑승구 또는 수하물 수취대를 클릭하면 지도가 최적의 마중/탑승 경로를 즉시 안내해 드립니다.'
+    },
+    'guide_title_mobile_map_controls': {
+      'vn': 'Tiện ích bản đồ',
+      'en': 'Camera Controls',
+      'zh': '地图工具',
+      'ja': '便利な地図操作',
+      'ko': '지도 유틸리티'
+    },
+    'guide_desc_mobile_map_controls': {
+      'vn': 'Tận dụng các phím tắt nhanh ở rìa phải để bật/tắt toàn màn hình, phóng to, thu nhỏ hoặc nhấn biểu tượng Ngôi nhà để nhanh chóng đưa bản đồ về góc nhìn mặc định.',
+      'en': 'Take advantage of the quick floating controls on the right to toggle fullscreen, zoom in, zoom out, or press the Home icon to instantly reset to default view.',
+      'zh': '利用右侧浮动快捷键可开启/关闭全屏、放大、缩小，或按主页按钮瞬间将地图重置为默认视角。',
+      'ja': '右端にあるクイックショートカットを活用して、全画面表示の切り替え、ズームイン、ズームアウトを行えます。ホームボタンを押せば、地図を素早く初期の角度に戻せます。',
+      'ko': '오른쪽 가장자리에 있는 빠른 도구들을 활용하여 전체 화면 전환, 확대, 축소를 하거나 홈 아이콘을 터치하여 지도를 초기 기본 각도로 빠르게 되돌릴 수 있습니다.'
+    },
+    'guide_title_mobile_finish': {
+      'vn': 'Trải nghiệm ngay!',
+      'en': 'Ready to Go!',
+      'zh': '立即体验！',
+      'ja': '今すぐ体験！',
+      'ko': '지금 체험하기!'
+    },
+    'guide_desc_mobile_finish': {
+      'vn': 'Tuyệt vời! Bạn đã nắm rõ cách sử dụng bản đồ 3D Long Thành. Nếu cần xem lại hướng dẫn này, hãy nhấn vào nút chữ (i) bất kỳ lúc nào nhé. Chúc bạn có hành trình tuyệt vời!',
+      'en': 'Fantastic! You\'ve mastered the Long Thanh 3D Map. If you ever need to view this guide again, just tap the (i) button anytime. Have an amazing trip!',
+      'zh': '太棒了！您已完全掌握龙城国际机场3D地图的使用方法。如果您需要再次查看本指南，只需随时点击(i)按钮即可。祝您旅途愉快！',
+      'ja': '素晴らしい！ロンタイン国際空港 glass 3Dマップの操作方法をマスターしました。このガイドをもう一度見たいときは、いつでも (i) ボタンをタップしてください。良い旅を！',
+      'ko': '훌륭합니다! 이제 롱탄 국제공항 3D 지도 사용법을 모두 마스터하셨습니다. 이 안내가 다시 필요할 때는 언제든지 우측의 (i) 버튼을 터치해 주세요. 즐거운 여행 되세요!'
+    },
+    'guide_title_desktop_layout_overview': {
+      'vn': 'Tổng quan giao diện',
+      'en': 'Layout Overview',
+      'zh': '界面总览',
+      'ja': 'インターフェース全景',
+      'ko': '화면 전체 개요'
+    },
+    'guide_desc_desktop_layout_overview': {
+      'vn': 'Chào mừng bạn đến với Bản đồ 3D! Giao diện được tối ưu với Sidebar bên trái giúp bạn tìm kiếm, chọn dịch vụ và dẫn đường; kết hợp Bản đồ tương tác toàn cảnh ở bên phải.',
+      'en': 'Welcome to the 3D Map! The interface features an optimized left sidebar for search, services, and routing, combined with the interactive 3D map panorama on the right.',
+      'zh': '欢迎来到3D地图！界面左侧配有经过优化的侧边栏，用于搜索、服务和导航；右侧则是交互式3D地图全景。',
+      'ja': '3Dマップへようこそ！インターフェースの左側に検索、サービス、経路案内に最適化されたサイドバーがあり、右側にインタラクティブな3Dマップの全景が表示されます。',
+      'ko': '3D 지도에 오신 것을 환영합니다! 검색, 서비스 선택, 길찾기를 돕ng 최적의 좌측 사이드바와 역동적인 우측 3D 지도로 여정이 더욱 편리해집니다.'
+    },
+    'guide_title_desktop_map_buttons': {
+      'vn': 'Thanh công cụ nhanh',
+      'en': 'Quick Toolbar',
+      'zh': '快捷工具栏',
+      'ja': 'クイックツールバー',
+      'ko': '빠른 도구 모음'
+    },
+    'guide_desc_desktop_map_buttons': {
+      'vn': 'Sử dụng các phím tắt nhanh ở rìa phải để tra cứu chuyến bay trực tiếp, mở lại hướng dẫn này, chuyển chế độ toàn màn hình, phóng to/thu nhỏ hoặc quay lại góc nhìn mặc định.',
+      'en': 'Use the quick shortcuts on the right edge to track live flights, reopen this user guide, toggle fullscreen, zoom in/out, or reset back to default camera angle.',
+      'zh': '使用右侧的快捷栏实时查询航班、重新打开指南、切换全屏、放大/缩小，或重置为默认相机视角。',
+      'ja': '右端にあるクイックショートカットを使用して、リアルタイムのフライト追跡、このユーザーガイドの再表示、全画面表示の切り替え、ズームイン/アウト、初期アングルへのリセットを行えます。',
+      'ko': '우측 가장자리에 있는 단축 버튼들을 사용하여 실시간 항공편 조회, 가이드 다시 열기, 전체 화면 전환, 확대/축소, 또는 기본 화면 각도로 복원할 수 있습니다.'
+    },
+    'guide_title_desktop_map_rotation': {
+      'vn': 'Tương tác Bản đồ 3D',
+      'en': '3D Map Interaction',
+      'zh': '3D地图互动',
+      'ja': '3Dマップの操作方法',
+      'ko': '3D 지도 제어'
+    },
+    'guide_desc_desktop_map_rotation': {
+      'vn': 'Kéo chuột trái để di chuyển, cuộn chuột để phóng to/thu nhỏ. Đặc biệt, hãy giữ chuột phải và kéo (hoặc dùng cụm nút D-pad ở góc dưới) để xoay và nghiêng bản đồ cực kỳ mượt mà.',
+      'en': 'Left-click and drag to pan, scroll to zoom. Crucially, hold right-click and drag (or use the D-pad in the bottom corner) to rotate and tilt the map smoothly.',
+      'zh': '左键拖动可平移地图，滚动鼠标可放大/缩小。最关键的是，按住右键并拖动（或使用角落的D-pad）即可顺畅地旋转和倾斜3D透视图。',
+      'ja': '左クリックでドラッグして移動、ホイールを回してズームします。さらに、右クリックしてドラッグする（またはコーナーにあるD-padを使用する）ことで、3Dパースペクティブをスムーズに回転・傾斜させることができます。',
+      'ko': '마우스 왼쪽 버튼을 누른 채 끌어서 지도를 이동하고, 휠을 굴려 확대/축소해 보세요. 특히 마우스 오른쪽 버튼을 누른 채 끌거나(또는 구석의 D-pad 버튼 사용) 지도를 부드럽게 회전/기울여 3D 입체 화면을 탐색할 수 있습니다.'
+    },
+    'guide_title_desktop_search': {
+      'vn': 'Tìm kiếm nhanh chóng',
+      'en': 'Instant Search',
+      'zh': '即时搜索',
+      'ja': 'クイック検索',
+      'ko': '간편한 검색'
+    },
+    'guide_desc_desktop_search': {
+      'vn': 'Chỉ cần nhập tên cửa hàng, quầy thủ tục hoặc dịch vụ vào ô tìm kiếm. Click chọn kết quả và bản đồ sẽ tự động xoay và di chuyển mượt mà đưa bạn tới tận nơi.',
+      'en': 'Simply type the name of a shop, check-in desk, or service. Click a search result and the map will automatically rotate and center to guide you right there.',
+      'zh': '只需输入商店、值机台或服务的名称。点击搜索结果，地图将自动旋转并对齐，引导您直接前往该处。',
+      'ja': 'ショップ、チェックインカウンター、サービスの名称を入力するだけです。結果をクリックすると、地図が自動的に回転して移動し、その場所へ正確に案内します。',
+      'ko': '검색창에 매장, 탑승구, 서비스 이름을 입력해 보세요. 결과 목록을 클릭하면 지도가 자동 회전 및 이동하며 목적지까지 실시간으로 안내합니다.'
+    },
+    'guide_title_desktop_category': {
+      'vn': 'Khám phá theo danh mục',
+      'en': 'Browse Categories',
+      'zh': '按分类浏览',
+      'ja': 'カテゴリーから探す',
+      'ko': '카테고리별 검색'
+    },
+    'guide_desc_desktop_category': {
+      'vn': 'Dễ dàng duyệt nhanh các dịch vụ hàng đầu sân bay như Ăn uống, Mua sắm, Nhà thuốc... Click vào nhóm dịch vụ để xem danh sách và vị trí của chúng trên tầng hiện tại.',
+      'en': 'Easily scan top airport services like Dining, Shopping, Pharmacy, and rest areas. Click a category to view the locations available on the current floor.',
+      'zh': '轻松浏览餐饮、购物、药店和休息区等主要机场服务。点击一个分类，查看当前楼层有哪些服务设施。',
+      'ja': 'レストランやショッピング、薬局、休憩エリアなど、空港内の主要サービスを簡単にスキャンできます。カテゴリーをクリックすると、現在のフロアで利用可能なスポット一覧が表示されます。',
+      'ko': '식음료, 쇼핑, 약국, 휴게 구역 등 주요 공항 서비스 카테고리를 한눈에 볼 수 있습니다. 카테고리를 클릭하면 현재 층에 위치한 매장들을 한 번에 확인할 수 있습니다.'
+    },
+    'guide_title_desktop_floor': {
+      'vn': 'Chuyển đổi tầng 3D',
+      'en': 'Interactive Floors',
+      'zh': '交互式楼层',
+      'ja': 'インタラクティブ階層',
+      'ko': '층별 화면 전환'
+    },
+    'guide_desc_desktop_floor': {
+      'vn': 'Chạm vào menu này để chuyển đổi góc nhìn giữa các tầng của nhà ga (Tầng trệt, Tầng 1, Tầng 2, Tầng 3) hoặc quay về chế độ xem Toàn cảnh sân bay.',
+      'en': 'Click this dropdown to switch the 3D map between terminal floors (Ground Floor, Floor 1, 2, 3) or return back to the overall airport layout view.',
+      'zh': '点击此下拉菜单可切换航站楼各楼层（地面层、一楼、二楼、三楼），或返回查看机场整体全景规划。',
+      'ja': 'このドロップダウンをクリックすると、ターミナルのフロア（地上階、1階、2階、3階）を切り替えるか、空港全体の全景マップ表示に戻ることができます。',
+      'ko': '이 드롭다운 버튼을 클릭하여 여객터미널의 각 층(지상층, 1층, 2층, 3층) 화면으로 전환하거나 공항 전체 3D 종합 전경으로 돌아갈 수 있습니다.'
+    },
+    'guide_title_desktop_language': {
+      'vn': 'Đa ngôn ngữ tiện lợi',
+      'en': 'Multilingual Support',
+      'zh': '多语言支持',
+      'ja': '便利な多言語機能',
+      'ko': '편리한 다국어 서비스'
+    },
+    'guide_desc_desktop_language': {
+      'vn': 'Bản đồ hỗ trợ nhiều ngôn ngữ phổ biến (Tiếng Việt, English, 中文, 日本語, 한국어). Hệ thống sẽ tự động đồng bộ toàn bộ tên địa điểm và chỉ đường sang ngôn ngữ bạn chọn.',
+      'en': 'The map supports standard languages (Vietnamese, English, Chinese, Japanese, Korean). The system synchronizes all locations and route texts to your chosen language.',
+      'zh': '地图支持多种语言（越南语、英语、中文、日语、韩语）。系统会自动将所有地点名称和路线指示同步为您选择的语言。',
+      'ja': '地図は主要言語（ベトナム語、英語、中国語、日本語、韓国語）に対応しています。システムはすべてのスポット名と経路案内文を、選択した言語に自動的に同期します。',
+      'ko': '지도는 다양한 주요 언어(한국어, 베트남어, 영어, 중국어, 일본어)를 지원합니다. 언어를 선택하면 지도 내 모든 상점 명칭과 길안내 텍스트가 해당 언어로 자동 동기화됩니다.'
+    },
+    'guide_title_desktop_theme': {
+      'vn': 'Phong cách hiển thị',
+      'en': 'Visual Aesthetics',
+      'zh': '视觉美学风格',
+      'ja': '表示スタイル',
+      'ko': '지도 테마 스타일'
+    },
+    'guide_desc_desktop_theme': {
+      'vn': 'Lựa chọn 1 trong 4 chủ đề màu sắc được thiết kế riêng: Cổ điển sang trọng, Rực rỡ sắc nét, Xanh đêm êm dịu hay Biển xanh mát mắt để tối ưu hóa khả năng quan sát.',
+      'en': 'Choose from 4 beautifully designed themes: Classic, Vibrant, Night Blue, or Beach Please to adjust the visuals and optimize map readability.',
+      'zh': '从4款设计精美的主题中进行选择：经典、活力、夜蓝或阳光沙滩，调节视觉效果，优化地图可读性。',
+      'ja': '美しくデザインされた4つのテーマ：クラシック、バイブラント、ナイトブルー、ビーチプリーズから選択して、視覚効果を調整し、地図の見やすさを最適化できます。',
+      'ko': '클래식, 바이브런트, 나이트 블루, 비치 플리즈 등 아름답게 디자인된 4가지 테마 중 하나를 선택하여 지도의 가독성과 시각 디자인을 최적화해 보세요.'
+    },
+    'guide_title_desktop_brightness': {
+      'vn': 'Điều tiết độ sáng',
+      'en': 'Brightness Control',
+      'zh': '亮度调节',
+      'ja': '明るさの調整',
+      'ko': '화면 밝기 제어'
+    },
+    'guide_desc_desktop_brightness': {
+      'vn': 'Kéo thanh trượt hoặc dùng phím cộng/trừ (+/-) để tăng/giảm độ sáng của bản đồ, giúp chống lóa và bảo vệ mắt bạn tốt nhất trong mọi môi trường ánh sáng.',
+      'en': 'Drag the slider or press the +/- keys to increase or decrease map brightness, helping prevent glare and protecting your eyes in any light environment.',
+      'zh': '拖动滑块或按 +/- 键增加或降低地图亮度，有效防止眩光，在任何光线环境下都能保护您的视力。',
+      'ja': 'スライダーをドラッグするか +/- キーを押して地図の明るさを調整できます。まぶしさを防ぎ、あらゆる光環境下であなたの目を優しく保護します。',
+      'ko': '슬라이더를 밀거나 +/- 단축키를 눌러 지도의 밝기를 조절할 수 있습니다. 눈부심을 방지하고 어떤 조명 환경에서도 눈의 피로를 최소화합니다.'
+    },
+    'guide_title_desktop_wayfinding': {
+      'vn': 'Thiết lập dẫn đường',
+      'en': 'Route Planning',
+      'zh': '路径规划设定',
+      'ja': '経路案内の設定',
+      'ko': '길찾기 경로 설정'
+    },
+    'guide_desc_desktop_wayfinding': {
+      'vn': 'Mở tab "Chỉ đường" để lập lộ trình di chuyển tối ưu. Bạn có thể chọn điểm xuất phát, điểm đến và tự do thêm các điểm dừng chân mong muốn trên đường đi.',
+      'en': 'Open the "Directions" tab to compute the optimal route. You can specify a start, end, and add multiple custom stopovers along the way.',
+      'zh': '打开“路线”标签可计算出最优路线。您可以指定起点、终点，并可以在途中自由添加多个自定义经停点。',
+      'ja': '「経路」タブを開いて最適なルートを計算します。出発地、目的地を指定し、その途中に複数の経由地を自由に追加できます。',
+      'ko': '우측 사이드바에서 \'길찾기\' 탭을 클릭하여 최적의 이동 경로를 설계해 보세요. 출발지와 목적지를 정하고, 이동 중에 들르고 싶은 경유지를 자유롭게 추가할 수 있습니다.'
+    },
+    'guide_title_desktop_route_detail': {
+      'vn': 'Chỉ dẫn lộ trình chi tiết',
+      'en': 'Direction Instructions',
+      'zh': '路线详细指示',
+      'ja': 'ルート詳細案内',
+      'ko': '상세 이동 경로 안내'
+    },
+    'guide_desc_desktop_route_detail': {
+      'vn': 'Hệ thống sẽ vẽ tuyến đường trực quan nhất trên bản đồ 3D và hiển thị hướng dẫn chi tiết từng bước đi, khoảng cách, rẽ hướng và các vị trí thang máy/thang cuốn để bạn di chuyển.',
+      'en': 'The system highlights the route on the 3D map and lists precise step-by-step turns, connection points (elevators/escalators), and distance estimates.',
+      'zh': '系统会在3D地图上突出显示路线，并列出精确的步骤转向、连接节点（电梯/扶梯）以及估计距离。',
+      'ja': 'システムが3Dマップ上にルートを分かりやすくハイライトし、ステップバイステップの曲がり角、接続設備（エレベーター/エスカレーター）、予測距離を正確にリストアップします。',
+      'ko': '3D 지도 위에 이동 경로가 시각적으로 표시되며, 거리, 회전 방향, 수직 이동(엘리베이터/에스컬레이터) 위치를 포함한 상세 경로 단계가 우측 목록에 나열됩니다.'
+    },
+    'guide_title_desktop_location_detail': {
+      'vn': 'Xem chi tiết địa điểm',
+      'en': 'Explore Locations',
+      'zh': '查看地点详情',
+      'ja': 'スポット詳細表示',
+      'ko': '매장 상세 정보 확인'
+    },
+    'guide_desc_desktop_location_detail': {
+      'vn': 'Nhấp chuột vào bất kỳ gian hàng hoặc khu vực nào trên bản đồ để xem ngay hình ảnh thực tế, mô tả chi tiết, giờ hoạt động và nhanh chóng nhấn nút "Chỉ đường đến" hoặc "Đi từ đây".',
+      'en': 'Click any shop, gate, or lounge on the map to see its photographs, descriptions, operation hours, and quickly trigger "Directions to" or "Start from here".',
+      'zh': '点击地图上的任意商店、登机口或贵宾室，查看实景照片、详细描述、营业时间，并快速触发“导航至此”或“从此出发”。',
+      'ja': '地図上の任意のショップ、搭乗口、ラウンジをクリックすると、実物写真、紹介文、営業時間を確認でき、素早く「目的地に設定」や「出発地に設定」を実行できます。',
+      'ko': '지도 위의 상점, 탑승구, 라운지 등을 마우스로 클릭하여 실제 전경 사진, 상세 소개, 운영 시간을 확인하고 바로 \'여기서 출발\' 또는 \'여기로 길찾기\'를 할 수 있습니다.'
+    },
+    'guide_title_desktop_flight_info': {
+      'vn': 'Bảng thông tin chuyến bay',
+      'en': 'Live Flight Board',
+      'zh': '实时航班看板',
+      'ja': 'フライトインフォメーション',
+      'ko': '실시간 항공 운항 전광판'
+    },
+    'guide_desc_desktop_flight_info': {
+      'vn': 'Theo dõi trạng thái bay trực tiếp! Click nút máy bay để tra cứu chuyến bay của bạn, sau đó nhấp vào Quầy check-in, Cổng bay hoặc Băng chuyền hành lý để bản đồ vẽ đường đi ngay lập tức.',
+      'en': 'Track flight statuses live! Click the aircraft icon to search for your flight, then click its check-in counter, gate, or carousel to instantly map the route.',
+      'zh': '实时跟踪航班状态！点击飞机图标搜索您的航班，然后点击其值机柜台、登机口或行李提取处，即可瞬间绘制出导航路线。',
+      'ja': 'フライト状況をリアルタイム追跡！飛行機アイコンをクリックしてフライトを検索し、そのチェックインカウンター、搭乗口、手荷物受取所をクリックすると、瞬時に地図上にルートが描かれます。',
+      'ko': '실시간 항공편 상황을 모니터링해 보세요! 비행기 단축 아이콘을 클릭하여 항공편을 검색하고, 연결된 체크인 카운터, 탑승구, 수하물 수취대 등을 클릭하면 즉시 안내 경로를 그려줍니다.'
+    },
+    'guide_title_desktop_finish': {
+      'vn': 'Trải nghiệm bản đồ ngay!',
+      'en': 'Ready to Explore!',
+      'zh': '立即探索！',
+      'ja': '今すぐ探索！',
+      'ko': '지도 사용 시작하기!'
+    },
+    'guide_desc_desktop_finish': {
+      'vn': 'Tuyệt vời! Bạn đã sẵn sàng tự do khám phá và sử dụng Bản đồ 3D Sân bay Long Thành. Nếu cần xem lại hướng dẫn này, hãy click biểu tượng chữ (i) ở thanh công cụ bên phải nhé. Chúc hành trình của bạn trọn vẹn!',
+      'en': 'Brilliant! You are ready to freely explore and use the Long Thanh 3D Map. If you ever need this guide, click the (i) icon on the right toolbar. Have a wonderful journey!',
+      'zh': '太棒了！您已准备好自由探索并使用龙城国际机场3D地图。如果您再次需要本指南，点击右侧工具栏的(i)图标即可。祝您拥有完美的旅程！',
+      'ja': '素晴らしい！ロンタイン国際空港の3Dマップを自由に探索し、使用する準備が整いました。このガイドが再び必要な場合は、右側のツールバーの (i) アイコンをクリックしてください。それでは快適なご旅行を！',
+      'ko': '축하합니다! 이제 롱탄 국제공항 3D 지도를 자유롭게 이용하고 탐색하실 준비가 끝났습니다. 안내가 다시 필요하면 우측 도구 모음의 (i) 단축 아이콘을 클릭해 주세요. 안전하고 행복한 여행 되시길 바랍니다!'
+    },
+
     'locations_count': {
       'vn': 'vị trí',
       'en': 'locations',
@@ -1062,6 +1478,11 @@ class TranslationManager {
       if ((window as any).drawNavigation && (window as any).isNavigationActive) {
         (window as any).drawNavigation();
       }
+
+      // Re-render User Guide step if it's currently open
+      if ((window as any).renderUserGuideStep && document.getElementById('user-guide-modal') && !document.getElementById('user-guide-modal')?.classList.contains('hidden')) {
+        (window as any).renderUserGuideStep();
+      }
     } catch (e) { console.warn("Failed to refresh some UI components", e); }
 
     // Sync Custom UI Button Text
@@ -1560,6 +1981,280 @@ async function init() {
   }
 
   // LƯU Ý: XÓA LOADING SCREEN KHI HOÀN TẤT
+  // --- USER GUIDE TUTORIAL LOGIC ---
+  type TutorialStep = {
+    id: string;
+    title: string;
+    description: string;
+    image: string;
+    targetSelector?: string;
+    targetSelectors?: string[];
+    highlightPadding?: number;
+    placement?: string;
+  };
+
+  const USER_GUIDE_COMPLETED_KEY = "mappedinUserGuideCompleted";
+  const userGuideButton = document.getElementById('btn-user-guide') as HTMLButtonElement | null;
+  const userGuideModal = document.getElementById('user-guide-modal') as HTMLDivElement | null;
+  const userGuidePanel = userGuideModal?.querySelector('.user-guide-panel') as HTMLDivElement | null;
+  const userGuideImage = document.getElementById('user-guide-image') as HTMLImageElement | null;
+  const userGuideTitle = document.getElementById('user-guide-title');
+  const userGuideDescription = document.getElementById('user-guide-description');
+  const userGuideProgress = document.getElementById('user-guide-progress');
+  const userGuideBack = document.getElementById('user-guide-back') as HTMLButtonElement | null;
+  const userGuideNext = document.getElementById('user-guide-next') as HTMLButtonElement | null;
+  const userGuideDone = document.getElementById('user-guide-done') as HTMLButtonElement | null;
+  const userGuideClose = document.getElementById('user-guide-close') as HTMLButtonElement | null;
+  const userGuideHighlight = document.getElementById('user-guide-highlight') as HTMLDivElement | null;
+  const userGuideArrowLayer = document.getElementById('user-guide-arrow-layer') as SVGSVGElement | null;
+  const userGuideArrowPath = document.getElementById('user-guide-arrow-path') as SVGPathElement | null;
+  let activeGuideSteps: TutorialStep[] = [];
+  let currentGuideStepIndex = 0;
+  let guideReturnFocus: HTMLElement | null = null;
+
+  const getActiveGuideStep = () => activeGuideSteps[currentGuideStepIndex] || null;
+
+  const getGuideTargetSelectors = (step: TutorialStep | null) => {
+    if (!step) return [];
+    if (Array.isArray(step.targetSelectors) && step.targetSelectors.length > 0) return step.targetSelectors;
+    return step.targetSelector ? [step.targetSelector] : [];
+  };
+
+  const getVisibleTargetRects = (selectors: string[]) => {
+    return selectors
+      .map(selector => document.querySelector(selector) as HTMLElement | null)
+      .filter((target): target is HTMLElement => Boolean(target))
+      .map(target => target.getBoundingClientRect())
+      .filter(rect => rect.width > 0 && rect.height > 0);
+  };
+
+  const renderUserGuideArrow = (targetRect: DOMRect) => {
+    if (!userGuideArrowLayer || !userGuideArrowPath || !userGuidePanel) return;
+
+    const panelRect = userGuidePanel.getBoundingClientRect();
+    const targetX = targetRect.left + targetRect.width / 2;
+    const targetY = targetRect.top + targetRect.height / 2;
+    const panelCenterX = panelRect.left + panelRect.width / 2;
+    const panelCenterY = panelRect.top + panelRect.height / 2;
+    const startX = targetX < panelRect.left ? panelRect.left : targetX > panelRect.right ? panelRect.right : panelCenterX;
+    const startY = targetY < panelRect.top ? panelRect.top : targetY > panelRect.bottom ? panelRect.bottom : panelCenterY;
+    const controlX = (startX + targetX) / 2;
+
+    const step = getActiveGuideStep();
+
+    // 0. Hide arrow on mobile for center placement or full-map overview steps to prevent pointing to "nothing"
+    const isMobile = window.innerWidth <= 768;
+    if (isMobile && (step?.placement === 'center' || step?.targetSelector === '#mappedin-map')) {
+      userGuideArrowLayer.classList.add('hidden');
+      return;
+    }
+
+    // 1. Smart controlY calculation to prevent arrows looping off-screen or above top controls
+    let controlY: number;
+    if (targetY < window.innerHeight / 2) {
+      // Target is in the upper half of screen (e.g. top controls): arch downwards / approach from below
+      controlY = Math.min(startY, targetY) + 90;
+      if (controlY < targetY + 30) {
+        controlY = targetY + 60;
+      }
+    } else {
+      // Target is in the lower half (e.g. D-pad, sidebar): arch upwards / approach from above
+      controlY = Math.min(startY, targetY) - 90;
+      if (controlY < 20) {
+        controlY = 20;
+      }
+    }
+
+    // 2. Custom arrow positioning and intersection calculation
+    const padding = step?.highlightPadding ?? 7;
+    const borderOffset = 4; // To touch the outer boundary of the highlighted box
+    const hw = targetRect.width / 2 + padding + borderOffset;
+    const hh = targetRect.height / 2 + padding + borderOffset;
+
+    let arrowEndX = targetX;
+    let arrowEndY = targetY;
+
+    if (step?.id === 'desktop-layout-overview') {
+      arrowEndX = targetRect.right;
+      arrowEndY = window.innerHeight / 2;
+    } else {
+      // Normal intersection math
+      const dx = targetX - controlX;
+      const dy = targetY - controlY;
+
+      if (dx !== 0 || dy !== 0) {
+        if (Math.abs(dy) * hw > hh * Math.abs(dx)) {
+          // Intersects top or bottom edge of the highlighted box
+          if (dy > 0) {
+            arrowEndY = targetY - hh;
+            arrowEndX = targetX - hh * (dx / dy);
+          } else {
+            arrowEndY = targetY + hh;
+            arrowEndX = targetX + hh * (dx / dy);
+          }
+        } else {
+          // Intersects left or right edge of the highlighted box
+          if (dx > 0) {
+            arrowEndX = targetX - hw;
+            arrowEndY = targetY - hw * (dy / dx);
+          } else {
+            arrowEndX = targetX + hw;
+            arrowEndY = targetY + hw * (dy / dx);
+          }
+        }
+      }
+    }
+
+    // 3. Prevent arrowhead distortion by ensuring the last 15px is a perfectly straight line
+    let pathD = `M ${startX} ${startY} Q ${controlX} ${controlY} ${arrowEndX} ${arrowEndY}`;
+    const tangentDx = arrowEndX - controlX;
+    const tangentDy = arrowEndY - controlY;
+    const tangentLen = Math.sqrt(tangentDx * tangentDx + tangentDy * tangentDy);
+    if (tangentLen > 20) {
+      const dirX = tangentDx / tangentLen;
+      const dirY = tangentDy / tangentLen;
+      const preEndX = arrowEndX - dirX * 15;
+      const preEndY = arrowEndY - dirY * 15;
+      pathD = `M ${startX} ${startY} Q ${controlX} ${controlY} ${preEndX} ${preEndY} L ${arrowEndX} ${arrowEndY}`;
+    }
+
+    userGuideArrowLayer.setAttribute('viewBox', `0 0 ${window.innerWidth} ${window.innerHeight}`);
+    userGuideArrowPath.setAttribute('d', pathD);
+    userGuideArrowLayer.classList.remove('hidden');
+  };
+
+  const updateUserGuideHighlight = () => {
+    if (!userGuideHighlight || !userGuideModal || userGuideModal.classList.contains('hidden')) return;
+    const step = getActiveGuideStep();
+    const selectors = getGuideTargetSelectors(step);
+    const rects = getVisibleTargetRects(selectors);
+
+    userGuideHighlight.innerHTML = '';
+    if (rects.length === 0) {
+      userGuideHighlight.classList.add('hidden');
+      userGuideArrowLayer?.classList.add('hidden');
+      return;
+    }
+
+    const padding = step?.highlightPadding ?? 7;
+    rects.forEach(rect => {
+      const box = document.createElement('div');
+      box.className = 'user-guide-highlight-box';
+      box.style.left = `${Math.max(0, rect.left - padding)}px`;
+      box.style.top = `${Math.max(0, rect.top - padding)}px`;
+      box.style.width = `${rect.width + padding * 2}px`;
+      box.style.height = `${rect.height + padding * 2}px`;
+      userGuideHighlight.appendChild(box);
+    });
+    userGuideHighlight.classList.remove('hidden');
+    renderUserGuideArrow(rects[0]);
+  };
+
+  const renderUserGuideStep = () => {
+    const step = getActiveGuideStep();
+    if (!step) return;
+
+    if (userGuideImage) {
+      userGuideImage.src = step.image;
+      userGuideImage.alt = step.title;
+    }
+    if (userGuideTitle) {
+      const titleKey = `guide_title_${step.id.replace(/-/g, '_')}`;
+      userGuideTitle.textContent = TranslationManager.t(titleKey, step.title);
+    }
+    if (userGuideDescription) {
+      const descKey = `guide_desc_${step.id.replace(/-/g, '_')}`;
+      userGuideDescription.textContent = TranslationManager.t(descKey, step.description);
+    }
+    if (userGuideProgress) {
+      userGuideProgress.textContent = `${currentGuideStepIndex + 1}/${activeGuideSteps.length}`;
+    }
+
+    const isFirst = currentGuideStepIndex === 0;
+    const isLast = currentGuideStepIndex === activeGuideSteps.length - 1;
+    if (userGuideBack) userGuideBack.disabled = isFirst;
+    if (userGuideNext) userGuideNext.style.display = isLast ? 'none' : 'inline-flex';
+    if (userGuideDone) {
+      userGuideDone.style.display = isLast ? 'inline-flex' : 'none';
+      userGuideDone.textContent = TranslationManager.t('guide_btn_done', 'Đã xong');
+    }
+
+    // Manage placement class for mobile top alignment to expose bottom selectors
+    if (userGuideModal) {
+      if (window.innerWidth <= 768 && step.placement === 'top') {
+        userGuideModal.classList.add('mobile-placement-top');
+      } else {
+        userGuideModal.classList.remove('mobile-placement-top');
+      }
+    }
+
+    window.requestAnimationFrame(updateUserGuideHighlight);
+  };
+
+  const closeUserGuide = (markCompleted = false) => {
+    if (markCompleted) {
+      try { localStorage.setItem(USER_GUIDE_COMPLETED_KEY, "true"); } catch (e) { }
+    }
+
+    userGuideModal?.classList.add('hidden');
+    userGuideHighlight?.classList.add('hidden');
+    if (userGuideHighlight) userGuideHighlight.innerHTML = '';
+    userGuideArrowLayer?.classList.add('hidden');
+    document.body.classList.remove('user-guide-open');
+    guideReturnFocus?.focus?.();
+    guideReturnFocus = null;
+  };
+
+  const openUserGuide = () => {
+    if (!userGuideModal) return;
+
+    const device = getTutorialDevice();
+    const stepKey = device === 'mobile' ? 'mobile' : 'desktop';
+    activeGuideSteps = ((tutorialSteps as any)[stepKey] || []) as TutorialStep[];
+    if (activeGuideSteps.length === 0) return;
+
+    currentGuideStepIndex = 0;
+    guideReturnFocus = document.activeElement as HTMLElement | null;
+    userGuideModal.classList.remove('hidden');
+    document.body.classList.add('user-guide-open');
+    renderUserGuideStep();
+    setTimeout(() => userGuidePanel?.focus?.(), 0);
+  };
+
+  userGuideButton?.addEventListener('click', openUserGuide);
+  userGuideClose?.addEventListener('click', () => closeUserGuide(false));
+  userGuideBack?.addEventListener('click', () => {
+    if (currentGuideStepIndex > 0) {
+      currentGuideStepIndex -= 1;
+      renderUserGuideStep();
+    }
+  });
+  userGuideNext?.addEventListener('click', () => {
+    if (currentGuideStepIndex < activeGuideSteps.length - 1) {
+      currentGuideStepIndex += 1;
+      renderUserGuideStep();
+    }
+  });
+  userGuideDone?.addEventListener('click', () => closeUserGuide(true));
+  userGuideModal?.addEventListener('click', (event) => {
+    if (event.target === userGuideModal) closeUserGuide(false);
+  });
+  (window as any).renderUserGuideStep = renderUserGuideStep;
+  window.addEventListener('resize', updateUserGuideHighlight);
+  window.addEventListener('scroll', updateUserGuideHighlight, true);
+  document.addEventListener('keydown', (event) => {
+    if (!userGuideModal || userGuideModal.classList.contains('hidden')) return;
+    if (event.key === 'Escape') closeUserGuide(false);
+    if (event.key === 'ArrowRight' && currentGuideStepIndex < activeGuideSteps.length - 1) {
+      currentGuideStepIndex += 1;
+      renderUserGuideStep();
+    }
+    if (event.key === 'ArrowLeft' && currentGuideStepIndex > 0) {
+      currentGuideStepIndex -= 1;
+      renderUserGuideStep();
+    }
+  });
+
   if (progressInterval) clearInterval(progressInterval);
 
   if (loadingScreen && loadingText && loadingBar) {

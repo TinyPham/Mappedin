@@ -16,6 +16,11 @@
   <link rel="icon" type="image/png" href="ACV-logo.png">
   <link rel="apple-touch-icon" href="pwa-icon.png">
 
+  <!-- Google Fonts: Inter with full Vietnamese support -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
   <style>
     body {
       margin: 0;
@@ -1831,6 +1836,14 @@
           </button>
         </div>
 
+        <!-- 2. User Guide -->
+        <div id="user-guide-container" class="camera-control-group">
+          <button class="camera-btn" id="btn-user-guide" type="button" title="Hướng dẫn sử dụng"
+            aria-label="Hướng dẫn sử dụng">
+            <span class="user-guide-icon" aria-hidden="true">i</span>
+          </button>
+        </div>
+
         <!-- 2. Fullscreen Toggle -->
         <div id="fullscreen-container" class="camera-control-group">
           <button class="camera-btn" id="btn-fullscreen" title="Toàn màn hình">
@@ -1914,6 +1927,42 @@
                 <polyline points="9 18 15 12 9 6"></polyline>
               </svg>
             </button>
+          </div>
+        </div>
+      </div>
+
+      <div id="user-guide-modal" class="user-guide-modal hidden" role="dialog" aria-modal="true"
+        aria-labelledby="user-guide-title" aria-describedby="user-guide-description">
+        <div id="user-guide-highlight" class="user-guide-highlight hidden"></div>
+        <svg id="user-guide-arrow-layer" class="user-guide-arrow-layer hidden" aria-hidden="true">
+          <defs>
+            <marker id="user-guide-arrow-head" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"
+              markerUnits="strokeWidth">
+              <path d="M1,1 L7,4 L1,7 Z" fill="#e11d48"></path>
+            </marker>
+          </defs>
+          <path id="user-guide-arrow-path" class="user-guide-arrow-path" d=""></path>
+        </svg>
+        <div class="user-guide-panel" tabindex="-1">
+          <button id="user-guide-close" class="user-guide-close" type="button" aria-label="Đóng">×</button>
+          <div class="user-guide-media">
+            <img id="user-guide-image" class="user-guide-image" alt="">
+          </div>
+          <div class="user-guide-copy-card">
+            <div class="user-guide-body">
+              <div id="user-guide-progress" class="user-guide-progress"></div>
+              <h2 id="user-guide-title"></h2>
+              <p id="user-guide-description"></p>
+            </div>
+            <div class="user-guide-actions">
+              <button id="user-guide-back" type="button" aria-label="Lùi">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="display: block; pointer-events: none;"><path d="M15 19l-7-7 7-7"/></svg>
+              </button>
+              <button id="user-guide-next" type="button" aria-label="Tiếp">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="display: block; pointer-events: none;"><path d="M9 19l7-7-7-7"/></svg>
+              </button>
+              <button id="user-guide-done" type="button">Đã xong</button>
+            </div>
           </div>
         </div>
       </div>
@@ -2556,13 +2605,15 @@
         document.getElementById('zoom-in-container'),
         document.getElementById('zoom-out-container'),
         document.getElementById('home-container'),
-        document.getElementById('flight-info-container')
+        document.getElementById('flight-info-container'),
+        document.getElementById('user-guide-container')
       ];
       const btnZoomIn = document.getElementById('btn-zoom-in');
       const btnZoomOut = document.getElementById('btn-zoom-out');
       const btnReset = document.getElementById('btn-reset');
       const btnFullscreen = document.getElementById('btn-fullscreen');
       const btnFlight = document.getElementById('btn-open-flight-info');
+      const btnUserGuide = document.getElementById('btn-user-guide');
       const btnUp = document.getElementById('btn-up');
       const btnDown = document.getElementById('btn-down');
       const btnLeft = document.getElementById('btn-left');
@@ -2586,8 +2637,8 @@
         if (cameraActions) cameraActions.style.display = 'none';
         otherGroups.forEach(g => { if (g) g.style.display = 'none'; });
 
-        // Ensure strict order on mobile: Flight > Fullscreen > ZoomIn > Home > ZoomOut
-        const mobileButtons = [btnFlight, btnFullscreen, btnZoomIn, btnReset, btnZoomOut];
+        // Ensure strict order on mobile: Flight > Guide > Fullscreen > ZoomIn > Home > ZoomOut
+        const mobileButtons = [btnFlight, btnUserGuide, btnFullscreen, btnZoomIn, btnReset, btnZoomOut];
         mobileButtons.forEach(btn => {
           if (btn) mobileStack.appendChild(btn);
         });
@@ -2603,6 +2654,7 @@
         otherGroups.forEach(g => { if (g) g.style.display = 'flex'; });
 
         const flightInfoContainer = document.getElementById('flight-info-container');
+        const userGuideContainer = document.getElementById('user-guide-container');
         const fullscreenContainer = document.getElementById('fullscreen-container');
         const zoomInContainer = document.getElementById('zoom-in-container');
         const zoomOutContainer = document.getElementById('zoom-out-container');
@@ -2610,6 +2662,7 @@
 
         // Return buttons to their containers
         if (flightInfoContainer && btnFlight) flightInfoContainer.appendChild(btnFlight);
+        if (userGuideContainer && btnUserGuide) userGuideContainer.appendChild(btnUserGuide);
         if (fullscreenContainer && btnFullscreen) fullscreenContainer.appendChild(btnFullscreen);
         if (zoomInContainer && btnZoomIn) zoomInContainer.appendChild(btnZoomIn);
         if (zoomOutContainer && btnZoomOut) zoomOutContainer.appendChild(btnZoomOut);

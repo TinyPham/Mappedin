@@ -22,11 +22,13 @@ function getRuleBlock(selector, startIndex = 0) {
 }
 
 test('mobile fullscreen keeps brightness and theme controls below search header', () => {
-  const mobileFullscreenIndex = css.lastIndexOf('@media (max-width: 768px)');
-  assert.notEqual(mobileFullscreenIndex, -1, 'Missing mobile media query');
+  const mobileFullscreenIndex = css.lastIndexOf(':fullscreen #brightness-selector-wrapper');
+  assert.notEqual(mobileFullscreenIndex, -1, 'Missing mobile fullscreen brightness rule');
 
   const brightnessBlock = getRuleBlock(':fullscreen #brightness-selector-wrapper', mobileFullscreenIndex);
-  const themeBlock = getRuleBlock(':fullscreen .theme-selector-wrapper', mobileFullscreenIndex);
+  const themeIndex = css.lastIndexOf(':fullscreen .theme-selector-wrapper');
+  assert.notEqual(themeIndex, -1, 'Missing mobile fullscreen theme rule');
+  const themeBlock = getRuleBlock(':fullscreen .theme-selector-wrapper', themeIndex);
 
   assert.match(brightnessBlock, /top:\s*190px\s*!important/);
   assert.match(brightnessBlock, /bottom:\s*auto\s*!important/);
