@@ -305,6 +305,20 @@ class TranslationManager {
 
   // Hardcoded fallbacks for critical UI keys missing from DB
   static STATIC_UI_FALLBACKS: any = {
+    'pwa_install_title': {
+      'vn': 'Trải nghiệm tốt hơn với ứng dụng',
+      'en': 'Get a better experience with our app',
+      'zh': '使用应用获得更好的体验',
+      'ja': 'アプリでより快適な体験を',
+      'ko': '앱으로 더 나은 경험을 누려보세요'
+    },
+    'pwa_install_btn_label': {
+      'vn': 'Cài đặt 3D Map',
+      'en': 'Install 3D Map',
+      'zh': '安装 3D 地图',
+      'ja': '3Dマップをインストール',
+      'ko': '3D 지도 설치하기'
+    },
     'guide_btn_done': {
       'vn': 'Đã xong',
       'en': 'Done',
