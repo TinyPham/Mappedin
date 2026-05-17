@@ -188,6 +188,17 @@
         display: flex !important;
     }
 
+    #mobile-category-toggle {
+        width: 44px !important;
+        flex: 0 0 44px !important;
+        padding: 0 !important;
+    }
+
+    #search-clear-btn {
+        right: 54px !important;
+        z-index: 2 !important;
+    }
+
     #mobile-category-toggle.active .toggle-icon {
         transform: rotate(180deg);
     }
