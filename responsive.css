@@ -365,6 +365,12 @@
         pointer-events: auto !important;
     }
 
+    .theme-selector-toggle,
+    #custom-floor-wrapper .pro-dropdown-toggle,
+    #custom-lang-wrapper .pro-dropdown-toggle {
+        font-size: 12px !important;
+    }
+
     #map-top-controls .pro-dropdown-menu {
         top: auto !important;
         bottom: 110% !important;

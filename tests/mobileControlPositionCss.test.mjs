@@ -33,6 +33,21 @@ test('mobile floor and language controls sit 15px higher above the bottom edge',
   assert.match(controlsBlock, /bottom:\s*40px\s*!important/);
 });
 
+test('mobile theme floor and language buttons keep original sizing with 12px text', () => {
+  const mobileMediaIndex = css.indexOf('@media (max-width: 768px)');
+  assert.notEqual(mobileMediaIndex, -1, 'Missing mobile media query');
+
+  const toggleBlock = getRuleBlock('#custom-floor-wrapper .pro-dropdown-toggle,', mobileMediaIndex);
+  assert.match(toggleBlock, /font-size:\s*12px\s*!important/);
+  assert.doesNotMatch(toggleBlock, /width:\s*\d+px\s*!important/);
+  assert.doesNotMatch(toggleBlock, /flex:\s*0 0 \d+px/);
+  assert.doesNotMatch(toggleBlock, /text-overflow:\s*ellipsis/);
+
+  const themeToggleBlock = getRuleBlock('.theme-selector-toggle,', mobileMediaIndex);
+  assert.match(themeToggleBlock, /font-size:\s*12px\s*!important/);
+  assert.doesNotMatch(themeToggleBlock, /width:\s*\d+px\s*!important/);
+});
+
 test('short mobile screens shrink right controls and lower floor language controls', () => {
   const shortMobileIndex = css.lastIndexOf('@media (max-width: 768px) and (max-height: 550px)');
   assert.notEqual(shortMobileIndex, -1, 'Missing short mobile height media query');
