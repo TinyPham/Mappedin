@@ -3489,7 +3489,7 @@ async function init() {
                 <div style="width:34px;height:34px;display:flex;align-items:center;justify-content:center;background:#fff;border-radius:50%;box-shadow:0 3px 6px rgba(0,0,0,0.15);border:1.5px solid #fff;">
                   <img src="${activeIconUrl}" alt="${label}" onerror="${onerrorStr}" style="width:20px;height:20px;object-fit:contain;" />
                 </div>
-                <div style="font-size:13px;line-height:1.2;font-weight:600;color:#333;text-shadow:0 0 4px rgba(255,255,255,0.9),0 0 8px rgba(255,255,255,0.8);white-space:nowrap;">
+                <div style="font-size:13px;line-height:1.2;font-weight:700;color:#111;-webkit-text-stroke:3px #fff;paint-order:stroke fill;text-shadow:0 1px 1px rgba(0,0,0,0.22);white-space:nowrap;">
                   ${label}
                 </div>
               </div>
@@ -3503,7 +3503,7 @@ async function init() {
                     ${boxIconFallback}
                   </div>
                 </div>
-                <div style="font-size:13px;line-height:1.2;font-weight:600;color:#333;text-shadow:0 0 4px rgba(255,255,255,0.9),0 0 8px rgba(255,255,255,0.8);white-space:nowrap;">
+                <div style="font-size:13px;line-height:1.2;font-weight:700;color:#111;-webkit-text-stroke:3px #fff;paint-order:stroke fill;text-shadow:0 1px 1px rgba(0,0,0,0.22);white-space:nowrap;">
                   ${label}
                 </div>
               </div>
@@ -3614,7 +3614,7 @@ async function init() {
         <div style="width:34px;height:34px;display:flex;align-items:center;justify-content:center;background:#fff;border-radius:50%;box-shadow:0 3px 6px rgba(0,0,0,0.15);border:1.5px solid #fff;">
           <img src="${icon}" alt="${text}" style="width:${size}px;height:${size}px;object-fit:contain;" />
         </div>
-        <div style="font-size:13px;line-height:1.2;font-weight:600;color:#333;text-shadow:0 0 4px rgba(255,255,255,0.9), 0 0 8px rgba(255, 255, 255, 0.8);white-space:nowrap;">
+        <div style="font-size:13px;line-height:1.2;font-weight:700;color:#111;-webkit-text-stroke:3px #fff;paint-order:stroke fill;text-shadow:0 1px 1px rgba(0,0,0,0.22);white-space:nowrap;">
           ${text}
         </div>
       </div>
@@ -4701,7 +4701,7 @@ async function init() {
               <div style="width:34px;height:34px;background:#fff;border-radius:50%;box-shadow:0 3px 6px rgba(0,0,0,0.2);display:flex;align-items:center;justify-content:center;border:1.5px solid #fff;">
                 <img src="${activeIconUrl}" alt="${name}" onerror="${onerrorStr}" style="width:20px;height:20px;object-fit:contain;" />
               </div>
-              <div style="font-size:13px;line-height:1.2;font-weight:600;color:#333;text-shadow:0 0 4px rgba(255,255,255,0.9),0 0 8px rgba(255,255,255,0.8);white-space:nowrap;">
+              <div style="font-size:13px;line-height:1.2;font-weight:700;color:#111;-webkit-text-stroke:3px #fff;paint-order:stroke fill;text-shadow:0 1px 1px rgba(0,0,0,0.22);white-space:nowrap;">
                 ${name}
               </div>
             </div>`;
@@ -4712,7 +4712,7 @@ async function init() {
               <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:bold;font-size:14px;">
                 ${firstLetter}
               </div>
-              <div style="font-size:13px;line-height:1.2;font-weight:600;color:#333;text-shadow:0 0 4px rgba(255,255,255,0.9),0 0 8px rgba(255,255,255,0.8);white-space:nowrap;">
+              <div style="font-size:13px;line-height:1.2;font-weight:700;color:#111;-webkit-text-stroke:3px #fff;paint-order:stroke fill;text-shadow:0 1px 1px rgba(0,0,0,0.22);white-space:nowrap;">
                 ${name}
               </div>
             </div>`;
@@ -4844,7 +4844,7 @@ async function init() {
         <div style="width:40px;height:40px;border-radius:50%;overflow:hidden;border:3px solid #fff;box-shadow:0 3px 8px rgba(0,0,0,0.4);background:#fff;display:flex;align-items:center;justify-content:center;">
           <img src="${airplaneIconUrl}" alt="${mapName}" style="width:100%;height:100%;object-fit:cover;" />
         </div>
-        <div style="font-size:13px;line-height:1.2;font-weight:600;color:#333;text-shadow:0 0 4px rgba(255,255,255,0.9),0 0 8px rgba(255,255,255,0.8);white-space:nowrap;text-align:center;">
+        <div style="font-size:13px;line-height:1.2;font-weight:700;color:#111;-webkit-text-stroke:3px #fff;paint-order:stroke fill;text-shadow:0 1px 1px rgba(0,0,0,0.22);white-space:nowrap;text-align:center;">
           ${mapName}
         </div>
       </div>
