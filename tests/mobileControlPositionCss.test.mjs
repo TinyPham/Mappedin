@@ -48,6 +48,45 @@ test('mobile theme floor and language buttons keep original sizing with 12px tex
   assert.doesNotMatch(themeToggleBlock, /width:\s*\d+px\s*!important/);
 });
 
+test('floor dropdown is wide enough and keeps floor names on one line', () => {
+  const floorMenuBlock = getRuleBlock('#floor-options');
+  assert.match(floorMenuBlock, /width:\s*max-content/);
+  assert.match(floorMenuBlock, /min-width:\s*100%/);
+  assert.match(floorMenuBlock, /max-width:\s*calc\(100vw - 24px\)/);
+
+  const floorItemBlock = getRuleBlock('#floor-options .pro-dropdown-item');
+  assert.match(floorItemBlock, /white-space:\s*nowrap/);
+});
+
+test('pro dropdown item typography matches toggle typography across breakpoints', () => {
+  const baseItemBlock = getRuleBlock('.pro-dropdown-item');
+  assert.match(baseItemBlock, /font-size:\s*14px/);
+
+  const tabletIndex = css.indexOf('@media (min-width: 769px) and (max-width: 1200px)');
+  const tabletItemBlock = getRuleBlock('.pro-dropdown-item', tabletIndex);
+  assert.match(tabletItemBlock, /font-size:\s*13px/);
+  const tabletFloorItemBlock = getRuleBlock('#floor-options .pro-dropdown-item,', tabletIndex);
+  assert.match(tabletFloorItemBlock, /font-size:\s*13px/);
+
+  const narrowTabletIndex = css.indexOf('@media (min-width: 769px) and (max-width: 992px)');
+  const narrowTabletItemBlock = getRuleBlock('.pro-dropdown-item', narrowTabletIndex);
+  assert.match(narrowTabletItemBlock, /font-size:\s*12px/);
+  const narrowTabletFloorItemBlock = getRuleBlock('#floor-options .pro-dropdown-item,', narrowTabletIndex);
+  assert.match(narrowTabletFloorItemBlock, /font-size:\s*12px/);
+
+  const mobileIndex = css.lastIndexOf('@media (max-width: 768px)');
+  const mobileItemBlock = getRuleBlock('.pro-dropdown-item', mobileIndex);
+  assert.match(mobileItemBlock, /font-size:\s*12px\s*!important/);
+});
+
+test('open floor and language dropdowns rise above right-side camera buttons at every size', () => {
+  const globalOpenControlsBlock = getRuleBlock('#map-top-controls:has(.pro-dropdown-wrapper.open)');
+  assert.match(globalOpenControlsBlock, /z-index:\s*6500\s*!important/);
+
+  const globalOpenMenuBlock = getRuleBlock('.pro-dropdown-wrapper.open .pro-dropdown-menu');
+  assert.match(globalOpenMenuBlock, /z-index:\s*6500\s*!important/);
+});
+
 test('short mobile screens shrink right controls and lower floor language controls', () => {
   const shortMobileIndex = css.lastIndexOf('@media (max-width: 768px) and (max-height: 550px)');
   assert.notEqual(shortMobileIndex, -1, 'Missing short mobile height media query');

@@ -1366,6 +1366,24 @@ body.placing-mode #mappedin-map {
   border: 1px solid rgba(0, 0, 0, 0.05);
 }
 
+#floor-options {
+  width: max-content;
+  min-width: 100%;
+  max-width: calc(100vw - 24px);
+}
+
+#lang-options {
+  width: max-content;
+  min-width: 100%;
+  max-width: calc(100vw - 24px);
+}
+
+#floor-options .pro-dropdown-item,
+#lang-options .pro-dropdown-item {
+  font-size: 14px;
+  white-space: nowrap;
+}
+
 .pro-dropdown-menu.bottom-up {
   top: auto;
   bottom: 110%;
@@ -1378,6 +1396,15 @@ body.placing-mode #mappedin-map {
   display: flex;
   opacity: 1;
   transform: translateX(0) translateY(0);
+  z-index: 6500 !important;
+}
+
+.pro-dropdown-wrapper.open {
+  z-index: 6500 !important;
+}
+
+#map-top-controls:has(.pro-dropdown-wrapper.open) {
+  z-index: 6500 !important;
 }
 
 .pro-dropdown-wrapper.open .pro-dropdown-menu.bottom-up {
@@ -1763,7 +1790,7 @@ body.zoom-out-mode .mappedin-poi-marker {
 
   .theme-selector-toggle span {
     display: inline-block;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 600;
     color: #333;
   }
@@ -2150,6 +2177,15 @@ body.zoom-out-mode .mappedin-poi-marker {
     white-space: nowrap;
   }
 
+  .pro-dropdown-item {
+    font-size: 13px;
+  }
+
+  #floor-options .pro-dropdown-item,
+  #lang-options .pro-dropdown-item {
+    font-size: 13px;
+  }
+
   .theme-selector-toggle svg,
   .pro-dropdown-toggle svg {
     width: 16px;
@@ -2210,6 +2246,15 @@ body.zoom-out-mode .mappedin-poi-marker {
 
   .theme-selector-toggle span,
   .pro-dropdown-toggle span {
+    font-size: 12px;
+  }
+
+  .pro-dropdown-item {
+    font-size: 12px;
+  }
+
+  #floor-options .pro-dropdown-item,
+  #lang-options .pro-dropdown-item {
     font-size: 12px;
   }
 
@@ -2320,6 +2365,15 @@ body.zoom-out-mode .mappedin-poi-marker {
     font-size: 10px;
     line-height: 1;
     white-space: nowrap;
+  }
+
+  .pro-dropdown-item {
+    font-size: 10px;
+  }
+
+  #floor-options .pro-dropdown-item,
+  #lang-options .pro-dropdown-item {
+    font-size: 10px;
   }
 
   .theme-selector-toggle svg,
@@ -2869,5 +2923,15 @@ body.user-guide-open {
 
   #custom-lang-wrapper {
     bottom: 2px !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .theme-selector-toggle,
+  .theme-selector-toggle span,
+  .pro-dropdown-toggle,
+  .pro-dropdown-toggle span,
+  .pro-dropdown-item {
+    font-size: 12px !important;
   }
 }

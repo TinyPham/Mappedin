@@ -57,7 +57,7 @@ test('mobile theme selector uses compact floor and language dropdown styling', (
   assert.match(mobileToggleBlock, /background:\s*#fff/);
   assert.match(mobileToggleBlock, /border:\s*1px solid rgba\(0,\s*0,\s*0,\s*0\.05\)/);
   assert.match(mobileToggleBlock, /box-shadow:\s*0 4px 15px rgba\(0,\s*0,\s*0,\s*0\.1\)/);
-  assert.match(mobileToggleTextBlock, /font-size:\s*13px/);
+  assert.match(mobileToggleTextBlock, /font-size:\s*12px/);
   assert.match(mobileToggleTextBlock, /font-weight:\s*600/);
   assert.match(mobileToggleTextBlock, /color:\s*#333/);
   assert.match(mobileToggleIconBlock, /width:\s*16px/);
