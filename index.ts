@@ -5515,6 +5515,7 @@ async function init() {
       const parentCat = categoryTree.find(c => c.id.toString() === parentId.toString());
       const parentCategoryName = parentCat ? getCategoryName(parentCat) : TranslationManager.t('back_btn', 'Danh mục');
       const backBtn = document.createElement("div");
+      backBtn.className = "category-subcategory-sticky-header";
       backBtn.style.cssText = `
                 display: flex; align-items: center; gap: 10px;
                 padding: 12px 16px;
