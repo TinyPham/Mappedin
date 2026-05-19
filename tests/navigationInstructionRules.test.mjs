@@ -1,10 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 import {
   createInstructionFormatter,
   findNearbyLandmark,
+  getRouteDisplayDistanceMeters,
   getInstructionDisplayDistance,
+  ensureMinimumRouteInstructions,
   shouldRenderNavigationInstruction,
   simplifyNavigationInstructions
 } from '../navigationInstructionRules.js';
@@ -515,4 +518,53 @@ test('render filter removes non-arrival steps without display distance', () => {
   assert.equal(getInstructionDisplayDistance(turnWithoutDistance), 0);
   assert.equal(shouldRenderNavigationInstruction(turnWithoutDistance), false);
   assert.equal(shouldRenderNavigationInstruction(arrival), true);
+});
+
+test('adds departure and arrival display steps for very short found routes', () => {
+  const coordinates = [
+    { floorId: 'floor-2', latitude: 10, longitude: 107 },
+    { floorId: 'floor-2', latitude: 10.00003, longitude: 107.00003 }
+  ];
+  const displaySteps = ensureMinimumRouteInstructions([
+    {
+      action: { type: 'arrival' },
+      coordinate: coordinates[1],
+      distance: 0
+    }
+  ], {
+    coordinates,
+    distance: 5
+  });
+
+  assert.equal(displaySteps.length, 2);
+  assert.equal(displaySteps[0].action.type, 'departure');
+  assert.equal(displaySteps[0].distance, 5);
+  assert.equal(displaySteps[1].action.type, 'arrival');
+});
+
+test('uses route distance when instruction display distance collapses to zero', () => {
+  const displayDistance = getRouteDisplayDistanceMeters([
+    {
+      action: { type: 'arrival' },
+      distance: 0
+    }
+  ], {
+    distance: 7
+  });
+
+  assert.equal(displayDistance, 7);
+});
+
+test('index normalizes short-route instructions and clears loading UI on route failure', () => {
+  const source = readFileSync(new URL('../index.ts', import.meta.url), 'utf8');
+
+  assert.match(source, /ensureMinimumRouteInstructions\(simplifiedInstructions,/);
+  assert.match(source, /getRouteDisplayDistanceMeters\(simplifiedInstructions,/);
+  assert.match(source, /const\s+renderRouteNotFoundState\s*=/);
+  assert.match(source, /instructionsListEl\.innerHTML\s*=/);
+  assert.match(source, /const\s+popup\s*=\s*document\.getElementById\("sidebar-info-panel"\)/);
+  assert.match(source, /popup\.style\.display\s*=\s*"none"/);
+  assert.match(source, /min-height:\s*260px/);
+  assert.match(source, /justify-content:\s*center/);
+  assert.match(source, /previewBar\.style\.display\s*=\s*"none"/);
 });

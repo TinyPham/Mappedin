@@ -14,10 +14,13 @@ import {
 import { shouldRenderFlightNavigationActions } from "./flightNavigationActions.js";
 import {
   createInstructionFormatter,
+  ensureMinimumRouteInstructions,
+  getRouteDisplayDistanceMeters,
   getInstructionDisplayDistance,
   shouldRenderNavigationInstruction,
   simplifyNavigationInstructions
 } from "./navigationInstructionRules.js";
+import { resolveWayfindingRouteTargets } from "./wayfindingRouteTargets.js";
 import { getCategoryAreaListStyle } from "./categoryDropdownLayout.js";
 import { getModelStreamingZoomThresholds } from "./modelStreamingThresholds.js";
 import {
@@ -6624,6 +6627,44 @@ async function init() {
     if (!wayfindingOrigin || !wayfindingDestination) {
       return;
     }
+    const renderRouteNotFoundState = (messageKey: string = 'not_found', fallback: string = "KhÃ´ng tÃ¬m tháº¥y Ä‘Æ°á»ng Ä‘i") => {
+      (window as any).isNavigationActive = false;
+      wayfindingDirections = null;
+      currentNavigation = null;
+
+      const message = TranslationManager.t(messageKey, fallback);
+      const statusEl = document.getElementById("wayfinding-status");
+      if (statusEl) {
+        statusEl.textContent = "";
+        statusEl.style.display = "none";
+      }
+
+      const popup = document.getElementById("sidebar-info-panel");
+      const categorySection = document.getElementById("category-section");
+      const sidebarActions = document.querySelector(".sidebar-actions") as HTMLElement;
+      if (popup) popup.style.display = "none";
+      if (categorySection) categorySection.style.display = "none";
+      if (sidebarActions) sidebarActions.style.display = "none";
+
+      const instructionsListEl = document.getElementById("instructions-list");
+      if (instructionsListEl) {
+        instructionsListEl.innerHTML = `
+          <div style="min-height: 260px; display:flex; align-items:center; justify-content:center; padding:24px 20px; color:#64748b; font-style:italic; text-align:center;">
+            ${message}
+          </div>`;
+      }
+
+      const summaryContainer = document.getElementById("wayfinding-summary-container");
+      if (summaryContainer) summaryContainer.style.display = "none";
+
+      const previewBar = document.getElementById("route-preview-bar");
+      if (previewBar) {
+        previewBar.style.display = "none";
+        const dirContent = document.getElementById("directions-tab-content");
+        if (dirContent) dirContent.style.paddingBottom = "30px";
+      }
+    };
+
     try {
       clearNavigation();
 
@@ -6692,20 +6733,20 @@ async function init() {
 
       const waypoints = [wayfindingOrigin, ...wayfindingStopovers, wayfindingDestination].filter(Boolean);
       if (waypoints.length < 2) return;
+      const routeLegs = resolveWayfindingRouteTargets(waypoints);
 
       let allCoordinates: any[] = [];
       let allInstructions: any[] = [];
       let totalDistance = 0;
       let allPaths: any[] = [];
 
-      for (let i = 0; i < waypoints.length - 1; i++) {
-        const origin = waypoints[i];
-        const dest = waypoints[i + 1];
+      for (let i = 0; i < routeLegs.length; i++) {
+        const { origin, destination: dest, routeOrigin, routeDestination } = routeLegs[i];
 
         // SMART ROUTING: Tính cả 2 đường (thang máy + thang cuốn), chọn đường ngắn nhất
         const [dirEscalator, dirElevator] = await Promise.all([
-          mapData.getDirections(origin, dest, { smoothing: smoothingConfig, accessible: false }),
-          mapData.getDirections(origin, dest, { smoothing: smoothingConfig, accessible: true }),
+          mapData.getDirections(routeOrigin, routeDestination, { smoothing: smoothingConfig, accessible: false }),
+          mapData.getDirections(routeOrigin, routeDestination, { smoothing: smoothingConfig, accessible: true }),
         ]);
 
         // So sánh khoảng cách và chọn đường ngắn hơn
@@ -6970,6 +7011,10 @@ async function init() {
           pathCoordinates: extractPathCoordinates(directions)
         })
           .filter((instruction: any) => shouldRenderNavigationInstruction(instruction));
+        simplifiedInstructions = ensureMinimumRouteInstructions(simplifiedInstructions, {
+          coordinates: directions.coordinates || [],
+          distance: directions.distance || totalDistance
+        });
 
         const navigationOptions: any = {
           pathOptions: {
@@ -7250,11 +7295,9 @@ async function init() {
 
         const statusEl = document.getElementById("wayfinding-status");
         if (statusEl) {
-          let totalDisplayDist = 0;
-          simplifiedInstructions.forEach((inst, idx) => {
-            const actType = (inst.action?.type || '').toLowerCase();
-            let d = getInstructionDisplayDistance(inst);
-            if (!actType.includes('arrive') && !actType.includes('arrival')) totalDisplayDist += Math.round(d);
+          const totalDisplayDist = getRouteDisplayDistanceMeters(simplifiedInstructions, {
+            coordinates: directions.coordinates || [],
+            distance: directions.distance || totalDistance
           });
 
           const popup = document.getElementById("sidebar-info-panel");
@@ -7325,6 +7368,8 @@ async function init() {
         // applyAreaColors() tự động nhận diện Focus để spotlight đường đi và làm mờ các không gian xung quanh
         applyAreaColors();
       } else {
+        renderRouteNotFoundState();
+        return;
         const statusEl = document.getElementById("wayfinding-status");
         if (statusEl) {
           statusEl.textContent = TranslationManager.t('not_found', "Không tìm thấy đường đi");
@@ -7332,6 +7377,8 @@ async function init() {
       }
     } catch (e) {
       console.error("Error drawing navigation:", e);
+      renderRouteNotFoundState('error_nav', "Lá»—i khi tÃ¬m Ä‘Æ°á»ng Ä‘i");
+      return;
       const statusEl = document.getElementById("wayfinding-status");
       if (statusEl) {
         statusEl.textContent = TranslationManager.t('error_nav', "Lỗi khi tìm đường đi");

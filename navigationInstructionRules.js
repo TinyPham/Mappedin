@@ -165,7 +165,11 @@ export function findNearbyLandmark(coord, currentFloorId, mapObjects, options = 
 
   const maxDist = options.maxDist ?? 15;
   const getName = options.getName || ((obj) => obj?.name);
-  const excludeNames = options.excludeNames || [];
+  const excludeNames = [
+    'cua hang ban le',
+    'cửa hàng bán lẻ',
+    ...(options.excludeNames || [])
+  ];
   let bestLandmark = null;
   let minDist = maxDist;
 
@@ -547,7 +551,7 @@ export function createInstructionFormatter(options) {
     };
 
     const baseText = actionMap[actionType] || mappedinText || actionType;
-    return baseText;
+    return actionType === 'continue' ? `${baseText}${landmarkTextFor(instruction)}` : baseText;
   }
 
   return { format };
@@ -575,6 +579,76 @@ export function getConnectionDisplayDistance(instruction) {
 
 export function getInstructionDisplayDistance(instruction) {
   return getConnectionDisplayDistance(instruction);
+}
+
+function roundRouteDistance(distance, coordinates) {
+  if (Number.isFinite(distance) && distance > 0) return Math.max(1, Math.round(distance));
+  if (!Array.isArray(coordinates) || coordinates.length < 2) return 0;
+
+  let total = 0;
+  for (let i = 0; i < coordinates.length - 1; i++) {
+    total += calcDistanceMeters(coordinates[i], coordinates[i + 1]);
+  }
+  return total > 0 ? Math.max(1, Math.round(total)) : 0;
+}
+
+function isArrivalInstruction(instruction) {
+  const type = actionTypeOf(instruction);
+  return type === 'arrival' || type === 'arrive';
+}
+
+function hasDisplayWalkingStep(instructions) {
+  return (instructions || []).some((instruction) =>
+    !isArrivalInstruction(instruction) && getInstructionDisplayDistance(instruction) > 0
+  );
+}
+
+export function ensureMinimumRouteInstructions(instructions, options = {}) {
+  const source = cloneInstructions(instructions || []);
+  const coordinates = options.coordinates || [];
+  const routeDistance = roundRouteDistance(options.distance, coordinates);
+
+  if (hasDisplayWalkingStep(source)) {
+    if (!source.some(isArrivalInstruction) && coordinates.length > 0) {
+      source.push({
+        action: { type: 'arrival' },
+        coordinate: coordinates[coordinates.length - 1],
+        distance: 0,
+        originalDistance: 0
+      });
+    }
+    return source;
+  }
+
+  if (coordinates.length === 0 && source.length === 0) return source;
+
+  const firstCoordinate = coordinates[0] || source[0]?.coordinate;
+  const lastCoordinate = coordinates[coordinates.length - 1] || source[source.length - 1]?.coordinate || firstCoordinate;
+  return [
+    {
+      action: { type: 'departure' },
+      coordinate: firstCoordinate,
+      distance: routeDistance,
+      originalDistance: routeDistance
+    },
+    {
+      action: { type: 'arrival' },
+      coordinate: lastCoordinate,
+      distance: 0,
+      originalDistance: 0
+    }
+  ];
+}
+
+export function getRouteDisplayDistanceMeters(instructions, options = {}) {
+  const instructionDistance = (instructions || []).reduce((sum, instruction) => {
+    return isArrivalInstruction(instruction)
+      ? sum
+      : sum + Math.round(getInstructionDisplayDistance(instruction));
+  }, 0);
+
+  if (instructionDistance > 0) return instructionDistance;
+  return roundRouteDistance(options.distance, options.coordinates || []);
 }
 
 export function shouldRenderNavigationInstruction(instruction) {
