@@ -4,7 +4,8 @@ import { readFileSync } from 'node:fs';
 
 import {
   resolveWayfindingRouteTarget,
-  resolveWayfindingRouteTargets
+  resolveWayfindingRouteTargets,
+  getObjectRouteReferenceCoordinate
 } from '../wayfindingRouteTargets.js';
 
 const coord = (latitude, longitude, floorId = 'floor-1') => ({ latitude, longitude, floorId });
@@ -72,6 +73,143 @@ test('falls back to the original object when no door-like target exists', () => 
   assert.equal(resolveWayfindingRouteTarget(area), area);
 });
 
+test('routes map objects to the nearest polygon edge instead of the object center', () => {
+  const center = coord(10, 107);
+  const object = {
+    id: 'object-a',
+    __type: 'object',
+    center,
+    geoJSON: {
+      geometry: {
+        type: 'Polygon',
+        coordinates: [[
+          [106.999, 9.999],
+          [107.001, 9.999],
+          [107.001, 10.001],
+          [106.999, 10.001],
+          [106.999, 9.999]
+        ]]
+      }
+    }
+  };
+  const opposite = { id: 'dest', center: coord(10, 107.01) };
+  const created = [];
+
+  const target = resolveWayfindingRouteTarget(object, opposite, {
+    createCoordinate: (latitude, longitude, floorId) => {
+      const coordinate = { latitude, longitude, floorId };
+      created.push(coordinate);
+      return coordinate;
+    }
+  });
+
+  assert.notEqual(target, object);
+  assert.notEqual(target, center);
+  assert.ok(created.length > 1);
+  assert.ok(created.includes(target));
+  assert.ok(Math.abs(target.latitude - 10) < 0.000001);
+  assert.ok(Math.abs(target.longitude - 107.001) < 0.000001);
+  assert.equal(target.floorId, 'floor-1');
+});
+
+test('prefers the object edge with the shortest route distance when available', () => {
+  const object = {
+    id: 'object-route-edge',
+    __type: 'object',
+    center: coord(10, 107),
+    geoJSON: {
+      geometry: {
+        type: 'Polygon',
+        coordinates: [[
+          [106.999, 9.999],
+          [107.001, 9.999],
+          [107.001, 10.001],
+          [106.999, 10.001],
+          [106.999, 9.999]
+        ]]
+      }
+    }
+  };
+  const opposite = { id: 'dest', center: coord(10, 107.01) };
+
+  const target = resolveWayfindingRouteTarget(object, opposite, {
+    createCoordinate: (latitude, longitude, floorId) => ({ latitude, longitude, floorId }),
+    getDistance: (from) => {
+      return Math.abs(from.longitude - 106.999) < 0.000001 && Math.abs(from.latitude - 10) < 0.000001
+        ? 5
+        : 500;
+    }
+  });
+
+  assert.ok(Math.abs(target.latitude - 10) < 0.000001);
+  assert.ok(Math.abs(target.longitude - 106.999) < 0.000001);
+});
+
+test('route reference coordinates can override route distance for object edge selection', () => {
+  const object = {
+    id: 'object-reference-edge',
+    __type: 'object',
+    center: coord(10, 107),
+    geoJSON: {
+      geometry: {
+        type: 'Polygon',
+        coordinates: [[
+          [106.999, 9.999],
+          [107.001, 9.999],
+          [107.001, 10.001],
+          [106.999, 10.001],
+          [106.999, 9.999]
+        ]]
+      }
+    }
+  };
+  const opposite = { id: 'dest', center: coord(10, 107.01) };
+
+  const target = resolveWayfindingRouteTarget(object, opposite, {
+    routeReferenceCoordinate: coord(10, 106.999),
+    createCoordinate: (latitude, longitude, floorId) => ({ latitude, longitude, floorId }),
+    getDistance: (from) => {
+      return Math.abs(from.longitude - 107.001) < 0.000001 && Math.abs(from.latitude - 10) < 0.000001
+        ? 1
+        : 500;
+    }
+  });
+
+  assert.ok(Math.abs(target.latitude - 10) < 0.000001);
+  assert.ok(Math.abs(target.longitude - 106.999) < 0.000001);
+});
+
+test('finds an object route reference after the initial connector for origin objects', () => {
+  const object = {
+    id: 'object-route-reference',
+    __type: 'object',
+    center: coord(10, 107),
+    geoJSON: {
+      geometry: {
+        type: 'Polygon',
+        coordinates: [[
+          [106.999, 9.999],
+          [107.001, 9.999],
+          [107.001, 10.001],
+          [106.999, 10.001],
+          [106.999, 9.999]
+        ]]
+      }
+    }
+  };
+  const routeCoordinates = [
+    coord(10.001, 107),
+    coord(10.00105, 107),
+    coord(10, 106.999)
+  ];
+
+  const reference = getObjectRouteReferenceCoordinate(object, routeCoordinates, 'origin', {
+    minProgressMeters: 8
+  });
+
+  assert.equal(reference, routeCoordinates[2]);
+});
+
 test('does not reroute elevator or escalator objects to their doors', () => {
   const elevatorDoor = { id: 'door-elevator', center: coord(10.0002, 107.0002) };
   const elevatorSpace = {
@@ -114,8 +252,12 @@ test('resolves route targets for every leg while preserving original UI objects'
 test('index routes with resolved door targets while preserving original waypoints', () => {
   const source = readFileSync(new URL('../index.ts', import.meta.url), 'utf8');
 
-  assert.match(source, /import\s+\{\s*resolveWayfindingRouteTargets\s*\}\s+from\s+["']\.\/wayfindingRouteTargets\.js["']/);
-  assert.match(source, /const\s+routeLegs\s*=\s*resolveWayfindingRouteTargets\(waypoints\)/);
-  assert.match(source, /const\s+\{\s*origin,\s*destination:\s*dest,\s*routeOrigin,\s*routeDestination\s*\}\s*=\s*routeLegs\[i\]/);
+  assert.match(source, /getObjectRouteReferenceCoordinate,\s*resolveWayfindingRouteTarget,\s*resolveWayfindingRouteTargets/);
+  assert.match(source, /const\s+routeTargetOptions\s*=\s*\{/);
+  assert.match(source, /const\s+routeLegs\s*=\s*resolveWayfindingRouteTargets\(waypoints,\s*routeTargetOptions\)/);
+  assert.match(source, /createCoordinate:\s*\(latitude:\s*number,\s*longitude:\s*number,\s*floorId\?:\s*string\)/);
+  assert.match(source, /getDistance:\s*\(from:\s*any,\s*to:\s*any\)/);
+  assert.match(source, /getObjectRouteReferenceCoordinate\(/);
+  assert.match(source, /let\s+\{\s*origin,\s*destination:\s*dest,\s*routeOrigin,\s*routeDestination\s*\}\s*=\s*routeLegs\[i\]/);
   assert.match(source, /mapData\.getDirections\(routeOrigin,\s*routeDestination,/);
 });

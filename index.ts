@@ -20,7 +20,11 @@ import {
   shouldRenderNavigationInstruction,
   simplifyNavigationInstructions
 } from "./navigationInstructionRules.js";
-import { resolveWayfindingRouteTargets } from "./wayfindingRouteTargets.js";
+import {
+  getObjectRouteReferenceCoordinate,
+  resolveWayfindingRouteTarget,
+  resolveWayfindingRouteTargets
+} from "./wayfindingRouteTargets.js";
 import { getCategoryAreaListStyle } from "./categoryDropdownLayout.js";
 import { getModelStreamingZoomThresholds } from "./modelStreamingThresholds.js";
 import {
@@ -6733,7 +6737,21 @@ async function init() {
 
       const waypoints = [wayfindingOrigin, ...wayfindingStopovers, wayfindingDestination].filter(Boolean);
       if (waypoints.length < 2) return;
-      const routeLegs = resolveWayfindingRouteTargets(waypoints);
+      const routeTargetFloors = new Map((mapData.getByType("floor") || []).map((floor: any) => [floor.id, floor]));
+      const routeTargetOptions = {
+        createCoordinate: (latitude: number, longitude: number, floorId?: string) => {
+          const floor = floorId ? routeTargetFloors.get(floorId) : mapView.currentFloor;
+          return mapView.createCoordinate(latitude, longitude, floor || mapView.currentFloor);
+        },
+        getDistance: (from: any, to: any) => {
+          try {
+            return (mapData as any).getDistance(from, to);
+          } catch {
+            return undefined;
+          }
+        }
+      };
+      const routeLegs = resolveWayfindingRouteTargets(waypoints, routeTargetOptions);
 
       let allCoordinates: any[] = [];
       let allInstructions: any[] = [];
@@ -6741,7 +6759,31 @@ async function init() {
       let allPaths: any[] = [];
 
       for (let i = 0; i < routeLegs.length; i++) {
-        const { origin, destination: dest, routeOrigin, routeDestination } = routeLegs[i];
+        let { origin, destination: dest, routeOrigin, routeDestination } = routeLegs[i];
+
+        if (String((origin as any)?.__type || '').toLowerCase() === 'object' ||
+          String((dest as any)?.__type || '').toLowerCase() === 'object') {
+          try {
+            const previewDirections = await mapData.getDirections(origin, dest, { smoothing: smoothingConfig, accessible: false });
+            const previewCoordinates = previewDirections?.coordinates || [];
+            const originReference = getObjectRouteReferenceCoordinate(origin, previewCoordinates, 'origin');
+            const destinationReference = getObjectRouteReferenceCoordinate(dest, previewCoordinates, 'destination');
+
+            if (originReference) {
+              routeOrigin = resolveWayfindingRouteTarget(origin, dest, {
+                ...routeTargetOptions,
+                routeReferenceCoordinate: originReference
+              });
+            }
+
+            if (destinationReference) {
+              routeDestination = resolveWayfindingRouteTarget(dest, origin, {
+                ...routeTargetOptions,
+                routeReferenceCoordinate: destinationReference
+              });
+            }
+          } catch { }
+        }
 
         // SMART ROUTING: Tính cả 2 đường (thang máy + thang cuốn), chọn đường ngắn nhất
         const [dirEscalator, dirElevator] = await Promise.all([
