@@ -120,7 +120,39 @@ function shouldKeepOriginalTarget(obj) {
   return type === 'door' ||
     type === 'connection' ||
     type === 'point-of-interest' ||
+    isConnectionLikeTarget(obj) ||
     isCoordinateLike(obj);
+}
+
+function normalizeText(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+}
+
+function isConnectionLikeTarget(obj) {
+  const text = [
+    obj?.__type,
+    obj?.type,
+    obj?.category,
+    obj?.name,
+    obj?.details?.name
+  ].map(normalizeText).join(' ');
+
+  return [
+    'connection',
+    'elevator',
+    'escalator',
+    'stair',
+    'stairway',
+    'portal',
+    'security',
+    'ramp',
+    'thang may',
+    'thang cuon',
+    'cau thang'
+  ].some((keyword) => text.includes(keyword));
 }
 
 export function resolveWayfindingRouteTarget(obj, opposite) {

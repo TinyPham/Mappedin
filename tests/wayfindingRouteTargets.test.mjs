@@ -72,6 +72,29 @@ test('falls back to the original object when no door-like target exists', () => 
   assert.equal(resolveWayfindingRouteTarget(area), area);
 });
 
+test('does not reroute elevator or escalator objects to their doors', () => {
+  const elevatorDoor = { id: 'door-elevator', center: coord(10.0002, 107.0002) };
+  const elevatorSpace = {
+    id: 'elevator-space',
+    name: 'Thang may',
+    type: 'elevator',
+    center: coord(10, 107),
+    doors: [elevatorDoor]
+  };
+  const escalatorDoor = { id: 'door-escalator', center: coord(10.0003, 107.0003) };
+  const escalatorSpace = {
+    id: 'escalator-space',
+    name: 'Thang cuon',
+    type: 'space',
+    category: 'escalator',
+    center: coord(10, 107),
+    doors: [escalatorDoor]
+  };
+
+  assert.equal(resolveWayfindingRouteTarget(elevatorSpace), elevatorSpace);
+  assert.equal(resolveWayfindingRouteTarget(escalatorSpace), escalatorSpace);
+});
+
 test('resolves route targets for every leg while preserving original UI objects', () => {
   const originDoor = { id: 'origin-door', center: coord(10, 107) };
   const stopDoor = { id: 'stop-door', center: coord(10.1, 107.1) };

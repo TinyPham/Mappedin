@@ -7021,7 +7021,7 @@ async function init() {
             displayArrowsOnPath: true,
             animateArrowsOnPath: true,
             accentColor: '#214ca6',
-            width: 1.0, // Đã giảm từ 2.0 xuống 1.0 để thanh mảnh tinh tế hơn, không gây rối
+            width: 0.7, // Giữ đường dẫn mảnh hơn để giảm lấn tường khi render.
           },
           markerOptions: {
             departureColor: '#214ca6',
