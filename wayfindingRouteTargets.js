@@ -319,17 +319,24 @@ function chooseCandidate(candidates, original, opposite) {
   const oppositeCoord = coordinateOf(opposite);
   const oppositeFloorId = floorIdOf(opposite, oppositeCoord);
   const originalCoord = coordinateOf(original);
+  const originalFloorId = floorIdOf(original, originalCoord);
+  const floorMismatchPenalty = 1000000000;
 
   return candidates
     .map((candidate, index) => {
-      const sameFloorPenalty = oppositeFloorId && candidate.floorId && candidate.floorId !== oppositeFloorId ? 1000000 : 0;
+      const originalFloorPenalty = originalFloorId && candidate.floorId && candidate.floorId !== originalFloorId
+        ? floorMismatchPenalty
+        : 0;
+      const oppositeFloorPenalty = !originalFloorId && oppositeFloorId && candidate.floorId && candidate.floorId !== oppositeFloorId
+        ? floorMismatchPenalty
+        : 0;
       const routeDistance = Number.isFinite(candidate.routeDistance) ? candidate.routeDistance : null;
       const referenceDistance = Number.isFinite(candidate.referenceDistance) ? candidate.referenceDistance : null;
       const oppositeDistance = referenceDistance ?? routeDistance ?? (oppositeCoord ? distanceMeters(candidate.coordinate, oppositeCoord) : 0);
       const originalDistance = originalCoord ? distanceMeters(candidate.coordinate, originalCoord) : 0;
       return {
         ...candidate,
-        score: candidate.priority * 10000000 + sameFloorPenalty + oppositeDistance + originalDistance * 0.05 + index * 0.001
+        score: originalFloorPenalty + oppositeFloorPenalty + candidate.priority * 10000000 + oppositeDistance + originalDistance * 0.05 + index * 0.001
       };
     })
     .sort((a, b) => a.score - b.score)[0];

@@ -67,6 +67,25 @@ test('chooses the associated door closest to the opposite endpoint', () => {
   assert.equal(resolveWayfindingRouteTarget(space, opposite), nearDoor);
 });
 
+test('keeps associated route targets on the original floor for multi-floor routes', () => {
+  const floor1Door = { id: 'door-floor-1', center: coord(10, 107, 'floor-1') };
+  const floor2Door = { id: 'door-floor-2', center: coord(10.01, 107.01, 'floor-2') };
+  const origin = {
+    id: 'toilet-origin',
+    center: coord(10, 107, 'floor-1'),
+    spaces: [
+      { id: 'toilet-floor-1', center: coord(10, 107, 'floor-1'), doors: [floor1Door] },
+      { id: 'toilet-floor-2', center: coord(10.01, 107.01, 'floor-2'), doors: [floor2Door] }
+    ]
+  };
+  const destination = {
+    id: 'gate-40',
+    center: coord(10.011, 107.011, 'floor-2')
+  };
+
+  assert.equal(resolveWayfindingRouteTarget(origin, destination), floor1Door);
+});
+
 test('falls back to the original object when no door-like target exists', () => {
   const area = { id: 'area-a', center: coord(10, 107) };
 

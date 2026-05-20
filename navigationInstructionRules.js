@@ -163,24 +163,38 @@ function splitExitAtStrongTurn(exitStep, turnStep, followingStep, pathCoordinate
 export function findNearbyLandmark(coord, currentFloorId, mapObjects, options = {}) {
   if (!coord || !currentFloorId) return null;
 
-  const maxDist = options.maxDist ?? 15;
+  const maxDist = options.maxDist ?? 20;
   const getName = options.getName || ((obj) => obj?.name);
+  const normalize = (value) => String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
   const excludeNames = [
     'cua hang ban le',
     'cửa hàng bán lẻ',
     ...(options.excludeNames || [])
-  ];
+  ].map(normalize);
+  const excludeIds = new Set((options.excludeObjects || [])
+    .map((obj) => obj?.id)
+    .filter(Boolean));
+  for (const obj of options.excludeObjects || []) {
+    const name = getName(obj) || obj?.name;
+    if (name) excludeNames.push(normalize(name));
+  }
   let bestLandmark = null;
   let minDist = maxDist;
 
   for (const obj of mapObjects || []) {
+    if (obj?.id && excludeIds.has(obj.id)) continue;
     const anchor = getObjectAnchor(obj);
     const objectFloorId = getObjectFloorId(obj, anchor);
     if (objectFloorId !== currentFloorId) continue;
 
     const name = getName(obj) || obj?.name;
     if (!name || name.length < 3) continue;
-    if (excludeNames.some((ex) => name.toLowerCase().includes(ex.toLowerCase()))) continue;
+    const normalizedName = normalize(name);
+    if (excludeNames.some((ex) => normalizedName.includes(ex))) continue;
 
     const dist = calcDistanceMeters(coord, anchor);
     if (dist < minDist) {
@@ -224,6 +238,112 @@ function tryMergeShortTurn(current, next, nextNext) {
   }
 
   return false;
+}
+
+function turnSideOf(step) {
+  const bearing = (step?.action?.bearing || '').toString().toLowerCase();
+  if (bearing.includes('left')) return 'left';
+  if (bearing.includes('right')) return 'right';
+  return '';
+}
+
+function headingDegrees(from, to) {
+  const fromLng = from?.longitude ?? from?.lng;
+  const fromLat = from?.latitude ?? from?.lat;
+  const toLng = to?.longitude ?? to?.lng;
+  const toLat = to?.latitude ?? to?.lat;
+  if ([fromLng, fromLat, toLng, toLat].some((value) => value === undefined)) return null;
+
+  const dx = toLng - fromLng;
+  const dy = toLat - fromLat;
+  if (Math.hypot(dx, dy) <= 0.0000001) return null;
+  return Math.atan2(dx, dy) * 180 / Math.PI;
+}
+
+function headingDeltaDegrees(a, b) {
+  if (a === null || b === null) return 180;
+  let delta = Math.abs(a - b);
+  if (delta > 180) delta = 360 - delta;
+  return delta;
+}
+
+function instructionPointsAreCorridorAligned(points, toleranceDeg = 35) {
+  const headings = [];
+  for (let i = 0; i < points.length - 1; i++) {
+    const heading = headingDegrees(points[i], points[i + 1]);
+    if (heading !== null) headings.push(heading);
+  }
+  if (headings.length < 2) return false;
+
+  const reference = headings[0];
+  return headings.every((heading) => headingDeltaDegrees(reference, heading) <= toleranceDeg);
+}
+
+function pathSegmentDirectness(start, end, pathCoordinates, maxRatio = 1.35) {
+  const startIndex = nearestPathIndex(start, pathCoordinates);
+  const endIndex = nearestPathIndex(end, pathCoordinates);
+  if (startIndex < 0 || endIndex <= startIndex) return false;
+
+  const directDistance = calcDistanceMeters(start, end);
+  if (!Number.isFinite(directDistance) || directDistance <= 0) return false;
+
+  const pathDistance = pathDistanceBetween(pathCoordinates, startIndex, endIndex);
+  if (!Number.isFinite(pathDistance) || pathDistance <= 0) return false;
+  return pathDistance / directDistance <= maxRatio;
+}
+
+function canMergeSameDirectionCorridorTurns(run, nextStep, pathCoordinates) {
+  if (run.length < 2) return false;
+  const side = turnSideOf(run[0]);
+  if (!side || !run.every((step) => actionTypeOf(step) === 'turn' && turnSideOf(step) === side)) return false;
+
+  const floorId = getCoordinateFloorId(run[0].coordinate);
+  if (floorId && !run.every((step) => getCoordinateFloorId(step.coordinate) === floorId)) return false;
+
+  const points = run.map((step) => step.coordinate).filter(Boolean);
+  if (nextStep?.coordinate) points.push(nextStep.coordinate);
+  if (points.length < 3) return false;
+
+  if (instructionPointsAreCorridorAligned(points)) return true;
+  return Array.isArray(pathCoordinates) &&
+    pathCoordinates.length > 0 &&
+    pathSegmentDirectness(points[0], points[points.length - 1], pathCoordinates);
+}
+
+function mergeConsecutiveCorridorTurns(steps, pathCoordinates) {
+  const merged = [];
+  for (let i = 0; i < steps.length; i++) {
+    const step = steps[i];
+    const side = turnSideOf(step);
+    if (actionTypeOf(step) !== 'turn' || !side) {
+      merged.push(step);
+      continue;
+    }
+
+    const run = [step];
+    let j = i + 1;
+    while (j < steps.length && actionTypeOf(steps[j]) === 'turn' && turnSideOf(steps[j]) === side) {
+      run.push(steps[j]);
+      j++;
+    }
+
+    if (canMergeSameDirectionCorridorTurns(run, steps[j], pathCoordinates)) {
+      const displayDistance = run.reduce((sum, item) => {
+        const distance = Number.isFinite(item.originalDistance) ? item.originalDistance : getInstructionDisplayDistance(item);
+        return sum + Math.round(distance || 0);
+      }, 0);
+      const mergedStep = run[0];
+      mergedStep.distance = displayDistance;
+      mergedStep.originalDistance = displayDistance;
+      mergedStep._displayDistance = displayDistance;
+      merged.push(mergedStep);
+      i = j - 1;
+    } else {
+      merged.push(step);
+    }
+  }
+
+  return merged;
 }
 
 export function simplifyNavigationInstructions(instructions, options = {}) {
@@ -378,7 +498,7 @@ export function simplifyNavigationInstructions(instructions, options = {}) {
   }
 
   if (cleaned.length > 0) cleaned[cleaned.length - 1].distance = 0;
-  return cleaned;
+  return mergeConsecutiveCorridorTurns(cleaned, pathCoordinates);
 }
 
 function parseFloorNumber(name) {
@@ -473,12 +593,17 @@ export function createInstructionFormatter(options) {
   const t = options.t || ((_key, fallback) => fallback);
   const getFloorName = options.getFloorName || (() => '');
   const getName = options.getName || ((obj) => obj?.name);
-  const landmarkMaxDist = options.landmarkMaxDist ?? 15;
+  const landmarkMaxDist = options.landmarkMaxDist ?? 20;
 
   function landmarkTextFor(instruction) {
     const coord = instruction?.coordinate;
     const stepFloorId = getCoordinateFloorId(coord);
-    const near = findNearbyLandmark(coord, stepFloorId, mapObjects, { maxDist: landmarkMaxDist, getName });
+    const near = findNearbyLandmark(coord, stepFloorId, mapObjects, {
+      maxDist: landmarkMaxDist,
+      getName,
+      excludeObjects: options.landmarkExcludeObjects || [],
+      excludeNames: options.landmarkExcludeNames || []
+    });
     if (!near) return '';
     const key = near.toLowerCase();
     if (usedLandmarks.has(key)) return '';
@@ -517,10 +642,10 @@ export function createInstructionFormatter(options) {
           let nextActionText = t('action_go_straight_lower', 'di thang');
           return `${t('action_exit', 'Ra')} ${name}${floorText} ${t('direction_connector_and', 'va')} ${nextActionText}`;
         }
-        return `${t('action_exit', 'Ra')} ${name}${floorText}${landmarkTextFor(instruction)}`;
+        return `${t('action_exit', 'Ra')} ${name}${floorText}`;
       }
 
-      return `${t('action_use', 'Su dung')} ${name}${floorText}${landmarkTextFor(instruction)}`;
+      return `${t('action_use', 'Su dung')} ${name}${floorText}`;
     }
 
     if (currentIndex === 0 && (actionType === 'start' || actionType === 'departure')) {
@@ -551,7 +676,7 @@ export function createInstructionFormatter(options) {
     };
 
     const baseText = actionMap[actionType] || mappedinText || actionType;
-    return actionType === 'continue' ? `${baseText}${landmarkTextFor(instruction)}` : baseText;
+    return baseText;
   }
 
   return { format };

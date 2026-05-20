@@ -7057,6 +7057,12 @@ async function init() {
           coordinates: directions.coordinates || [],
           distance: directions.distance || totalDistance
         });
+        const displayDirections = {
+          ...directions,
+          rawInstructions: directions.instructions || [],
+          instructions: simplifiedInstructions
+        };
+        wayfindingDirections = displayDirections;
 
         const navigationOptions: any = {
           pathOptions: {
@@ -7172,6 +7178,7 @@ async function init() {
         const instructionFormatter = createInstructionFormatter({
           floors: mapData.getByType('floor') || [],
           mapObjects: allMapObjects,
+          landmarkExcludeObjects: waypoints,
           t: (key: string, def: string) => TranslationManager.t(key, def),
           getFloorName: (floorId: string, originalName: string = '') => TranslationManager.getFloorName(floorId, originalName),
           getName: (obj: any) => TranslationManager.getName(obj) || obj?.name

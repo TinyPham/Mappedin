@@ -212,6 +212,92 @@ test('removes zero-distance walking turn immediately before entering a connectio
   ]);
 });
 
+test('merges consecutive same-direction corridor turns when instruction geometry stays on one axis', () => {
+  const pathCoordinates = [
+    { floorId: 'floor-1', latitude: 10, longitude: 10 },
+    { floorId: 'floor-1', latitude: 10, longitude: 10.0001 },
+    { floorId: 'floor-1', latitude: 10, longitude: 10.0003 },
+    { floorId: 'floor-1', latitude: 9.9999, longitude: 10.0003 },
+    { floorId: 'floor-1', latitude: 9.9997, longitude: 10.0003 },
+    { floorId: 'floor-1', latitude: 9.9994, longitude: 10.0003 }
+  ];
+
+  const simplified = simplifyNavigationInstructions([
+    {
+      action: { type: 'departure' },
+      coordinate: pathCoordinates[0],
+      distance: 6
+    },
+    {
+      action: { type: 'turn', bearing: 'right' },
+      coordinate: pathCoordinates[1],
+      distance: 22
+    },
+    {
+      action: { type: 'turn', bearing: 'left' },
+      coordinate: pathCoordinates[2],
+      distance: 15
+    },
+    {
+      action: { type: 'turn', bearing: 'left' },
+      coordinate: pathCoordinates[3],
+      distance: 21
+    },
+    {
+      action: { type: 'turn', bearing: 'left' },
+      coordinate: pathCoordinates[4],
+      distance: 11
+    },
+    {
+      action: { type: 'arrival' },
+      coordinate: pathCoordinates[5],
+      distance: 0
+    }
+  ], { pathCoordinates });
+
+  assert.deepEqual(simplified.map((step) => step.action.type), [
+    'departure',
+    'turn',
+    'turn',
+    'arrival'
+  ]);
+  assert.equal(simplified[1].action.bearing, 'right');
+  assert.equal(simplified[2].action.bearing, 'left');
+  assert.equal(getInstructionDisplayDistance(simplified[2]), 47);
+});
+
+test('keeps consecutive same-direction turns when geometry is not corridor-aligned', () => {
+  const simplified = simplifyNavigationInstructions([
+    {
+      action: { type: 'turn', bearing: 'left' },
+      coordinate: { floorId: 'floor-1', latitude: 10, longitude: 10 },
+      distance: 20
+    },
+    {
+      action: { type: 'turn', bearing: 'left' },
+      coordinate: { floorId: 'floor-1', latitude: 10.0002, longitude: 10 },
+      distance: 20
+    },
+    {
+      action: { type: 'turn', bearing: 'left' },
+      coordinate: { floorId: 'floor-1', latitude: 10.0002, longitude: 10.0002 },
+      distance: 20
+    },
+    {
+      action: { type: 'arrival' },
+      coordinate: { floorId: 'floor-1', latitude: 10.0004, longitude: 10.0002 },
+      distance: 0
+    }
+  ]);
+
+  assert.deepEqual(simplified.map((step) => step.action.type), [
+    'turn',
+    'turn',
+    'turn',
+    'arrival'
+  ]);
+});
+
 test('uses explicit translation keys for merged exit phrases', () => {
   const calls = [];
   const formatter = createInstructionFormatter({
@@ -460,7 +546,7 @@ test('removes walking turn immediately before entering a connection even when ra
   ]);
 });
 
-test('nearby landmark is constrained to the current floor and emitted once', () => {
+test('nearby landmark is constrained to turn steps on the current floor and emitted once', () => {
   const objects = [
     {
       name: 'Quay ca phe va banh ngot',
@@ -488,7 +574,12 @@ test('nearby landmark is constrained to the current floor and emitted once', () 
   });
   const instructions = [
     {
-      action: { type: 'continue' },
+      action: { type: 'turn', bearing: 'left' },
+      coordinate: { floorId: 'floor-2', latitude: 10, longitude: 10 },
+      distance: 5
+    },
+    {
+      action: { type: 'turn', bearing: 'right' },
       coordinate: { floorId: 'floor-2', latitude: 10, longitude: 10 },
       distance: 5
     },
@@ -499,8 +590,45 @@ test('nearby landmark is constrained to the current floor and emitted once', () 
     }
   ];
 
-  assert.equal(formatter.format(instructions[0], instructions, 0), 'Di thang gan Quay ca phe va banh ngot');
-  assert.equal(formatter.format(instructions[1], instructions, 1), 'Di thang');
+  assert.equal(formatter.format(instructions[0], instructions, 0), 'Re trai gan Quay ca phe va banh ngot');
+  assert.equal(formatter.format(instructions[1], instructions, 1), 'Re phai');
+  assert.equal(formatter.format(instructions[2], instructions, 2), 'Di thang');
+});
+
+test('nearby landmark excludes route origin and destination objects', () => {
+  const origin = {
+    id: 'origin-toilet',
+    name: 'Nha ve sinh (WC - Toilet)',
+    floor: { id: 'floor-2' },
+    anchor: { floorId: 'floor-2', latitude: 10, longitude: 10 }
+  };
+  const destination = {
+    id: 'gate-40',
+    name: 'Cua ra tau bay 40',
+    floor: { id: 'floor-2' },
+    anchor: { floorId: 'floor-2', latitude: 10.00001, longitude: 10 }
+  };
+  const realLandmark = {
+    id: 'coffee',
+    name: 'Quay ca phe va banh ngot',
+    floor: { id: 'floor-2' },
+    anchor: { floorId: 'floor-2', latitude: 10.00002, longitude: 10 }
+  };
+  const formatter = createInstructionFormatter({
+    floors,
+    mapObjects: [origin, destination, realLandmark],
+    landmarkExcludeObjects: [origin, destination],
+    t,
+    getFloorName,
+    getName: (obj) => obj?.name
+  });
+  const instruction = {
+    action: { type: 'turn', bearing: 'right' },
+    coordinate: { floorId: 'floor-2', latitude: 10, longitude: 10 },
+    distance: 12
+  };
+
+  assert.equal(formatter.format(instruction, [instruction], 0), 'Re phai gan Quay ca phe va banh ngot');
 });
 
 test('render filter removes non-arrival steps without display distance', () => {
@@ -567,4 +695,15 @@ test('index normalizes short-route instructions and clears loading UI on route f
   assert.match(source, /min-height:\s*260px/);
   assert.match(source, /justify-content:\s*center/);
   assert.match(source, /previewBar\.style\.display\s*=\s*"none"/);
+});
+
+test('index uses the same simplified instructions for route state and sidebar rendering', () => {
+  const source = readFileSync(new URL('../index.ts', import.meta.url), 'utf8');
+
+  assert.match(source, /const\s+displayDirections\s*=\s*\{/);
+  assert.match(source, /rawInstructions:\s*directions\.instructions\s*\|\|\s*\[\]/);
+  assert.match(source, /instructions:\s*simplifiedInstructions/);
+  assert.match(source, /wayfindingDirections\s*=\s*displayDirections/);
+  assert.match(source, /mapView\.Navigation\.draw\(directions,\s*navigationOptions\)/);
+  assert.match(source, /landmarkExcludeObjects:\s*waypoints/);
 });
