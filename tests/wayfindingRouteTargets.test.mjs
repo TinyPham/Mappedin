@@ -86,6 +86,30 @@ test('keeps associated route targets on the original floor for multi-floor route
   assert.equal(resolveWayfindingRouteTarget(origin, destination), floor1Door);
 });
 
+test('does not expand a selected space into sibling spaces from the same location group', () => {
+  const selectedNode = { id: 'selected-toilet-node', coordinate: coord(10, 107, 'floor-2') };
+  const siblingDoor = { id: 'sibling-toilet-door', center: coord(10.01, 107.01, 'floor-2') };
+  const siblingSpace = {
+    id: 's_sibling',
+    __type: 'space',
+    center: coord(10.01, 107.01, 'floor-2'),
+    doors: [siblingDoor]
+  };
+  const selectedSpace = {
+    id: 's_selected',
+    __type: 'space',
+    center: coord(10, 107, 'floor-2'),
+    navigableNodes: [selectedNode],
+    parentLocation: {
+      id: 'toilet-location-group',
+      spaces: [siblingSpace]
+    }
+  };
+  const opposite = { id: 'origin', center: coord(10.011, 107.011, 'floor-1') };
+
+  assert.equal(resolveWayfindingRouteTarget(selectedSpace, opposite), selectedNode);
+});
+
 test('falls back to the original object when no door-like target exists', () => {
   const area = { id: 'area-a', center: coord(10, 107) };
 

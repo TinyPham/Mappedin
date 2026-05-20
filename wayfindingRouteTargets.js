@@ -87,6 +87,12 @@ function isMapObjectLike(obj) {
   return String(obj?.__type || '').toLowerCase() === 'object';
 }
 
+function isSpecificSpaceTarget(obj) {
+  const type = String(obj?.__type || obj?.type || '').toLowerCase();
+  const id = String(obj?.id || '');
+  return type === 'space' || type === 'room' || id.startsWith('s_');
+}
+
 function getGeoJsonGeometry(obj) {
   return obj?.geoJSON?.geometry || obj?.geometry || null;
 }
@@ -281,28 +287,30 @@ function collectRouteTargetCandidates(obj, opposite, options, seen = new Set()) 
   addEntranceCandidates(candidates, obj.entrances, 0);
   addDoorCandidates(candidates, obj.doors, 1);
 
-  if (Array.isArray(obj.spaces)) {
-    for (const space of obj.spaces) {
-      addEntranceCandidates(candidates, space?.entrances, 2);
-      addDoorCandidates(candidates, space?.doors, 3);
+  if (!isSpecificSpaceTarget(obj)) {
+    if (Array.isArray(obj.spaces)) {
+      for (const space of obj.spaces) {
+        addEntranceCandidates(candidates, space?.entrances, 2);
+        addDoorCandidates(candidates, space?.doors, 3);
+      }
     }
-  }
 
-  const relatedCollections = [
-    obj.enterpriseLocations,
-    obj.locations,
-    obj.locationProfiles,
-    obj.locationProfile ? [obj.locationProfile] : null,
-    obj.location ? [obj.location] : null,
-    obj.space ? [obj.space] : null,
-    obj.parent ? [obj.parent] : null,
-    obj.parentSpace ? [obj.parentSpace] : null,
-    obj.parentLocation ? [obj.parentLocation] : null
-  ];
-  for (const related of relatedCollections) {
-    if (!Array.isArray(related)) continue;
-    for (const item of related) {
-      candidates.push(...collectRouteTargetCandidates(item, opposite, options, seen));
+    const relatedCollections = [
+      obj.enterpriseLocations,
+      obj.locations,
+      obj.locationProfiles,
+      obj.locationProfile ? [obj.locationProfile] : null,
+      obj.location ? [obj.location] : null,
+      obj.space ? [obj.space] : null,
+      obj.parent ? [obj.parent] : null,
+      obj.parentSpace ? [obj.parentSpace] : null,
+      obj.parentLocation ? [obj.parentLocation] : null
+    ];
+    for (const related of relatedCollections) {
+      if (!Array.isArray(related)) continue;
+      for (const item of related) {
+        candidates.push(...collectRouteTargetCandidates(item, opposite, options, seen));
+      }
     }
   }
 
