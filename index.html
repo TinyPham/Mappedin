@@ -1360,6 +1360,16 @@
               <circle cx="12" cy="10" r="3"></circle>
             </svg>
           </button>
+          <button id="desktop-map-settings-toggle" class="desktop-map-settings-toggle"
+            onclick="toggleDesktopMapSettings(event)" aria-controls="desktop-map-settings-panel"
+            aria-expanded="false" title="Cài đặt hiển thị">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"
+              focusable="false">
+              <path d="M12 15.5A3.5 3.5 0 1 0 12 8a3.5 3.5 0 0 0 0 7.5Z"></path>
+              <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6l-.09.1a2 2 0 0 1-3.82 0L10 20a1.7 1.7 0 0 0-1-.6 1.7 1.7 0 0 0-1.88.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1l-.1-.09a2 2 0 0 1 0-3.82L4 10a1.7 1.7 0 0 0 .6-1 1.7 1.7 0 0 0-.34-1.88l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6l.09-.1a2 2 0 0 1 3.82 0L14 4a1.7 1.7 0 0 0 1 .6 1.7 1.7 0 0 0 1.88-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9c.36.14.7.35 1 .6l.1.09a2 2 0 0 1 0 3.82l-.1.09a1.7 1.7 0 0 0-1 .6Z"></path>
+            </svg>
+          </button>
         </div>
 
         <!-- Search Tab Header -->
@@ -1705,6 +1715,8 @@
       </select>
       <select id="floor-selector" style="display:none;"></select>
 
+      <!-- Desktop settings popover. On mobile/tablet the wrapper is display: contents so existing controls keep their positions. -->
+      <div id="desktop-map-settings-panel" class="desktop-map-settings-panel" aria-hidden="true">
       <!-- MỚI: Theme Selector (Tách biệt để điều hướng độc lập) -->
         <!-- MỚI: Thanh chỉnh độ sáng và chống chói (Redesigned) -->
         <div class="brightness-selector-wrapper" id="brightness-selector-wrapper">
@@ -1773,6 +1785,7 @@
             </div>
           </div>
         </div>
+      </div>
 
       <!-- MAP CONTROLS HEADER (GIỮ NGUYÊN VỊ TRÍ GỐC: TOP RIGHT) -->
       <div id="map-top-controls"
@@ -2540,10 +2553,35 @@
       }
     }
 
+    function toggleDesktopMapSettings(e) {
+      if (e) e.stopPropagation();
+      const panel = document.getElementById('desktop-map-settings-panel');
+      const toggle = document.getElementById('desktop-map-settings-toggle');
+      if (!panel || !toggle) return;
+
+      const isOpen = panel.classList.toggle('open');
+      panel.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
+      toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+      toggle.classList.toggle('active', isOpen);
+
+      if (isOpen) {
+        document.querySelectorAll('.pro-dropdown-wrapper.open, .theme-selector-wrapper.open').forEach(w => w.classList.remove('open'));
+      }
+    }
+
     // Đóng khi click ra ngoài
     document.addEventListener('click', function (e) {
       if (!e.target.closest('.pro-dropdown-wrapper') && !e.target.closest('.theme-selector-wrapper')) {
         document.querySelectorAll('.pro-dropdown-wrapper.open, .theme-selector-wrapper.open').forEach(w => w.classList.remove('open'));
+      }
+
+      if (!e.target.closest('#desktop-map-settings-panel') && !e.target.closest('#desktop-map-settings-toggle')) {
+        const panel = document.getElementById('desktop-map-settings-panel');
+        const toggle = document.getElementById('desktop-map-settings-toggle');
+        panel?.classList.remove('open');
+        panel?.setAttribute('aria-hidden', 'true');
+        toggle?.classList.remove('active');
+        toggle?.setAttribute('aria-expanded', 'false');
       }
     });
 
