@@ -1717,6 +1717,11 @@
 
       <!-- Desktop settings popover. On mobile/tablet the wrapper is display: contents so existing controls keep their positions. -->
       <div id="desktop-map-settings-panel" class="desktop-map-settings-panel" aria-hidden="true">
+        <!-- Close button for settings panel -->
+        <button id="desktop-map-settings-close" class="settings-panel-close-btn" onclick="document.getElementById('desktop-map-settings-toggle').click()" aria-label="Close settings" style="position: absolute; top: -10px; right: -10px; width: 24px; height: 24px; background: #e11d48; color: white; border: none; border-radius: 50%; font-size: 14px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(225, 29, 72, 0.4); z-index: 10;">
+          ✕
+        </button>
+
       <!-- MỚI: Theme Selector (Tách biệt để điều hướng độc lập) -->
         <!-- MỚI: Thanh chỉnh độ sáng và chống chói (Redesigned) -->
         <div class="brightness-selector-wrapper" id="brightness-selector-wrapper">

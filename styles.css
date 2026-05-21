@@ -1966,8 +1966,22 @@ body.zoom-out-mode .mappedin-poi-marker {
   box-shadow: 0 6px 16px rgba(33, 76, 166, 0.22);
 }
 
+.desktop-map-settings-toggle svg {
+  transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.desktop-map-settings-toggle.active svg {
+  transform: rotate(180deg);
+}
+
 .desktop-map-settings-panel {
   display: contents;
+}
+
+@media (max-width: 768px) {
+  .settings-panel-close-btn {
+    display: none !important;
+  }
 }
 
 @media (max-width: 768px) {
@@ -2834,7 +2848,7 @@ body.user-guide-open {
   stroke-width: 4;
   stroke-dasharray: 12 10;
 }
-@media (min-width: 1201px) {
+@media (min-width: 769px) {
   .desktop-map-settings-toggle {
     display: flex;
   }
@@ -2844,7 +2858,8 @@ body.user-guide-open {
     left: 0 !important;
     top: 20px !important;
     z-index: 6200;
-    display: none;
+    display: flex;
+    visibility: hidden;
     flex-direction: column;
     gap: 10px;
     width: 310px;
@@ -2855,11 +2870,20 @@ body.user-guide-open {
     border-radius: 0 12px 12px 0;
     box-shadow: 12px 12px 32px rgba(15, 23, 42, 0.14);
     box-sizing: border-box;
+    transform-origin: left top;
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease, visibility 0.3s ease;
+    transform: scale(0.6) translate(-40px, -40px);
+    opacity: 0;
+    pointer-events: none;
   }
 
   #desktop-map-settings-panel.open {
-    display: flex;
+    visibility: visible;
+    transform: scale(1) translate(0, 0);
+    opacity: 1;
+    pointer-events: auto;
   }
+
 
   #desktop-map-settings-panel .theme-selector-wrapper,
   #desktop-map-settings-panel .brightness-selector-wrapper {
