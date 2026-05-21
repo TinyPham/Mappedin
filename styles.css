@@ -1984,6 +1984,35 @@ body.zoom-out-mode .mappedin-poi-marker {
   }
 }
 
+/* Top-left map controls (Floor Selector + Flight Info) */
+#map-top-left-controls {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  z-index: 1000;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.flight-info-top-btn {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.flight-info-top-btn .airplane-icon {
+  flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+  #map-top-left-controls {
+    display: contents;
+  }
+  .flight-info-top-btn {
+    display: none !important;
+  }
+}
+
 @media (max-width: 768px) {
   /* Column Left: Brightness (Top) & Floor (Bottom) */
   #brightness-selector-wrapper {
