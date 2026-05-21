@@ -1073,6 +1073,20 @@
       flex: 1;
     }
 
+    .sidebar-install-footer {
+      flex-shrink: 0;
+      margin-top: auto;
+      padding: 15px;
+      background: #f0f4ff;
+      border-top: 1px solid #eee;
+      border-left: 1px dashed #214ca6;
+      border-right: 1px dashed #214ca6;
+      border-bottom: 1px dashed #214ca6;
+      box-shadow: 0 -6px 18px rgba(33, 76, 166, 0.08);
+      flex-direction: column;
+      gap: 8px;
+    }
+
     /* Modern Scrollbar */
     .modern-sidebar-content::-webkit-scrollbar,
     #search-results::-webkit-scrollbar,
@@ -1326,6 +1340,12 @@
           display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 14px;
         ">
             <span data-i18n="tab_search">Search</span>
+            <svg class="tab-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+              aria-hidden="true" focusable="false">
+              <circle cx="11" cy="11" r="8"></circle>
+              <path d="m21 21-4.35-4.35"></path>
+            </svg>
           </button>
           <button id="tab-directions" class="modern-tab-btn" style="
           flex: 1; padding: 10px; border-radius: 20px; border: 1px solid #e0e0e0; 
@@ -1333,8 +1353,11 @@
           display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 14px;
         ">
             <span data-i18n="tab_directions">Directions</span>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-              <path d="M7 17L17 7M17 7H7M17 7V17" />
+            <svg class="tab-location-icon" width="14" height="14" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+              aria-hidden="true" focusable="false">
+              <path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0Z"></path>
+              <circle cx="12" cy="10" r="3"></circle>
             </svg>
           </button>
         </div>
@@ -1630,22 +1653,21 @@
             vực</button>
         </div>
 
-        <!-- PWA Install Button (Được kích hoạt khi trình duyệt hỗ trợ cài đặt) -->
-        <div id="pwa-install-container"
-          style="display: none; flex-direction: column; gap: 8px; margin-top: 25px; padding: 15px; background: #f0f4ff; border-radius: 12px; border: 1px dashed #214ca6;">
-          <div data-i18n="pwa_install_title" style="font-size: 13px; font-weight: 600; color: #214ca6; text-align: center;">Trải nghiệm tốt hơn với ứng dụng</div>
-          <button id="pwa-install-btn" class="modern-btn-primary"
-            style="background: #214ca6; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-              stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-              <polyline points="7 10 12 15 17 10"></polyline>
-              <line x1="12" y1="15" x2="12" y2="3"></line>
-            </svg>
-            <span data-i18n="pwa_install_btn_label">Cài đặt 3D Map</span>
-          </button>
-        </div>
+      </div>
 
+      <!-- PWA Install Button (activated when the browser supports app install) -->
+      <div id="pwa-install-container" class="sidebar-install-footer" style="display: none;">
+        <div data-i18n="pwa_install_title" style="font-size: 13px; font-weight: 600; color: #214ca6; text-align: center;">Trải nghiệm tốt hơn với ứng dụng</div>
+        <button id="pwa-install-btn" class="modern-btn-primary"
+          style="background: #214ca6; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+            stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          <span data-i18n="pwa_install_btn_label">Cài đặt 3D Map</span>
+        </button>
       </div>
 
       <!-- Bottom Action Bar (Route Preview) - Fixed at the bottom of sidebar but outside scrollable area -->
