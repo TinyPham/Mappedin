@@ -1630,10 +1630,6 @@ body.zoom-out-mode .mappedin-poi-marker {
 /* =========================================
    THEME SELECTOR DROPDOWN
    ========================================= */
-.theme-selector-wrapper {
-  position: relative;
-  font-family: 'Inter', sans-serif;
-}
 
 .theme-selector-toggle {
   background: white;
@@ -1745,13 +1741,6 @@ body.zoom-out-mode .mappedin-poi-marker {
 /* =========================================
    THEME SELECTOR (INDEPENDENT POSITIONING)
    ========================================= */
-.theme-selector-wrapper {
-  position: absolute;
-  top: 20px;
-  left: 20px; /* Desktop: Top Left */
-  z-index: 9999;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
 
 /* Căn lề menu dropdown sang trái trên Desktop */
 .theme-selector-wrapper .theme-selector-menu {
@@ -1760,18 +1749,6 @@ body.zoom-out-mode .mappedin-poi-marker {
 }
 
 @media (max-width: 768px) {
-  .theme-selector-wrapper {
-    position: absolute;
-    top: 142px;
-    right: 8px;
-    width: auto;
-    left: auto;
-    bottom: auto;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    z-index: 1900 !important;
-  }
 
   .theme-selector-toggle {
     width: auto;
@@ -1974,15 +1951,7 @@ body.zoom-out-mode .mappedin-poi-marker {
   transform: rotate(180deg);
 }
 
-.desktop-map-settings-panel {
-  display: contents;
-}
 
-@media (max-width: 768px) {
-  .settings-panel-close-btn {
-    display: none !important;
-  }
-}
 
 /* Top-left map controls (Floor Selector + Flight Info) */
 #map-top-left-controls {
@@ -2011,41 +1980,8 @@ body.zoom-out-mode .mappedin-poi-marker {
   .flight-info-top-btn {
     display: none !important;
   }
-}
-
-@media (max-width: 768px) {
-  /* Column Left: Brightness (Top) & Floor (Bottom) */
-  #brightness-selector-wrapper {
-    top: 142px !important;
-    left: 8px !important;
-    right: auto !important;
-    z-index: 9999 !important;
-  }
-  
-  #custom-floor-wrapper {
-    position: absolute !important;
-    bottom: 84px !important;
-    left: 8px !important;
-    top: auto !important;
-    right: auto !important;
-    z-index: 1900 !important;
-  }
-
-  /* Column Right: Theme (Top) & Language (Bottom) */
-  .theme-selector-wrapper {
-    top: 142px !important;
-    right: 8px !important;
-    left: auto !important;
-    z-index: 1900 !important;
-  }
-
-  #custom-lang-wrapper {
-    position: absolute !important;
-    bottom: 84px !important;
-    right: 8px !important;
-    top: auto !important;
-    left: auto !important;
-    z-index: 1900 !important;
+  #map-top-controls {
+    display: contents !important;
   }
 
   .brightness-toggle {
@@ -2067,16 +2003,9 @@ body.zoom-out-mode .mappedin-poi-marker {
 /* FINAL MOBILE LAYOUT ADJUSTMENTS */
 @media (max-width: 768px) {
   /* Column Left: Brightness (Bottom) & Floor (Bottom-most) */
-  #brightness-selector-wrapper {
-    top: auto !important;
-    bottom: 72px !important; /* Ph�a tr�n n�t T?ng */
-    left: 12px !important;
-    right: auto !important;
-    z-index: 2000 !important; /* �?m b?o du?i Bottom Sheet n?u c?n */
-  }
   
   #custom-floor-wrapper {
-    position: absolute !important;
+    position: fixed !important;
     bottom: 12px !important; /* S�t m�p du?i */
     left: 12px !important;
     top: auto !important;
@@ -2085,16 +2014,9 @@ body.zoom-out-mode .mappedin-poi-marker {
   }
 
   /* Column Right: Theme (Bottom) & Language (Bottom-most) */
-  .theme-selector-wrapper {
-    top: auto !important;
-    bottom: 72px !important; /* Ph�a tr�n n�t Ng�n ng? */
-    right: 12px !important;
-    left: auto !important;
-    z-index: 2000 !important;
-  }
 
   #custom-lang-wrapper {
-    position: absolute !important;
+    position: fixed !important;
     bottom: 12px !important; /* S�t m�p du?i */
     right: 12px !important;
     top: auto !important;
@@ -2112,6 +2034,35 @@ body.zoom-out-mode .mappedin-poi-marker {
   #brightness-slider {
     width: 60px;
   }
+  
+  #desktop-map-settings-toggle {
+    display: none !important;
+  }
+  
+  #desktop-map-settings-panel {
+    top: calc(75px + env(safe-area-inset-top, 0px)) !important;
+    right: 15px !important;
+    left: auto !important;
+    width: auto !important;
+    min-width: 260px !important;
+    border-radius: 12px;
+    transform-origin: top right !important;
+    transform: scale(0.6) translate(40px, -40px) !important;
+  }
+  
+  #desktop-map-settings-panel.open {
+    transform: scale(1) translate(0, 0) !important;
+  }
+  
+  #desktop-map-settings-panel .theme-selector-menu {
+    position: absolute !important;
+    top: calc(100% + 15px) !important;
+    right: -15px !important;
+    left: auto !important;
+    width: 100vw !important;
+    border-radius: 16px 16px 0 0 !important;
+    box-sizing: border-box !important;
+  }
 }
 
 
@@ -2126,13 +2077,6 @@ body.zoom-out-mode .mappedin-poi-marker {
     z-index: 9999 !important;
   }
   
-  .theme-selector-wrapper {
-    top: 142px !important;
-    right: 8px !important;
-    left: auto !important;
-    bottom: auto !important;
-    z-index: 9999 !important;
-  }
 
   /* Floor & Language moved to BOTTOM EDGE */
   #custom-floor-wrapper {
@@ -2161,9 +2105,6 @@ body.zoom-out-mode .mappedin-poi-marker {
     z-index: 500 !important; /* N?m du?i Dropdown, Marker Info, Nav Info */
   }
   
-  .theme-selector-wrapper {
-    z-index: 500 !important; /* N?m du?i Dropdown, Marker Info, Nav Info */
-  }
   
   #custom-floor-wrapper {
     z-index: 500 !important;
@@ -2204,11 +2145,6 @@ body.zoom-out-mode .mappedin-poi-marker {
 
 
 @media (min-width: 769px) and (max-width: 1200px) {
-  .theme-selector-wrapper {
-    top: 20px !important;
-    left: 12px !important;
-    right: auto !important;
-  }
 
   .brightness-selector-wrapper {
     top: 20px !important;
@@ -2285,9 +2221,6 @@ body.zoom-out-mode .mappedin-poi-marker {
   }
 }
 @media (min-width: 769px) and (max-width: 992px) {
-  .theme-selector-wrapper {
-    left: 8px !important;
-  }
 
   .brightness-selector-wrapper {
     left: 122px !important;
@@ -2393,17 +2326,8 @@ body.zoom-out-mode .mappedin-poi-marker {
     top: 190px !important;
     bottom: auto !important;
   }
-
-  :fullscreen .theme-selector-wrapper,
-  :-webkit-full-screen .theme-selector-wrapper {
-    top: 190px !important;
-    bottom: auto !important;
   }
-}
 @media (min-width: 769px) and (max-width: 900px) {
-  .theme-selector-wrapper {
-    left: 6px !important;
-  }
 
   .brightness-selector-wrapper {
     left: 98px !important;
@@ -2729,6 +2653,10 @@ body.user-guide-open {
     font-size: 24px !important;
     line-height: 1 !important;
   }
+  
+  #user-guide-next {
+    margin-left: auto !important;
+  }
 
   #user-guide-done {
     flex: 1 !important;
@@ -2826,7 +2754,7 @@ body.user-guide-open {
   border: 4px solid #ffffff;
   background: transparent;
   border-radius: 14px;
-  box-shadow: 0 0 0 9999px rgba(15, 23, 42, 0.48), 0 0 0 5px rgba(33, 76, 166, 0.9), 0 0 28px rgba(255, 255, 255, 0.95);
+  box-shadow: 0 0 0 5px rgba(33, 76, 166, 0.9), 0 0 28px rgba(255, 255, 255, 0.95);
   pointer-events: none;
   transition: left 0.2s ease, top 0.2s ease, width 0.2s ease, height 0.2s ease;
 }
@@ -2877,7 +2805,7 @@ body.user-guide-open {
   stroke-width: 4;
   stroke-dasharray: 12 10;
 }
-@media (min-width: 769px) {
+
   .desktop-map-settings-toggle {
     display: flex;
   }
@@ -2940,9 +2868,6 @@ body.user-guide-open {
     justify-content: space-between;
   }
 
-  #desktop-map-settings-panel .theme-selector-wrapper {
-    order: 1;
-  }
 
   #desktop-map-settings-panel .brightness-selector-wrapper {
     order: 2;
@@ -2975,7 +2900,7 @@ body.user-guide-open {
     padding-top: 0 !important;
     padding-bottom: 0 !important;
   }
-}
+
 @media (max-width: 768px) and (min-height: 450px) and (max-height: 550px) {
   #camera-actions {
     gap: 8px !important;

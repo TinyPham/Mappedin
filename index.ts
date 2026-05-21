@@ -2629,7 +2629,7 @@ async function init() {
         center: mapView.Camera.center, // Giữ nguyên center
       }, {
         duration: STARTUP_CAMERA_ZOOM_DURATION_MS, // 3 giây để zoom IN mượt mà
-        easing: "easeInOut",
+        easing: "ease-in-out",
       });
       setTimeout(
         resolveStartupCameraSequenceCompleted,
@@ -3021,7 +3021,7 @@ async function init() {
 
       // 2. Filter results (DO NOT GROUP, as per user request to list all independently)
       // Tìm kiếm trả kết quả từ TẤT CẢ các tầng, không filter theo tầng hiện tại
-      const uniqueResults = rankWayfindingSearchResults({
+    const uniqueResults: any[] = (rankWayfindingSearchResults as any)({
         query,
         objects: allMapObjects,
         nodeType: 'destination',
@@ -5244,7 +5244,7 @@ async function init() {
       center: initialVenueCenter || mapView.Camera.center,
       bearing: mapView.Camera.bearing,
       pitch: mapView.Camera.pitch
-    }, { duration: 1000, easing: "easeInOut" });
+    }, { duration: 1000, easing: "ease-in-out" });
 
     // Reset cờ sau khi animation hoàn tất
     setTimeout(() => {
@@ -6882,7 +6882,7 @@ async function init() {
         // So sánh khoảng cách và chọn đường ngắn hơn
         const distEsc = (dirEscalator?.distance ?? Infinity);
         const distElev = (dirElevator?.distance ?? Infinity);
-        const dir = (distElev <= distEsc && dirElevator?.coordinates?.length > 0) ? dirElevator : dirEscalator;
+        const dir = (distElev <= distEsc && (dirElevator?.coordinates?.length ?? 0) > 0) ? dirElevator : dirEscalator;
 
         if (dir && dir.coordinates && dir.coordinates.length > 0) {
           if (i > 0 && allCoordinates.length > 0) {
@@ -7507,19 +7507,11 @@ async function init() {
       } else {
         renderRouteNotFoundState();
         return;
-        const statusEl = document.getElementById("wayfinding-status");
-        if (statusEl) {
-          statusEl.textContent = TranslationManager.t('not_found', "Không tìm thấy đường đi");
-        }
       }
     } catch (e) {
       console.error("Error drawing navigation:", e);
-      renderRouteNotFoundState('error_nav', "Lá»—i khi tÃ¬m Ä‘Æ°á»ng Ä‘i");
+      renderRouteNotFoundState('error_nav', "Lỗi khi tìm đường đi");
       return;
-      const statusEl = document.getElementById("wayfinding-status");
-      if (statusEl) {
-        statusEl.textContent = TranslationManager.t('error_nav', "Lỗi khi tìm đường đi");
-      }
     }
   };
 
@@ -7940,7 +7932,7 @@ async function init() {
       if (nodeType === 'stopover') return obj !== wayfindingStopovers[index];
       return true;
     });
-    const uniqueResults = rankWayfindingSearchResults({
+    const uniqueResults: any[] = (rankWayfindingSearchResults as any)({
       query: safeQuery,
       objects: allMapObjects,
       origin: nodeType === 'destination' ? wayfindingOrigin : null,
@@ -8005,10 +7997,10 @@ async function init() {
         floorName = TranslationManager.getFloorName(floorId, rawName);
       }
       const nearestText = result.isNearest && Number.isFinite(result.distanceMeters)
-        ? `${TranslationManager.t('nearest', 'Gần nhất')} · ${Math.round(result.distanceMeters)}m`
+        ? `${TranslationManager.t('nearest', 'Gần nhất')} · ${Math.round(result.distanceMeters || 0)}m`
         : '';
       const distanceText = !nearestText && result.showDistance && Number.isFinite(result.distanceMeters)
-        ? `${TranslationManager.t('distance_from_start', 'Cách điểm đi')} · ${Math.round(result.distanceMeters)}m`
+        ? `${TranslationManager.t('distance_from_start', 'Cách điểm đi')} · ${Math.round(result.distanceMeters || 0)}m`
         : '';
       const subtitleParts = [nearestText || distanceText, floorName].filter(Boolean);
       const subtitle = subtitleParts.join(' · ');
@@ -10224,7 +10216,7 @@ async function init() {
           pitch: mapView.Camera.pitch,
         }, {
           duration: 800, // Duration dài hơn để mượt, giảm giật
-          easing: "easeInOut",
+          easing: "ease-in-out",
         });
       } else {
         // Khi không preview: animate bình thường
@@ -10433,7 +10425,7 @@ async function init() {
           pitch: mapView.Camera.pitch,
         }, {
           duration: 500,
-          easing: "easeInOut",
+          easing: "ease-in-out",
         });
       } catch (e) {
         console.warn("Error resetting camera:", e);
@@ -10449,7 +10441,7 @@ async function init() {
           pitch: cameraStateBeforePreview.pitch,
         }, {
           duration: 500,
-          easing: "easeInOut",
+          easing: "ease-in-out",
         });
       } catch (e) {
         console.warn("Error resetting camera:", e);
@@ -10583,7 +10575,7 @@ async function init() {
           center: mapView.Camera.center,
         }, {
           duration: isContinuous ? 100 : 300,
-          easing: isContinuous ? "linear" : "easeInOut",
+          easing: isContinuous ? "linear" : "ease-in-out",
         });
       } catch (e) { console.warn("Error pitch up:", e); }
     });
@@ -10603,7 +10595,7 @@ async function init() {
           center: mapView.Camera.center,
         }, {
           duration: isContinuous ? 100 : 300,
-          easing: isContinuous ? "linear" : "easeInOut",
+          easing: isContinuous ? "linear" : "ease-in-out",
         });
       } catch (e) { console.warn("Error pitch down:", e); }
     });
@@ -10623,7 +10615,7 @@ async function init() {
           center: mapView.Camera.center,
         }, {
           duration: isContinuous ? 100 : 300,
-          easing: isContinuous ? "linear" : "easeInOut",
+          easing: isContinuous ? "linear" : "ease-in-out",
         });
       } catch (e) { console.warn("Error rotate left:", e); }
     });
@@ -10643,7 +10635,7 @@ async function init() {
           center: mapView.Camera.center,
         }, {
           duration: isContinuous ? 100 : 300,
-          easing: isContinuous ? "linear" : "easeInOut",
+          easing: isContinuous ? "linear" : "ease-in-out",
         });
       } catch (e) { console.warn("Error rotate right:", e); }
     });
@@ -10664,7 +10656,7 @@ async function init() {
           center: initialVenueCenter || mapView.Camera.center, // Trung tâm ban đầu
         }, {
           duration: 1000,
-          easing: "easeInOut",
+          easing: "ease-in-out",
         });
 
         // Nhả cờ sau khi animation hoàn tất + buffer
@@ -10701,7 +10693,7 @@ async function init() {
             center: mapView.Camera.center,
           }, {
             duration: isContinuous ? 100 : 300,
-            easing: isContinuous ? "linear" : "easeInOut",
+            easing: isContinuous ? "linear" : "ease-in-out",
           });
         }
       } catch (e) { console.warn("Error zoom in:", e); }
@@ -10730,7 +10722,7 @@ async function init() {
             center: mapView.Camera.center,
           }, {
             duration: isContinuous ? 100 : 300,
-            easing: isContinuous ? "linear" : "easeInOut",
+            easing: isContinuous ? "linear" : "ease-in-out",
           });
         }
       } catch (e) { console.warn("Error zoom out:", e); }

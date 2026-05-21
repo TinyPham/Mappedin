@@ -1376,31 +1376,44 @@
 
         <!-- Search Tab Header -->
         <div id="search-tab-header" style="display: block;">
-          <div class="modern-search-wrapper"
-            style="box-shadow: 0 4px 15px rgba(0,0,0,0.04); border-radius: 12px; background: #f8f9fa; border: 1px solid #e0e0e0; display: flex; align-items: center; padding: 2px; position: relative;">
-            <svg style="margin-left: 14px; color: #214ca6;" width="18" height="18" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="11" cy="11" r="8"></circle>
-              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-            </svg>
-            <input type="text" id="location-search" placeholder="Tìm kiếm khu vực, điểm đến..."
-              data-i18n-placeholder="search_placeholder"
-              onfocus="if(window.innerWidth <= 768) { document.getElementById('category-section').classList.add('mobile-expanded'); document.getElementById('mobile-category-toggle').classList.add('active'); }"
-              style="width: 100%; border: none !important; box-shadow: none !important; outline: none !important; padding: 12px 44px 12px 10px !important; font-size: 14px !important; background: transparent !important; color: #333 !important; font-weight: 500 !important; height: auto !important;">
-            <button id="search-clear-btn"
-              style="display: none; background: none; border: none; font-size: 20px; color: #999; cursor: pointer; padding: 0 14px; transition: color 0.2s;">&times;</button>
-            <button id="mobile-category-toggle" class="mobile-only-btn"
-              style="display: none; background: none; border: none; padding: 0 14px; cursor: pointer; color: #214ca6; border-left: 1px solid #e0e0e0; align-items: center; justify-content: center;"
-              onclick="const sect = document.getElementById('category-section'); sect.classList.toggle('mobile-expanded'); this.classList.toggle('active');">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-                stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.3s ease;"
-                class="toggle-icon">
-                <polyline points="6 9 12 15 18 9"></polyline>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <div class="modern-search-wrapper"
+              style="flex: 1; box-shadow: 0 4px 15px rgba(0,0,0,0.04); border-radius: 12px; background: #f8f9fa; border: 1px solid #e0e0e0; display: flex; align-items: center; padding: 2px; position: relative;">
+              <svg style="margin-left: 14px; color: #214ca6;" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+              <input type="text" id="location-search" placeholder="Tìm kiếm khu vực, điểm đến..."
+                data-i18n-placeholder="search_placeholder"
+                onfocus="if(window.innerWidth <= 768) { document.getElementById('category-section').classList.add('mobile-expanded'); document.getElementById('mobile-category-toggle').classList.add('active'); }"
+                style="width: 100%; border: none !important; box-shadow: none !important; outline: none !important; padding: 12px 44px 12px 10px !important; font-size: 14px !important; background: transparent !important; color: #333 !important; font-weight: 500 !important; height: auto !important;">
+              <button id="search-clear-btn"
+                style="display: none; background: none; border: none; font-size: 20px; color: #999; cursor: pointer; padding: 0 14px; transition: color 0.2s;">&times;</button>
+              <button id="mobile-category-toggle" class="mobile-only-btn"
+                style="display: none; background: none; border: none; padding: 0 14px; cursor: pointer; color: #214ca6; border-left: 1px solid #e0e0e0; align-items: center; justify-content: center;"
+                onclick="const sect = document.getElementById('category-section'); sect.classList.toggle('mobile-expanded'); this.classList.toggle('active');">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                  stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.3s ease;"
+                  class="toggle-icon">
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+              </button>
+              <div id="search-results"
+                style="margin-top: 8px; background: white; border-radius: 12px; box-shadow: 0 8px 25px rgba(0,0,0,0.1); max-height: 40vh; overflow-y: auto; display: none; border: 1px solid #f0f0f0; z-index: 2000; position: absolute; width: 100%; left: 0; top: 100%;">
+              </div>
+            </div>
+            
+            <button id="mobile-settings-btn" class="mobile-only-btn desktop-map-settings-toggle"
+              onclick="toggleDesktopMapSettings(event)" aria-controls="desktop-map-settings-panel"
+              title="Cài đặt hiển thị"
+              style="display: none; background: white; border: 1px solid #e0e0e0; border-radius: 12px; width: 44px; height: 46px; justify-content: center; align-items: center; color: #214ca6; box-shadow: 0 4px 15px rgba(0,0,0,0.04); margin: 0; padding: 0;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 15.5A3.5 3.5 0 1 0 12 8a3.5 3.5 0 0 0 0 7.5Z"></path>
+                <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6l-.09.1a2 2 0 0 1-3.82 0L10 20a1.7 1.7 0 0 0-1-.6 1.7 1.7 0 0 0-1.88.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1l-.1-.09a2 2 0 0 1 0-3.82L4 10a1.7 1.7 0 0 0 .6-1 1.7 1.7 0 0 0-.34-1.88l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6l.09-.1a2 2 0 0 1 3.82 0L14 4a1.7 1.7 0 0 0 1 .6 1.7 1.7 0 0 0 1.88-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9c.36.14.7.35 1 .6l.1.09a2 2 0 0 1 0 3.82l-.1.09a1.7 1.7 0 0 0-1 .6Z"></path>
               </svg>
             </button>
-            <div id="search-results"
-              style="margin-top: 8px; background: white; border-radius: 12px; box-shadow: 0 8px 25px rgba(0,0,0,0.1); max-height: 40vh; overflow-y: auto; display: none; border: 1px solid #f0f0f0; z-index: 2000; position: absolute; width: 100%; left: 0; top: 100%;">
-            </div>
           </div>
         </div>
 
@@ -1994,6 +2007,7 @@
               <path d="M1,1 L7,4 L1,7 Z" fill="#e11d48"></path>
             </marker>
           </defs>
+          <path id="user-guide-backdrop-path" fill="rgba(15, 23, 42, 0.48)" fill-rule="evenodd" d=""></path>
           <path id="user-guide-arrow-path" class="user-guide-arrow-path" d=""></path>
         </svg>
         <div class="user-guide-panel" tabindex="-1">
@@ -2575,13 +2589,15 @@
     function toggleDesktopMapSettings(e) {
       if (e) e.stopPropagation();
       const panel = document.getElementById('desktop-map-settings-panel');
-      const toggle = document.getElementById('desktop-map-settings-toggle');
-      if (!panel || !toggle) return;
+      if (!panel) return;
 
       const isOpen = panel.classList.toggle('open');
       panel.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
-      toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-      toggle.classList.toggle('active', isOpen);
+      
+      document.querySelectorAll('.desktop-map-settings-toggle').forEach(toggle => {
+        toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        toggle.classList.toggle('active', isOpen);
+      });
 
       if (isOpen) {
         document.querySelectorAll('.pro-dropdown-wrapper.open, .theme-selector-wrapper.open').forEach(w => w.classList.remove('open'));
@@ -2594,13 +2610,14 @@
         document.querySelectorAll('.pro-dropdown-wrapper.open, .theme-selector-wrapper.open').forEach(w => w.classList.remove('open'));
       }
 
-      if (!e.target.closest('#desktop-map-settings-panel') && !e.target.closest('#desktop-map-settings-toggle')) {
+      if (!e.target.closest('#desktop-map-settings-panel') && !e.target.closest('.desktop-map-settings-toggle')) {
         const panel = document.getElementById('desktop-map-settings-panel');
-        const toggle = document.getElementById('desktop-map-settings-toggle');
         panel?.classList.remove('open');
         panel?.setAttribute('aria-hidden', 'true');
-        toggle?.classList.remove('active');
-        toggle?.setAttribute('aria-expanded', 'false');
+        document.querySelectorAll('.desktop-map-settings-toggle').forEach(toggle => {
+          toggle.classList.remove('active');
+          toggle.setAttribute('aria-expanded', 'false');
+        });
       }
     });
 
