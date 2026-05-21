@@ -25,6 +25,7 @@ import {
   resolveWayfindingRouteTarget,
   resolveWayfindingRouteTargets
 } from "./wayfindingRouteTargets.js";
+import { rankWayfindingSearchResults } from "./wayfindingSearchRules.js";
 import { getCategoryAreaListStyle } from "./categoryDropdownLayout.js";
 import { getModelStreamingZoomThresholds } from "./modelStreamingThresholds.js";
 import {
@@ -826,6 +827,13 @@ class TranslationManager {
       'ja': '結果が見つかりません',
       'ko': '검색 결과가 없습니다'
     },
+    'no_matching_area': {
+      'vn': 'Kh\u00f4ng t\u00ecm th\u1ea5y khu v\u1ef1c ph\u00f9 h\u1ee3p',
+      'en': 'No matching area found',
+      'zh': '\u672a\u627e\u5230\u5339\u914d\u533a\u57df',
+      'ja': '\u4e00\u81f4\u3059\u308b\u30a8\u30ea\u30a2\u304c\u898b\u3064\u304b\u308a\u307e\u305b\u3093',
+      'ko': '\uc77c\uce58\ud558\ub294 \uad6c\uc5ed\uc744 \ucc3e\uc744 \uc218 \uc5c6\uc2b5\ub2c8\ub2e4'
+    },
     'towards': {
       'vn': 'về hướng',
       'en': 'towards',
@@ -839,6 +847,20 @@ class TranslationManager {
       'zh': '靠近',
       'ja': '近く',
       'ko': '근처'
+    },
+    'nearest': {
+      'vn': 'Gần nhất',
+      'en': 'Nearest',
+      'zh': '最近',
+      'ja': '最寄り',
+      'ko': '가장 가까움'
+    },
+    'distance_from_start': {
+      'vn': 'Cách điểm đi',
+      'en': 'From start',
+      'zh': '距起点',
+      'ja': '出発地から',
+      'ko': '출발지에서'
     },
     'past': {
       'vn': 'qua',
@@ -1550,8 +1572,76 @@ class TranslationManager {
   }
 }
 
+function getObjectFloorSearchId(obj: any): string | null {
+  if (!obj) return null;
+  if (typeof obj.floor === 'string') return obj.floor;
+  return obj.floor?.mappedinId || obj.floor?.id || obj.floor?.code || obj.floorId || null;
+}
+
+function getFloorRecordForObject(obj: any): any | null {
+  const floorObj = obj?.floor && typeof obj.floor === 'object' ? obj.floor : null;
+  const floorIds = new Set<string>();
+
+  [
+    getObjectFloorSearchId(obj),
+    obj?.floorId,
+    floorObj?.mappedinId,
+    floorObj?.id,
+    floorObj?.code
+  ].forEach((value) => {
+    if (value) floorIds.add(String(value));
+  });
+
+  return (TranslationManager.data?.floors || []).find((floor: any) =>
+    [floor?.id, floor?.mappedinId, floor?.code].some((value) => value && floorIds.has(String(value)))
+  ) || null;
+}
+
+function inferFloorSortRankFromText(value: any): number {
+  const text = String(value || '').trim().toLowerCase();
+  if (!text) return Infinity;
+  const normalized = removeVietnameseTones(text).toLowerCase();
+
+  if (/tang\s*tret/i.test(normalized) || /ground/i.test(text) || /\bgf\b/i.test(text)) {
+    return 0;
+  }
+
+  const numericMatch = text.match(/\d+/);
+  if (!numericMatch) return Infinity;
+  const floorNumber = Number.parseInt(numericMatch[0], 10);
+  return Number.isFinite(floorNumber) ? floorNumber : Infinity;
+}
+
+function getFloorSortRankForObject(obj: any): number {
+  const floorObj = obj?.floor && typeof obj.floor === 'object' ? obj.floor : null;
+  const floorRecord = getFloorRecordForObject(obj);
+
+  const sortOrder = Number(floorRecord?.sortOrder);
+  if (Number.isFinite(sortOrder)) return sortOrder;
+
+  const candidates = [
+    floorRecord?.code,
+    ...Object.values(floorRecord?.names || {}),
+    floorObj?.code,
+    floorObj?.name
+  ];
+
+  for (const value of candidates) {
+    const inferred = inferFloorSortRankFromText(value);
+    if (Number.isFinite(inferred)) return inferred;
+  }
+
+  return Infinity;
+}
+
 const AREA_COLOR_LOCAL_STORAGE_KEY = 'customAreaColors';
 const AREA_COLOR_MIGRATION_FLAG_KEY = 'customAreaColorsMigratedToServer';
+const SEARCHABLE_DETAIL_FLOOR_IDS = new Set([
+  'm_dae8f26a40f6017f',
+  'm_41a38d6d0411d397',
+  'm_d4b5674c0b15e099',
+  'm_1523f7dcde647c40'
+]);
 
 // getApiBaseUrl moved to top
 
@@ -2931,18 +3021,16 @@ async function init() {
 
       // 2. Filter results (DO NOT GROUP, as per user request to list all independently)
       // Tìm kiếm trả kết quả từ TẤT CẢ các tầng, không filter theo tầng hiện tại
-      const allMatchedObjects: { name: string, primaryObject: any }[] = [];
-
-      allMapObjects.forEach((obj) => {
-        const localizedName = TranslationManager.getName(obj);
-        if (localizedName && smartMatch(query, localizedName)) {
-          allMatchedObjects.push({ name: localizedName, primaryObject: obj });
-        }
+      const uniqueResults = rankWayfindingSearchResults({
+        query,
+        objects: allMapObjects,
+        nodeType: 'destination',
+        currentFloorId: mapView.currentFloor?.id || null,
+        getName: (obj: any) => TranslationManager.getName(obj),
+        getFloorSortRank: getFloorSortRankForObject,
+        allowedFloorIds: SEARCHABLE_DETAIL_FLOOR_IDS
       });
 
-      // Sort and Show up to 25 items individual locations (Natural Sort)
-      allMatchedObjects.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
-      const uniqueResults = allMatchedObjects.slice(0, 25);
 
       if (uniqueResults.length === 0 && matchedCategories.length === 0 && matchedSubCategories.length === 0) {
         searchResults.innerHTML = `
@@ -7843,77 +7931,31 @@ async function init() {
     const resultsContainer = document.getElementById("wayfinding-search-results");
     if (!resultsContainer) return;
 
-    let isSuggested = false;
-    const allMatchedObjects: any[] = [];
     const safeQuery = query ? query.trim() : "";
-
-    const smartMatch = (query: string, target: string): boolean => {
-      if (!query || !target) return false;
-      const q = query.toLowerCase().trim();
-      const t = target.toLowerCase().trim();
-
-      // 1. Direct match
-      if (t.includes(q)) return true;
-
-      // 2. Accent-insensitive
-      const qClean = removeVietnameseTones(q);
-      const tClean = removeVietnameseTones(t);
-      if (tClean.includes(qClean)) return true;
-
-      const qTokens = q.split(/[\s\-\,]+/).filter(tk => tk.length > 0);
-      const tTokens = t.split(/[\s\-\,]+/).filter(tk => tk.length > 0);
-      if (qTokens.length === 0 || tTokens.length === 0) return false;
-
-      const qTokensClean = qTokens.map(tk => removeVietnameseTones(tk));
-      const tTokensClean = tTokens.map(tk => removeVietnameseTones(tk));
-
-      const allQueryInTarget = qTokensClean.every(qt => tTokensClean.some(tt => tt.includes(qt)));
-      if (allQueryInTarget) return true;
-
-      if (tTokensClean.length >= 2) {
-        const allTargetInQuery = tTokensClean.every(tt => qTokensClean.some(qt => qt.includes(tt)));
-        if (allTargetInQuery) return true;
-      }
-      return false;
-    };
-
-    if (!safeQuery) {
-      isSuggested = true;
-      // Show default list (Suggested/Frequent)
-      allMapObjects.forEach((obj: any) => {
-        const localizedName = TranslationManager.getName(obj);
-        if (localizedName && localizedName.trim().length > 0 && !localizedName.toLowerCase().includes("khu vực không tên")) {
-          allMatchedObjects.push({ name: localizedName, primaryObject: obj });
-        }
-      });
-      // Sort alphabetically (Natural Sort) for consistency
-      allMatchedObjects.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
-    } else {
-      allMapObjects.forEach((obj: any) => {
-        const localizedName = TranslationManager.getName(obj);
-        if (localizedName && smartMatch(safeQuery, localizedName)) {
-          allMatchedObjects.push({ name: localizedName, primaryObject: obj });
-        }
-      });
-      // Sort search results (Natural Sort)
-      allMatchedObjects.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
-    }
-
-    // Lọc trùng lặp name để list suggested nhìn sạch hơn
-    const filteredResults = [];
-    const seenNames = new Set();
-    for (const item of allMatchedObjects) {
-      if (!seenNames.has(item.name)) {
-        seenNames.add(item.name);
-        filteredResults.push(item);
-      }
-      if (filteredResults.length >= 15) break; // Limit to 15 items maximum
-    }
-
-    const uniqueResults = filteredResults;
+    const isSuggested = !safeQuery;
+    const selectedRouteObjects = [wayfindingOrigin, ...wayfindingStopovers, wayfindingDestination].filter(Boolean);
+    const excludeObjects = selectedRouteObjects.filter((obj: any) => {
+      if (nodeType === 'origin') return obj !== wayfindingOrigin;
+      if (nodeType === 'destination') return obj !== wayfindingDestination;
+      if (nodeType === 'stopover') return obj !== wayfindingStopovers[index];
+      return true;
+    });
+    const uniqueResults = rankWayfindingSearchResults({
+      query: safeQuery,
+      objects: allMapObjects,
+      origin: nodeType === 'destination' ? wayfindingOrigin : null,
+      nodeType,
+      excludeObjects,
+      currentFloorId: mapView.currentFloor?.id || null,
+      getName: (obj: any) => TranslationManager.getName(obj),
+      getFloorSortRank: getFloorSortRankForObject,
+      allowedFloorIds: SEARCHABLE_DETAIL_FLOOR_IDS
+    });
 
     if (uniqueResults.length === 0) {
-      resultsContainer.innerHTML = `<div style="padding: 15px; color: #999; text-align: center; font-size:13px;">${TranslationManager.t('no_results_found', 'Không tìm thấy kết quả')}</div>`;
+      const emptyMessageKey = safeQuery ? 'no_matching_area' : 'no_results_found';
+      const emptyMessageFallback = safeQuery ? 'Kh\u00f4ng t\u00ecm th\u1ea5y khu v\u1ef1c ph\u00f9 h\u1ee3p' : 'Kh\u00f4ng t\u00ecm th\u1ea5y k\u1ebft qu\u1ea3';
+      resultsContainer.innerHTML = `<div style="padding: 15px; color: #999; text-align: center; font-size:13px;">${TranslationManager.t(emptyMessageKey, emptyMessageFallback)}</div>`;
       resultsContainer.style.display = "block";
       return;
     }
@@ -7962,6 +8004,14 @@ async function init() {
         const rawName = floorObj.name || '';
         floorName = TranslationManager.getFloorName(floorId, rawName);
       }
+      const nearestText = result.isNearest && Number.isFinite(result.distanceMeters)
+        ? `${TranslationManager.t('nearest', 'Gần nhất')} · ${Math.round(result.distanceMeters)}m`
+        : '';
+      const distanceText = !nearestText && result.showDistance && Number.isFinite(result.distanceMeters)
+        ? `${TranslationManager.t('distance_from_start', 'Cách điểm đi')} · ${Math.round(result.distanceMeters)}m`
+        : '';
+      const subtitleParts = [nearestText || distanceText, floorName].filter(Boolean);
+      const subtitle = subtitleParts.join(' · ');
 
       item.innerHTML = `
         <div style="width:36px; height:36px; border-radius:50%; background:#f1f5f9; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-right:12px;">
@@ -7969,7 +8019,7 @@ async function init() {
         </div>
         <div style="flex: 1; overflow: hidden; display: flex; flex-direction: column; justify-content: center;">
           <div style="font-size: 15px; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500;">${cleanName}</div>
-          ${floorName ? `<div style="font-size:12px; color:#64748b; margin-top:2px;">${floorName}</div>` : ''}
+          ${subtitle ? `<div style="font-size:12px; color:#64748b; margin-top:2px;">${subtitle}</div>` : ''}
         </div>
       `;
 
