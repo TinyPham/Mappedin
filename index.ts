@@ -2214,7 +2214,8 @@ async function init() {
     let arrowEndY = targetY;
 
     if (step?.id === 'desktop-layout-overview') {
-      arrowEndX = targetRect.right;
+      const sidebarWidth = window.innerWidth <= 1200 ? 340 : 380;
+      arrowEndX = sidebarWidth;
       arrowEndY = window.innerHeight / 2;
     } else {
       // Normal intersection math
@@ -2293,6 +2294,13 @@ async function init() {
     const step = getActiveGuideStep();
     if (!step) return;
 
+    // Auto-expand sidebar if this is the desktop layout overview step
+    if (window.innerWidth > 768 && step.id === 'desktop-layout-overview') {
+      try {
+        if (typeof expandSidebar === 'function') expandSidebar();
+      } catch (e) {}
+    }
+
     if (userGuideImage) {
       userGuideImage.src = step.image;
       userGuideImage.alt = step.title;
@@ -2327,7 +2335,14 @@ async function init() {
       }
     }
 
-    window.requestAnimationFrame(updateUserGuideHighlight);
+    if (step.id === 'desktop-layout-overview') {
+      if (userGuideHighlight) userGuideHighlight.classList.add('hidden');
+      if (userGuideArrowLayer) userGuideArrowLayer.classList.add('hidden');
+      setTimeout(updateUserGuideHighlight, 850);
+    } else {
+      window.requestAnimationFrame(updateUserGuideHighlight);
+      setTimeout(updateUserGuideHighlight, 850);
+    }
   };
 
   const closeUserGuide = (markCompleted = false) => {
@@ -2455,6 +2470,86 @@ async function init() {
   inputScaleZ = document.getElementById("scale-z") as HTMLInputElement;
   inpModelPublic = document.getElementById("inp-model-public") as HTMLInputElement;
 
+
+
+  // ============================================
+  // DESKTOP SIDEBAR COLLAPSE/EXPAND SYSTEM
+  // ============================================
+  const sidebarEl = document.getElementById("main-sidebar-left");
+  const sidebarToggleBtn = document.getElementById("sidebar-toggle-btn");
+  const floatingSearchBar = document.getElementById("floating-search-bar");
+  let isSidebarCollapsed = window.innerWidth > 768; // Start collapsed on desktop
+
+  function collapseSidebar(animate = true) {
+    if (!sidebarEl || !sidebarToggleBtn || !floatingSearchBar) return;
+    if (window.innerWidth <= 768) return; // Desktop only
+    isSidebarCollapsed = true;
+
+    sidebarEl.classList.add("sidebar-collapsed");
+    sidebarToggleBtn.title = "Mở thanh bên";
+
+    setTimeout(() => {
+      floatingSearchBar.classList.add("visible");
+    }, animate ? 250 : 50);
+
+    // Reset camera to initial center and 16.5 zoom when going full screen
+    if (typeof mapView !== 'undefined' && mapView?.Camera && typeof initialVenueCenter !== 'undefined' && initialVenueCenter) {
+      try {
+        mapView.Camera.animate({
+          center: initialVenueCenter,
+          zoomLevel: 16.5,
+          duration: 800,
+          easing: "ease-in-out"
+        });
+      } catch(e) {}
+    }
+  }
+
+  function expandSidebar(fromSearchBar = false) {
+    if (!sidebarEl || !sidebarToggleBtn || !floatingSearchBar) return;
+    isSidebarCollapsed = false;
+
+    if (fromSearchBar) {
+      // Genie effect: shrink towards the sidebar
+      floatingSearchBar.classList.add("genie-shrink");
+      setTimeout(() => {
+        floatingSearchBar.classList.remove("visible", "genie-shrink");
+      }, 800); // matches the 0.8s CSS transition
+    } else {
+      // Normal hide
+      floatingSearchBar.classList.remove("visible");
+    }
+
+    sidebarEl.classList.remove("sidebar-collapsed");
+    sidebarToggleBtn.title = "Thu gọn thanh bên";
+
+    setTimeout(() => {
+      const searchInput = document.getElementById("location-search") as HTMLInputElement;
+      if (searchInput) searchInput.focus();
+    }, 850);
+  }
+
+  if (sidebarToggleBtn) {
+    sidebarToggleBtn.addEventListener("click", () => {
+      if (isSidebarCollapsed) {
+        expandSidebar();
+      } else {
+        collapseSidebar();
+      }
+    });
+  }
+
+  if (floatingSearchBar) {
+    floatingSearchBar.addEventListener("click", () => {
+      expandSidebar(true);
+    });
+    floatingSearchBar.addEventListener("keydown", (e: KeyboardEvent) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        expandSidebar(true);
+      }
+    });
+  }
 
   // HIDE DEFAULT LABELS: Use our custom markers instead (with square avatar style)
   /* BƯỚC 3: COMMENT OUT LABEL HIDING
@@ -2619,7 +2714,7 @@ async function init() {
       const currentZoom = getCameraZoom() ?? 12.0;
 
       // Zoom IN (phóng to) lên 16.0 để khởi tạo Overview
-      const targetZoom = 15;
+      const targetZoom = 16.5;
 
       // Animate camera để zoom IN mượt mà với bearing = bearing - 35
       cameraAny.animateTo({

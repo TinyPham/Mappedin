@@ -57,6 +57,9 @@ details.mappedin-ctrl-attrib,
    SIDEBAR STYLES (INCHEON STYLE)
    ========================================= */
 #main-sidebar-left {
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 380px;
   min-width: 380px;
   height: 100%;
@@ -1310,7 +1313,10 @@ body.placing-mode #mappedin-map {
 
 .pro-dropdown-toggle {
   background: white;
-  padding: 10px 16px;
+  height: 44px;
+  min-height: 44px;
+  box-sizing: border-box;
+  padding: 0 16px;
   border-radius: 30px;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
   display: flex;
@@ -1370,6 +1376,8 @@ body.placing-mode #mappedin-map {
   width: max-content;
   min-width: 100%;
   max-width: calc(100vw - 24px);
+  left: 0;
+  right: auto;
 }
 
 #lang-options {
@@ -1955,16 +1963,25 @@ body.zoom-out-mode .mappedin-poi-marker {
 
 /* Top-left map controls (Floor Selector + Flight Info) */
 #map-top-left-controls {
-  position: absolute;
+  position: fixed;
   top: 20px;
-  left: 20px;
+  left: 400px; /* 380px sidebar + 20px margin */
   z-index: 1000;
   display: flex;
   gap: 12px;
   align-items: center;
+  transition: left 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar-collapsed ~ #main-content #map-top-left-controls,
+#main-sidebar-left.sidebar-collapsed ~ #main-content #map-top-left-controls {
+  left: 20px;
 }
 
 .flight-info-top-btn {
+  height: 44px;
+  min-height: 44px;
+  box-sizing: border-box;
   cursor: pointer;
   transition: all 0.2s ease;
 }
@@ -2152,78 +2169,148 @@ body.zoom-out-mode .mappedin-poi-marker {
     right: auto !important;
   }
 
+  /* TOP RIGHT CONTROLS */
   #map-top-controls {
     top: 20px !important;
     right: 12px !important;
-    gap: 8px !important;
+    gap: 10px !important;
     align-items: center !important;
+    z-index: 1000 !important;
   }
 
+  /* TOP LEFT CONTROLS - Floor + Flight Info */
   #map-top-left-controls {
     top: 20px !important;
+    left: 365px !important; /* 340px sidebar + 24px for toggle button + margin */
+    gap: 10px !important;
+    position: fixed !important;
+    display: flex !important;
+    align-items: center !important;
+    z-index: 1060 !important;
+  }
+  #main-sidebar-left.sidebar-collapsed ~ #main-content #map-top-left-controls {
     left: 12px !important;
-    gap: 8px !important;
   }
 
+  /* BUTTON SIZING - All buttons match 40px height */
+  #floating-search-bar,
   .theme-selector-toggle,
-  .pro-dropdown-toggle {
-    height: 40px;
-    min-height: 40px;
-    padding: 0 12px;
-    gap: 6px;
-    font-size: 13px;
-    box-sizing: border-box;
+  .pro-dropdown-toggle,
+  .flight-info-top-btn {
+    height: 40px !important;
+    min-height: 40px !important;
+    padding: 0 12px !important;
+    gap: 6px !important;
+    font-size: 13px !important;
+    box-sizing: border-box !important;
+  }
+
+  #floating-search-bar {
+    position: fixed !important;
+    top: 20px !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    width: auto !important;
+    /* Reserve left area (sidebar + toggle + left-controls) so search doesn't overlap */
+    max-width: calc(100% - 420px) !important;
+    background: rgba(255, 255, 255, 0.95) !important;
+    border-radius: 30px !important;
+    border: 1px solid rgba(0, 0, 0, 0.1) !important;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1) !important;
+    z-index: 1050 !important;
+  }
+
+  #floating-search-bar input,
+  #floating-search-bar input::placeholder {
+    font-size: 13px !important;
+    line-height: 1 !important;
+  }
+
+  .pro-dropdown-toggle,
+  .flight-info-top-btn {
+    position: relative !important;
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+    background: white !important;
+    border: 1px solid rgba(0, 0, 0, 0.05) !important;
+    border-radius: 30px !important;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1) !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+  }
+
+  .pro-dropdown-toggle:hover,
+  .flight-info-top-btn:hover {
+    background: #f8f9fa !important;
+    border-color: rgba(0, 0, 0, 0.1) !important;
   }
 
   .brightness-toggle {
-    height: 40px;
-    min-height: 40px;
-    padding: 0 10px;
-    gap: 6px;
+    height: 40px !important;
+    min-height: 40px !important;
+    padding: 0 10px !important;
+    gap: 6px !important;
   }
 
   .theme-selector-toggle span,
   .pro-dropdown-toggle span {
-    font-size: 13px;
-    line-height: 1;
-    white-space: nowrap;
+    font-size: 13px !important;
+    line-height: 1 !important;
+    white-space: nowrap !important;
   }
 
   .pro-dropdown-item {
-    font-size: 13px;
+    font-size: 13px !important;
   }
 
   #floor-options .pro-dropdown-item,
   #lang-options .pro-dropdown-item {
-    font-size: 13px;
+    font-size: 13px !important;
   }
 
   .theme-selector-toggle svg,
-  .pro-dropdown-toggle svg {
-    width: 16px;
-    height: 16px;
+  .pro-dropdown-toggle svg,
+  .flight-info-top-btn svg {
+    width: 16px !important;
+    height: 16px !important;
   }
 
   .theme-selector-toggle .arrow,
   .pro-dropdown-toggle .arrow {
-    width: 12px;
-    height: 12px;
+    width: 12px !important;
+    height: 12px !important;
   }
 
   #brightness-slider {
-    width: 58px;
+    width: 58px !important;
   }
 
   .brightness-btn {
-    width: 22px;
-    height: 22px;
-    flex: 0 0 22px;
-    font-size: 14px;
+    width: 22px !important;
+    height: 22px !important;
+    flex: 0 0 22px !important;
+    font-size: 14px !important;
   }
 
   .brightness-value {
-    min-width: 20px;
-    font-size: 12px;
+    min-width: 20px !important;
+    font-size: 12px !important;
+  }
+
+  /* SIDEBAR TOGGLE BUTTON */
+  #sidebar-toggle-btn {
+    z-index: 150 !important; /* Below map controls */
+    border-right: 2px solid #e0e4ef !important;
+    border-left: none !important;
+  }
+
+  #main-sidebar-left.sidebar-collapsed ~ #sidebar-toggle-btn {
+    z-index: 150 !important;
+  }
+
+  /* HIDDEN ELEMENTS - Floor select kept for compatibility */
+  #floor-selector {
+    display: none !important;
   }
 }
 @media (min-width: 769px) and (max-width: 992px) {
@@ -2238,17 +2325,22 @@ body.zoom-out-mode .mappedin-poi-marker {
   }
 
   #map-top-left-controls {
-    left: 8px !important;
+    left: 348px !important; /* 340px + 8px */
     gap: 6px !important;
   }
+  #main-sidebar-left.sidebar-collapsed ~ #main-content #map-top-left-controls {
+    left: 8px !important;
+  }
 
+  #floating-search-bar,
   .theme-selector-toggle,
-  .pro-dropdown-toggle {
-    height: 36px;
-    min-height: 36px;
-    padding: 0 9px;
-    gap: 4px;
-    font-size: 12px;
+  .pro-dropdown-toggle,
+  .flight-info-top-btn {
+    height: 36px !important;
+    min-height: 36px !important;
+    padding: 0 9px !important;
+    gap: 4px !important;
+    font-size: 12px !important;
   }
 
   .brightness-toggle {
@@ -2298,6 +2390,30 @@ body.zoom-out-mode .mappedin-poi-marker {
   .brightness-value {
     min-width: 18px;
     font-size: 11px;
+  }
+
+  /* FIX: Search bar text size for smaller screens */
+  #floating-search-bar input,
+  #floating-search-bar input::placeholder {
+    font-size: 12px;
+    line-height: 1;
+  }
+
+  /* FIX: Floor selector alignment for smaller screens */
+  #floor-selector {
+    position: absolute !important;
+    top: 20px !important;
+    left: 348px !important;
+    transform: none !important;
+    max-width: 150px !important;
+    width: auto !important;
+    padding: 8px 10px 8px 10px !important;
+    font-size: 12px !important;
+    z-index: 1000 !important;
+  }
+
+  #main-sidebar-left.sidebar-collapsed ~ #main-content #floor-selector {
+    left: 8px !important;
   }
 }
 @media (max-width: 768px) {
@@ -2350,17 +2466,28 @@ body.zoom-out-mode .mappedin-poi-marker {
   }
 
   #map-top-left-controls {
-    left: 6px !important;
+    left: 346px !important; /* 340px + 6px */
     gap: 4px !important;
   }
+  #main-sidebar-left.sidebar-collapsed ~ #main-content #map-top-left-controls {
+    left: 6px !important;
+  }
 
+  #floating-search-bar,
   .theme-selector-toggle,
-  .pro-dropdown-toggle {
-    height: 32px;
-    min-height: 32px;
-    padding: 0 7px;
-    gap: 3px;
+  .pro-dropdown-toggle,
+  .flight-info-top-btn {
+    height: 32px !important;
+    min-height: 32px !important;
+    padding: 0 7px !important;
+    gap: 3px !important;
+    font-size: 10px !important;
+  }
+
+  #floating-search-bar input,
+  #floating-search-bar input::placeholder {
     font-size: 10px;
+    line-height: 1;
   }
 
   .brightness-toggle {
@@ -2449,6 +2576,75 @@ body.zoom-out-mode .mappedin-poi-marker {
     font-size: 12px !important;
     padding: 7px 9px !important;
     line-height: 1.2 !important;
+  }
+
+  /* FIX: Floor selector alignment for 900px screens */
+  #floor-selector {
+    position: absolute !important;
+    top: 20px !important;
+    left: 346px !important;
+    transform: none !important;
+    max-width: 140px !important;
+    width: auto !important;
+    padding: 8px 9px 8px 9px !important;
+    font-size: 10px !important;
+    z-index: 1000 !important;
+  }
+
+  #main-sidebar-left.sidebar-collapsed ~ #main-content #floor-selector {
+    left: 6px !important;
+  }
+}
+
+/* ======================================================
+   Specific fixes for desktop narrow range (901 - 1199)
+   Ensure floating search bar height/font match top-left buttons
+   and prevent overlap with sidebar / toggle button
+   ====================================================== */
+@media (min-width: 901px) and (max-width: 1199px) {
+
+  /* Make floor/lang buttons and flight-info uniform */
+  .pro-dropdown-toggle,
+  .flight-info-top-btn {
+    height: 44px !important;
+    min-height: 44px !important;
+    padding: 0 14px !important;
+    font-size: 14px !important;
+    line-height: 44px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Floating search bar must match the same height and font-size */
+  #floating-search-bar {
+    height: 44px !important;
+    min-height: 44px !important;
+    line-height: 44px !important;
+    font-size: 14px !important;
+    padding: 0 18px !important;
+    box-sizing: border-box !important;
+    z-index: 1040 !important; /* below top-left controls which are 1050+ */
+    width: auto !important;
+    max-width: calc(100% - 420px) !important; /* reserve left area for controls */
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+  }
+
+  /* Ensure top-left controls sit to the right of sidebar+toggle */
+  #map-top-left-controls {
+    left: calc(340px + 36px) !important; /* sidebar(340) + toggle(~36) */
+  }
+
+  /* When sidebar collapsed, move top-left controls to 12px */
+  #main-sidebar-left.sidebar-collapsed ~ #main-content #map-top-left-controls {
+    left: 12px !important;
+  }
+
+  /* Make sure sidebar toggle sits below map controls visually */
+  #sidebar-toggle-btn {
+    z-index: 150 !important;
   }
 }
 /* User Guide Tutorial */
@@ -2827,8 +3023,8 @@ body.user-guide-open {
   }
 
   #desktop-map-settings-panel {
-    position: absolute;
-    left: 0 !important;
+    position: fixed;
+    left: 380px !important;
     top: 20px !important;
     z-index: 6200;
     display: flex;
@@ -2844,10 +3040,15 @@ body.user-guide-open {
     box-shadow: 12px 12px 32px rgba(15, 23, 42, 0.14);
     box-sizing: border-box;
     transform-origin: left top;
-    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease, visibility 0.3s ease;
+    transition: left 0.8s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease, visibility 0.3s ease;
     transform: scale(0.6) translate(-40px, -40px);
     opacity: 0;
     pointer-events: none;
+  }
+
+  .sidebar-collapsed ~ #main-content #desktop-map-settings-panel,
+  #main-sidebar-left.sidebar-collapsed ~ #main-content #desktop-map-settings-panel {
+    left: 0 !important;
   }
 
   #desktop-map-settings-panel.open {
@@ -3040,20 +3241,19 @@ body.user-guide-open {
 
 /* --- Adjustments for Short Desktop Screens --- */
 @media (min-width: 769px) and (max-height: 650px) {
+  #floating-search-bar,
   #map-top-left-controls,
   #map-top-controls {
     top: 10px !important;
     gap: 6px !important;
   }
   
-  #map-top-left-controls {
-    left: 10px !important;
-  }
-  
+
   #map-top-controls {
     right: 10px !important;
   }
 
+  #floating-search-bar,
   .theme-selector-toggle,
   .pro-dropdown-toggle {
     height: 32px !important;
@@ -3127,20 +3327,18 @@ body.user-guide-open {
 }
 
 @media (min-width: 769px) and (max-height: 520px) {
+  #floating-search-bar,
   #map-top-left-controls,
   #map-top-controls {
     top: 6px !important;
     gap: 4px !important;
   }
 
-  #map-top-left-controls {
-    left: 6px !important;
-  }
-
   #map-top-controls {
     right: 6px !important;
   }
 
+  #floating-search-bar,
   .theme-selector-toggle,
   .pro-dropdown-toggle {
     height: 28px !important;
@@ -3199,5 +3397,248 @@ body.user-guide-open {
   #nav-cross-container .camera-btn svg {
     width: 14px !important;
     height: 14px !important;
+  }
+}
+
+/* ============================================
+   AIRPLANE PUSH & GENIE ANIMATIONS
+   ============================================ */
+
+/* Genie effect when clicking the floating search bar */
+#floating-search-bar {
+  /* Ensure transform origin is center for normal scaling */
+  transform-origin: center;
+  transition: opacity 0.35s ease, transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease;
+}
+
+/* Genie effect when clicking the floating search bar */
+#floating-search-bar.genie-shrink {
+  /* Animate towards the right corner of the sidebar search bar */
+  left: 50%;
+  /* Center is offset by half width (210px), so to hit 350px (right edge of sidebar search), we translate left edge to 140px */
+  transform: translateX(calc(-50vw + 140px)) translateY(55px) scale(0.15) rotate(-5deg) !important;
+  opacity: 0;
+  border-radius: 40px;
+  background-color: #f0f4ff; /* slight glow */
+  box-shadow: 0 0 20px #214ca6;
+  filter: blur(1px);
+  /* Keep visible while flying, fade out only at the end */
+  transition: transform 0.8s cubic-bezier(0.5, -0.2, 0.2, 1),
+              opacity 0.2s 0.6s ease,
+              background-color 0.8s ease,
+              border-radius 0.8s ease,
+              box-shadow 0.8s ease,
+              filter 0.8s ease !important;
+  pointer-events: none;
+}
+
+/* ============================================
+   DESKTOP SIDEBAR COLLAPSE/EXPAND SYSTEM
+   ============================================ */
+
+/* --- Sidebar Toggle Button --- */
+#sidebar-toggle-btn {
+  display: none; /* Hidden on mobile */
+}
+
+@media (min-width: 769px) {
+  /* Toggle Button */
+  #sidebar-toggle-btn {
+    display: flex;
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateX(380px) translateY(-50%);
+    z-index: 200;
+    width: 24px;
+    height: 56px;
+    background: #ffffff;
+    border: 1px solid #e0e4ef;
+    border-left: none;
+    border-radius: 0 10px 10px 0;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #214ca6;
+    box-shadow: 4px 2px 12px rgba(0, 0, 0, 0.08);
+    transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1), background 0.2s, color 0.2s;
+  }
+
+  #sidebar-toggle-btn:hover {
+    background: #f0f4ff;
+    color: #1a3a8a;
+    box-shadow: 4px 2px 16px rgba(33, 76, 166, 0.15);
+  }
+
+  #sidebar-toggle-btn svg {
+    width: 14px;
+    height: 14px;
+    transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Sidebar transition */
+  #main-sidebar-left.modern-sidebar {
+    transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.6s ease;
+  }
+
+  /* --- Collapsed State --- */
+  #main-sidebar-left.modern-sidebar.sidebar-collapsed {
+    transform: translateX(-380px);
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  /* Toggle button moves to edge when collapsed */
+  #main-sidebar-left.sidebar-collapsed ~ #sidebar-toggle-btn {
+    transform: translateX(0) translateY(-50%) !important;
+  }
+
+  /* Toggle icon flips */
+  #main-sidebar-left.sidebar-collapsed ~ #sidebar-toggle-btn svg {
+    transform: rotate(180deg);
+  }
+
+  /* --- Floating Search Bar (shown when sidebar collapsed) --- */
+  #floating-search-bar {
+    display: none; /* hidden by default */
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1050;
+    width: 420px;
+    max-width: 40vw;
+    height: 44px;
+    background: #ffffff;
+    border: 1px solid #e0e4ef;
+    border-radius: 24px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1), 0 1px 4px rgba(0, 0, 0, 0.05);
+    align-items: center;
+    padding: 0 18px;
+    gap: 10px;
+    cursor: pointer;
+    /* Clean vertical slide transition */
+    transition: opacity 0.4s ease, transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.2s ease;
+    opacity: 0;
+    pointer-events: none;
+    /* Start higher up to simulate "slide down from above" and "slide up to hide" */
+    transform: translateX(-50%) translateY(-40px);
+  }
+
+  #floating-search-bar.visible {
+    display: flex;
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  #floating-search-bar:hover {
+    box-shadow: 0 6px 28px rgba(33, 76, 166, 0.15), 0 2px 8px rgba(0, 0, 0, 0.08);
+    border-color: #c0cfef;
+  }
+
+  #floating-search-bar .floating-search-icon {
+    color: #214ca6;
+    flex-shrink: 0;
+  }
+
+  #floating-search-bar .floating-search-text {
+    flex: 1;
+    font-size: 14px;
+    font-weight: 500;
+    color: #999;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-family: 'Inter', sans-serif;
+    user-select: none;
+  }
+
+  #floating-search-bar .floating-search-kbd {
+    flex-shrink: 0;
+    font-size: 11px;
+    color: #b0b8cc;
+    background: #f4f6fa;
+    border: 1px solid #e0e4ef;
+    border-radius: 6px;
+    padding: 2px 8px;
+    font-family: 'Inter', sans-serif;
+    user-select: none;
+  }
+}
+
+/* Bridge the gap between full width and <=1200px for floating search bar */
+@media (min-width: 1201px) and (max-width: 1300px) {
+  #floating-search-bar {
+    width: 380px !important;
+    left: calc(50% + 30px) !important;
+  }
+}
+
+/* Adjust toggle position for smaller sidebar (<=1200px) */
+@media (min-width: 769px) and (max-width: 1200px) {
+  #main-sidebar-left {
+    width: 340px !important;
+    min-width: 340px !important;
+  }
+  #sidebar-toggle-btn {
+    transform: translateX(340px) translateY(-50%) !important;
+    border: 1px solid #e0e4ef !important;
+    border-left: none !important;
+    border-radius: 0 10px 10px 0 !important;
+    z-index: 150 !important;
+  }
+  #main-sidebar-left.modern-sidebar.sidebar-collapsed {
+    transform: translateX(-340px) !important;
+  }
+  #desktop-map-settings-panel {
+    left: 340px !important;
+  }
+  #floating-search-bar {
+    width: 340px !important;
+    max-width: 35vw !important;
+    /* Shift slightly right to prevent overlapping with left controls */
+    left: calc(50% + 50px) !important;
+  }
+}
+
+@media (min-width: 769px) and (max-width: 992px) {
+  #floating-search-bar {
+    width: 280px !important;
+    max-width: 30vw !important;
+    /* Shift more to the right because left controls are closer */
+    left: calc(50% + 60px) !important;
+  }
+  #floating-search-bar .floating-search-kbd {
+    display: none !important;
+  }
+}
+
+@media (min-width: 769px) and (max-width: 900px) {
+  #floating-search-bar {
+    width: 240px !important;
+    max-width: 25vw !important;
+    left: calc(50% + 70px) !important;
+  }
+}
+
+/* Height-based overrides must come LAST to ensure short screens always get smaller buttons */
+@media (min-width: 769px) and (max-height: 650px) {
+  #floating-search-bar {
+    height: 32px !important;
+    min-height: 32px !important;
+  }
+  #floating-search-bar .floating-search-text {
+    font-size: 11px !important;
+  }
+}
+
+@media (min-width: 769px) and (max-height: 520px) {
+  #floating-search-bar {
+    height: 28px !important;
+    min-height: 28px !important;
+  }
+  #floating-search-bar .floating-search-text {
+    font-size: 10px !important;
   }
 }

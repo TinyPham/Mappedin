@@ -71,7 +71,7 @@ export const tutorialSteps = {
       title: 'Tổng quan giao diện',
       description: 'Chào mừng bạn đến với Bản đồ 3D! Giao diện được tối ưu với Sidebar bên trái giúp bạn tìm kiếm, chọn dịch vụ và dẫn đường; kết hợp Bản đồ tương tác toàn cảnh ở bên phải.',
       image: '/tutorial/desktop/01-layout-overview.svg',
-      targetSelectors: ['#main-sidebar-left', '#mappedin-map'],
+      targetSelectors: ['#main-sidebar-left'],
       placement: 'center'
     },
     {
