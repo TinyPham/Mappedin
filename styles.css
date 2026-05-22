@@ -2275,6 +2275,11 @@ body.zoom-out-mode .mappedin-poi-marker {
     height: 16px !important;
   }
 
+  .flight-info-top-btn svg {
+    width: 18px !important;
+    height: 18px !important;
+  }
+
   .theme-selector-toggle .arrow,
   .pro-dropdown-toggle .arrow {
     width: 12px !important;
@@ -3132,8 +3137,8 @@ body.user-guide-open {
 
   #camera-actions .camera-btn svg,
   #camera-actions #btn-open-flight-info svg {
-    width: 15px !important;
-    height: 15px !important;
+    width: 17px !important;
+    height: 17px !important;
   }
 
   #btn-user-guide .user-guide-icon {
@@ -3166,8 +3171,8 @@ body.user-guide-open {
 
   .mobile-camera-stack .camera-btn svg,
   .mobile-camera-stack #btn-open-flight-info svg {
-    width: 15px !important;
-    height: 15px !important;
+    width: 17px !important;
+    height: 17px !important;
   }
 
   #btn-user-guide .user-guide-icon {
@@ -3208,8 +3213,8 @@ body.user-guide-open {
 
   .mobile-camera-stack .camera-btn svg,
   .mobile-camera-stack #btn-open-flight-info svg {
-    width: 15px !important;
-    height: 15px !important;
+    width: 17px !important;
+    height: 17px !important;
   }
 
   #btn-user-guide .user-guide-icon {
@@ -3292,8 +3297,8 @@ body.user-guide-open {
 
   #camera-actions .camera-btn svg,
   #camera-actions #btn-open-flight-info svg {
-    width: 16px !important;
-    height: 16px !important;
+    width: 18px !important;
+    height: 18px !important;
   }
 
   #btn-user-guide .user-guide-icon {
@@ -3370,8 +3375,8 @@ body.user-guide-open {
 
   #camera-actions .camera-btn svg,
   #camera-actions #btn-open-flight-info svg {
-    width: 14px !important;
-    height: 14px !important;
+    width: 16px !important;
+    height: 16px !important;
   }
 
   #btn-user-guide .user-guide-icon {
