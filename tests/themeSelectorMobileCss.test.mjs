@@ -76,7 +76,7 @@ test('mobile brightness control has the same final height as the theme button', 
 });
 
 test('mobile theme selector sits closer to the iframe corner and below active panels', () => {
-  const mobileMediaIndex = css.indexOf('@media (max-width: 768px)');
+  const mobileMediaIndex = css.lastIndexOf('/* FINAL MOBILE CONTROL OVERFLOW FIX */');
   const mobileWrapperBlock = getRuleBlock('.theme-selector-wrapper', mobileMediaIndex);
   const mobileMenuBlock = getRuleBlock('.theme-selector-menu', mobileMediaIndex);
 
