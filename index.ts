@@ -7739,7 +7739,7 @@ async function init() {
         </div>
         <div style="flex:1;overflow:hidden; display:flex; flex-direction:column; justify-content:center;">
           <div style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px;line-height:1;">${TranslationManager.t('from_label', 'Đi từ')}</div>
-          <input type="text" id="wayfinding-input-origin"
+          <input type="text" id="wayfinding-input-origin" autocomplete="off"
             placeholder="${TranslationManager.t('search_departure_placeholder', 'Search Departure')}" 
             value="${originName}" 
             oninput="window.performWayfindingSearch(this.value, 'origin')" 
@@ -7775,7 +7775,7 @@ async function init() {
           </div>
           <div style="flex:1;overflow:hidden; display:flex; flex-direction:column; justify-content:center;">
             <div style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px;line-height:1;">${TranslationManager.t('stopover_label', 'Điểm dừng')}</div>
-            <input type="text" id="wayfinding-input-stopover-${i}"
+            <input type="text" id="wayfinding-input-stopover-${i}" autocomplete="off"
               placeholder="${TranslationManager.t('stopover_placeholder', 'Chọn điểm dừng')}" 
               value="${stopName}" 
               oninput="window.performWayfindingSearch(this.value, 'stopover', ${i})" 
@@ -7810,7 +7810,7 @@ async function init() {
         </div>
         <div style="flex:1;overflow:hidden; display:flex; flex-direction:column; justify-content:center;">
           <div style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px;line-height:1;">${TranslationManager.t('to_label', 'Đi đến')}</div>
-          <input type="text" id="wayfinding-input-destination"
+          <input type="text" id="wayfinding-input-destination" autocomplete="off"
             placeholder="${TranslationManager.t('search_destination_placeholder', 'Search Destination')}" 
             value="${destName}" 
             oninput="window.performWayfindingSearch(this.value, 'destination')" 
