@@ -7,7 +7,8 @@ const source = readFileSync(new URL('../index.ts', import.meta.url), 'utf8');
 test('desktop tutorial can render an arrow for each visible target', () => {
   assert.match(source, /const renderUserGuideArrows\s*=\s*\(targetRects:\s*DOMRect\[\]\)/);
   assert.match(source, /data-guide-arrow-extra/);
-  assert.match(source, /renderUserGuideArrows\(window\.innerWidth > 768 \? rects : \[rects\[0\]\]\)/);
+  assert.match(source, /const shouldRenderAllArrows = window\.innerWidth > 768 \|\| \(window\.innerWidth <= 768 && step\?\.showAllArrowsOnMobile\)/);
+  assert.match(source, /renderUserGuideArrows\(shouldRenderAllArrows \? rects : \[rects\[0\]\]\)/);
 });
 
 test('desktop flight toolbar arrow starts from the right guide panel midpoint', () => {

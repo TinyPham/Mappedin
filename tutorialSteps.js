@@ -6,6 +6,8 @@ export const tutorialSteps = {
       description: 'Chào mừng bạn đến với Bản đồ 3D! Hãy thử dùng 1 ngón tay vuốt nhẹ để di chuyển bản đồ, hoặc chụm/mở 2 ngón để phóng to, thu nhỏ và khám phá toàn cảnh sân bay nhé.',
       image: '/tutorial/mobile/01-map-overview.svg',
       targetSelector: '#mappedin-map',
+      hideHighlight: true,
+      autoSwitchTab: 'search',
       placement: 'center'
     },
     {
@@ -30,6 +32,8 @@ export const tutorialSteps = {
       description: 'Dễ dàng chuyển đổi qua lại giữa các tầng nhà ga và tuỳ chọn ngôn ngữ hiển thị (Tiếng Việt, Anh, Hàn, Nhật...) để việc tra cứu thuận tiện nhất.',
       image: '/tutorial/mobile/05-floor-language.svg',
       targetSelectors: ['#custom-floor-wrapper', '#custom-lang-wrapper'],
+      showAllArrowsOnMobile: true,
+      mobileDirectArrow: true,
       placement: 'top'
     },
     {
@@ -37,7 +41,10 @@ export const tutorialSteps = {
       title: 'Thiết lập dẫn đường và chỉ dẫn lộ trình',
       description: 'Chạm vào tab "Chỉ đường" để thiết lập lộ trình đi. Bạn có thể chọn điểm xuất phát, điểm đến và thêm các điểm dừng chân trung gian. Tuyến đường tối ưu sẽ được vẽ trực quan trên bản đồ 3D.',
       image: '/tutorial/mobile/07-wayfinding-entry.svg',
-      targetSelectors: ['#tab-directions', '#wayfinding-header-target'],
+      targetSelectors: ['#wayfinding-header-target'],
+      autoSwitchTab: 'directions',
+      mobileDirectArrow: true,
+      mobileArrowEndOffsetY: 18,
       placement: 'bottom'
     },
     {
@@ -54,6 +61,7 @@ export const tutorialSteps = {
       description: 'Tận dụng các phím tắt nhanh ở rìa phải để bật/tắt toàn màn hình, phóng to, thu nhỏ hoặc nhấn biểu tượng Ngôi nhà để nhanh chóng đưa bản đồ về góc nhìn mặc định.',
       image: '/tutorial/mobile/11-map-gestures.svg',
       targetSelector: '#camera-controls',
+      mobileDirectArrow: true,
       placement: 'left'
     },
     {

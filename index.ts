@@ -2111,6 +2111,11 @@ async function init() {
     targetSelectors?: string[];
     highlightPadding?: number;
     mergeHighlight?: boolean;
+    hideHighlight?: boolean;
+    showAllArrowsOnMobile?: boolean;
+    mobileDirectArrow?: boolean;
+    mobileArrowTargetOffsetX?: number;
+    mobileArrowEndOffsetY?: number;
     autoSwitchTab?: 'search' | 'directions';
     placement?: string;
   };
@@ -2203,6 +2208,8 @@ async function init() {
 
     const isMobile = window.innerWidth <= 768;
     const isDesktopFlightRightToolbarTarget = step?.id === 'desktop-flight-info' && !isMobile && targetX > window.innerWidth - 120;
+    const isMobileMapControlsTarget = step?.id === 'mobile-map-controls' && isMobile;
+    const shouldUseMobileDirectArrow = isMobile && step?.mobileDirectArrow;
 
     const arrowStart = getGuidePanelArrowStart(panelRect, targetX, targetY);
     const startX = arrowStart.x;
@@ -2277,6 +2284,16 @@ async function init() {
       }
     }
 
+    if (isMobile && typeof step?.mobileArrowTargetOffsetX === 'number') {
+      const mobileOffsetMinX = targetRect.left + padding + borderOffset + 18;
+      const mobileOffsetMaxX = targetRect.right - padding - borderOffset - 18;
+      const mobileOffsetArrowEndX = targetX + step.mobileArrowTargetOffsetX;
+      arrowEndX = Math.min(mobileOffsetMaxX, Math.max(mobileOffsetMinX, mobileOffsetArrowEndX));
+    }
+    if (isMobile && typeof step?.mobileArrowEndOffsetY === 'number') {
+      arrowEndY = Math.min(targetY + hh - 18, arrowEndY + step.mobileArrowEndOffsetY);
+    }
+
     // 3. Prevent arrowhead distortion by ensuring the last 15px is a perfectly straight line
     let pathD = `M ${startX} ${startY} Q ${controlX} ${controlY} ${arrowEndX} ${arrowEndY}`;
     const tangentDx = arrowEndX - controlX;
@@ -2288,6 +2305,20 @@ async function init() {
       const preEndX = arrowEndX - dirX * 15;
       const preEndY = arrowEndY - dirY * 15;
       pathD = `M ${startX} ${startY} Q ${controlX} ${controlY} ${preEndX} ${preEndY} L ${arrowEndX} ${arrowEndY}`;
+      if (shouldUseMobileDirectArrow) {
+        pathD = `M ${startX} ${startY} L ${arrowEndX} ${arrowEndY}`;
+      }
+      if (isMobileMapControlsTarget) {
+        const originDx = targetX - startX;
+        const originDy = targetY - startY;
+        const originLen = Math.max(Math.sqrt(originDx * originDx + originDy * originDy), 1);
+        const mobileMapControlsStraightLength = Math.min(90, originLen * 0.35);
+        const mobileMapControlsStraightX = startX + (originDx / originLen) * mobileMapControlsStraightLength;
+        const mobileMapControlsStraightY = startY + (originDy / originLen) * mobileMapControlsStraightLength;
+        if (!shouldUseMobileDirectArrow) {
+          pathD = `M ${startX} ${startY} L ${mobileMapControlsStraightX} ${mobileMapControlsStraightY} Q ${controlX} ${controlY} ${preEndX} ${preEndY} L ${arrowEndX} ${arrowEndY}`;
+        }
+      }
       if (isDesktopFlightRightToolbarTarget) {
         const flightToolbarStraightX = startX + 150;
         const flightToolbarStraightY = startY - 12;
@@ -2322,6 +2353,13 @@ async function init() {
   const updateUserGuideHighlight = () => {
     if (!userGuideHighlight || !userGuideModal || userGuideModal.classList.contains('hidden')) return;
     const step = getActiveGuideStep();
+    if (step?.hideHighlight) {
+      userGuideHighlight.innerHTML = '';
+      userGuideHighlight.classList.add('hidden');
+      clearUserGuideArrowPaths();
+      userGuideArrowLayer?.classList.add('hidden');
+      return;
+    }
     const selectors = getGuideTargetSelectors(step);
     const rects = getVisibleTargetRects(selectors);
 
@@ -2362,13 +2400,15 @@ async function init() {
         userGuideHighlight.appendChild(box);
       });
       userGuideHighlight.classList.remove('hidden');
-      renderUserGuideArrows(window.innerWidth > 768 ? rects : [rects[0]]);
+      const shouldRenderAllArrows = window.innerWidth > 768 || (window.innerWidth <= 768 && step?.showAllArrowsOnMobile);
+      renderUserGuideArrows(shouldRenderAllArrows ? rects : [rects[0]]);
     }
   };
 
   const renderUserGuideStep = () => {
     const step = getActiveGuideStep();
     if (!step) return;
+    const isMobileGuide = window.innerWidth <= 768;
 
     // Auto-expand sidebar if this is the desktop layout overview step
     if (window.innerWidth > 768 && step.id === 'desktop-layout-overview') {
@@ -2384,6 +2424,22 @@ async function init() {
         const tabId = step.autoSwitchTab === 'directions' ? 'tab-directions' : 'tab-search';
         const tabBtn = document.getElementById(tabId) as HTMLElement | null;
         if (tabBtn) tabBtn.click();
+      } catch (e) {}
+    }
+
+    if (isMobileGuide && step.autoSwitchTab) {
+      try {
+        const tabId = step.autoSwitchTab === 'directions' ? 'tab-directions' : 'tab-search';
+        const tabBtn = document.getElementById(tabId) as HTMLElement | null;
+        if (tabBtn) tabBtn.click();
+      } catch (e) {}
+    }
+
+    if (isMobileGuide && !step.autoSwitchTab && step.id === 'mobile-floor-language') {
+      try {
+        const searchTabEl = document.getElementById('tab-search') as HTMLElement | null;
+        const isDirectionsActive = document.getElementById('tab-directions')?.classList.contains('active');
+        if (isDirectionsActive && searchTabEl) searchTabEl.click();
       } catch (e) {}
     }
 
