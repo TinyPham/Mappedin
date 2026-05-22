@@ -98,6 +98,7 @@ export const tutorialSteps = {
       description: 'Chỉ cần nhập tên cửa hàng, quầy thủ tục vào ô tìm kiếm, hoặc dễ dàng duyệt nhanh các nhóm dịch vụ hàng đầu (Ăn uống, Mua sắm...) để xem danh sách và vị trí của chúng. Bản đồ sẽ tự động xoay và di chuyển mượt mà đưa bạn tới tận nơi.',
       image: '/tutorial/desktop/02-search-sidebar.svg',
       targetSelectors: ['.modern-search-wrapper', '#category-section'],
+      mergeHighlight: true,
       placement: 'right'
     },
     {
@@ -106,6 +107,7 @@ export const tutorialSteps = {
       description: 'Mở tab "Chỉ đường" để lập lộ trình đi. Hãy nhấp vào ô "Đi từ" để chọn điểm xuất phát và "Đi đến" cho đích đến. Hệ thống sẽ vẽ tuyến đường trên bản đồ 3D và hiển thị bảng chỉ dẫn lộ trình chi tiết từng bước, khoảng cách và các vị trí thang máy bên dưới.',
       image: '/tutorial/desktop/06-wayfinding.svg',
       targetSelectors: ['#tab-directions', '#wayfinding-header-target'],
+      autoSwitchTab: 'directions',
       placement: 'right'
     },
     {
@@ -113,7 +115,7 @@ export const tutorialSteps = {
       title: 'Chuyển đổi tầng và đa ngôn ngữ',
       description: 'Chạm vào menu ở góc trái để chuyển đổi góc nhìn giữa các tầng của nhà ga, hoặc nhấp vào menu ở góc phải để tự động đồng bộ hệ thống sang ngôn ngữ bạn chọn (Tiếng Việt, English...).',
       image: '/tutorial/desktop/04-floor-language-theme.svg',
-      targetSelectors: ['#custom-floor-wrapper', '#custom-lang-wrapper'],
+      targetSelectors: ['#custom-lang-wrapper', '#custom-floor-wrapper'],
       placement: 'bottom'
     },
     {
@@ -137,7 +139,7 @@ export const tutorialSteps = {
       title: 'Bảng thông tin chuyến bay',
       description: 'Theo dõi trạng thái bay trực tiếp! Click nút máy bay để tra cứu chuyến bay của bạn, sau đó nhấp vào Quầy check-in, Cổng bay hoặc Băng chuyền hành lý để bản đồ vẽ đường đi ngay lập tức.',
       image: '/tutorial/desktop/09-flight-info.svg',
-      targetSelectors: ['#btn-open-flight-info', '#btn-flight-info-topleft'],
+      targetSelectors: ['#btn-flight-info-topleft', '#btn-open-flight-info'],
       placement: 'left'
     },
     {

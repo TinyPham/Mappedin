@@ -2110,6 +2110,8 @@ async function init() {
     targetSelector?: string;
     targetSelectors?: string[];
     highlightPadding?: number;
+    mergeHighlight?: boolean;
+    autoSwitchTab?: 'search' | 'directions';
     placement?: string;
   };
 
@@ -2167,22 +2169,48 @@ async function init() {
       .filter(rect => rect.width > 0 && rect.height > 0);
   };
 
-  const renderUserGuideArrow = (targetRect: DOMRect) => {
-    if (!userGuideArrowLayer || !userGuideArrowPath || !userGuidePanel) return;
+  const clearUserGuideArrowPaths = () => {
+    if (!userGuideArrowLayer || !userGuideArrowPath) return;
+    userGuideArrowLayer.querySelectorAll('.user-guide-arrow-path[data-guide-arrow-extra="true"]').forEach(path => path.remove());
+    userGuideArrowPath.setAttribute('d', '');
+  };
+
+  const getGuidePanelArrowStart = (panelRect: DOMRect, targetX: number, targetY: number) => {
+    const panelCenterX = panelRect.left + panelRect.width / 2;
+    const panelCenterY = panelRect.top + panelRect.height / 2;
+    const dx = targetX - panelCenterX;
+    const dy = targetY - panelCenterY;
+    const normalizedX = Math.abs(dx) / Math.max(panelRect.width / 2, 1);
+    const normalizedY = Math.abs(dy) / Math.max(panelRect.height / 2, 1);
+
+    if (normalizedY > normalizedX) {
+      if (dy < 0) return { x: panelCenterX, y: panelRect.top };
+      return { x: panelCenterX, y: panelRect.bottom };
+    }
+    if (dx >= 0) return { x: panelRect.right, y: panelCenterY };
+    return { x: panelRect.left, y: panelCenterY };
+  };
+
+  const renderUserGuideArrow = (targetRect: DOMRect, arrowPath: SVGPathElement = userGuideArrowPath) => {
+    if (!userGuideArrowLayer || !arrowPath || !userGuidePanel) return;
 
     const panelRect = userGuidePanel.getBoundingClientRect();
     const targetX = targetRect.left + targetRect.width / 2;
     const targetY = targetRect.top + targetRect.height / 2;
     const panelCenterX = panelRect.left + panelRect.width / 2;
     const panelCenterY = panelRect.top + panelRect.height / 2;
-    const startX = targetX < panelRect.left ? panelRect.left : targetX > panelRect.right ? panelRect.right : panelCenterX;
-    const startY = targetY < panelRect.top ? panelRect.top : targetY > panelRect.bottom ? panelRect.bottom : panelCenterY;
-    const controlX = (startX + targetX) / 2;
-
     const step = getActiveGuideStep();
 
-    // 0. Hide arrow on mobile for center placement or full-map overview steps to prevent pointing to "nothing"
     const isMobile = window.innerWidth <= 768;
+    const isDesktopFlightRightToolbarTarget = step?.id === 'desktop-flight-info' && !isMobile && targetX > window.innerWidth - 120;
+
+    const arrowStart = getGuidePanelArrowStart(panelRect, targetX, targetY);
+    const startX = arrowStart.x;
+    const startY = arrowStart.y;
+
+    let controlX = (startX + targetX) / 2;
+
+    // 0. Hide arrow on mobile for center placement or full-map overview steps to prevent pointing to "nothing"
     if (isMobile && (step?.placement === 'center' || step?.targetSelector === '#mappedin-map')) {
       userGuideArrowLayer.classList.add('hidden');
       return;
@@ -2195,6 +2223,10 @@ async function init() {
       controlY = Math.min(startY, targetY) + 90;
       if (controlY < targetY + 30) {
         controlY = targetY + 60;
+      }
+      if (isDesktopFlightRightToolbarTarget) {
+        controlX = startX - 70;
+        controlY = Math.max(targetY + 80, startY - 110);
       }
     } else {
       // Target is in the lower half (e.g. D-pad, sidebar): arch upwards / approach from above
@@ -2256,11 +2288,35 @@ async function init() {
       const preEndX = arrowEndX - dirX * 15;
       const preEndY = arrowEndY - dirY * 15;
       pathD = `M ${startX} ${startY} Q ${controlX} ${controlY} ${preEndX} ${preEndY} L ${arrowEndX} ${arrowEndY}`;
+      if (isDesktopFlightRightToolbarTarget) {
+        const flightToolbarStraightX = startX + 150;
+        const flightToolbarStraightY = startY - 12;
+        pathD = `M ${startX} ${startY} L ${flightToolbarStraightX} ${flightToolbarStraightY} Q ${controlX} ${controlY} ${preEndX} ${preEndY} L ${arrowEndX} ${arrowEndY}`;
+      }
     }
 
     userGuideArrowLayer.setAttribute('viewBox', `0 0 ${window.innerWidth} ${window.innerHeight}`);
-    userGuideArrowPath.setAttribute('d', pathD);
+    arrowPath.setAttribute('d', pathD);
     userGuideArrowLayer.classList.remove('hidden');
+  };
+
+  const renderUserGuideArrows = (targetRects: DOMRect[]) => {
+    if (!userGuideArrowLayer || !userGuideArrowPath) return;
+    clearUserGuideArrowPaths();
+    const visibleTargetRects = targetRects.filter(Boolean);
+    if (visibleTargetRects.length === 0) {
+      userGuideArrowLayer.classList.add('hidden');
+      return;
+    }
+    visibleTargetRects.forEach((rect, index) => {
+      const arrowPath = index === 0 ? userGuideArrowPath : (userGuideArrowPath.cloneNode(false) as SVGPathElement);
+      if (index > 0) {
+        arrowPath.removeAttribute('id');
+        arrowPath.setAttribute('data-guide-arrow-extra', 'true');
+        userGuideArrowLayer.appendChild(arrowPath);
+      }
+      renderUserGuideArrow(rect, arrowPath);
+    });
   };
 
   const updateUserGuideHighlight = () => {
@@ -2272,22 +2328,42 @@ async function init() {
     userGuideHighlight.innerHTML = '';
     if (rects.length === 0) {
       userGuideHighlight.classList.add('hidden');
+      clearUserGuideArrowPaths();
       userGuideArrowLayer?.classList.add('hidden');
       return;
     }
 
     const padding = step?.highlightPadding ?? 7;
-    rects.forEach(rect => {
+
+    // When mergeHighlight is true, combine all rects into a single bounding box
+    if (step?.mergeHighlight && rects.length > 1) {
+      const minLeft = Math.min(...rects.map(r => r.left));
+      const minTop = Math.min(...rects.map(r => r.top));
+      const maxRight = Math.max(...rects.map(r => r.right));
+      const maxBottom = Math.max(...rects.map(r => r.bottom));
+      const mergedRect = new DOMRect(minLeft, minTop, maxRight - minLeft, maxBottom - minTop);
       const box = document.createElement('div');
       box.className = 'user-guide-highlight-box';
-      box.style.left = `${Math.max(0, rect.left - padding)}px`;
-      box.style.top = `${Math.max(0, rect.top - padding)}px`;
-      box.style.width = `${rect.width + padding * 2}px`;
-      box.style.height = `${rect.height + padding * 2}px`;
+      box.style.left = `${Math.max(0, mergedRect.left - padding)}px`;
+      box.style.top = `${Math.max(0, mergedRect.top - padding)}px`;
+      box.style.width = `${mergedRect.width + padding * 2}px`;
+      box.style.height = `${mergedRect.height + padding * 2}px`;
       userGuideHighlight.appendChild(box);
-    });
-    userGuideHighlight.classList.remove('hidden');
-    renderUserGuideArrow(rects[0]);
+      userGuideHighlight.classList.remove('hidden');
+      renderUserGuideArrows([mergedRect]);
+    } else {
+      rects.forEach(rect => {
+        const box = document.createElement('div');
+        box.className = 'user-guide-highlight-box';
+        box.style.left = `${Math.max(0, rect.left - padding)}px`;
+        box.style.top = `${Math.max(0, rect.top - padding)}px`;
+        box.style.width = `${rect.width + padding * 2}px`;
+        box.style.height = `${rect.height + padding * 2}px`;
+        userGuideHighlight.appendChild(box);
+      });
+      userGuideHighlight.classList.remove('hidden');
+      renderUserGuideArrows(window.innerWidth > 768 ? rects : [rects[0]]);
+    }
   };
 
   const renderUserGuideStep = () => {
@@ -2298,6 +2374,25 @@ async function init() {
     if (window.innerWidth > 768 && step.id === 'desktop-layout-overview') {
       try {
         if (typeof expandSidebar === 'function') expandSidebar();
+      } catch (e) {}
+    }
+
+
+    // Auto-switch sidebar tab if step specifies autoSwitchTab (desktop only)
+    if (window.innerWidth > 768 && step.autoSwitchTab) {
+      try {
+        const tabId = step.autoSwitchTab === 'directions' ? 'tab-directions' : 'tab-search';
+        const tabBtn = document.getElementById(tabId) as HTMLElement | null;
+        if (tabBtn) tabBtn.click();
+      } catch (e) {}
+    }
+
+    // Auto-switch back to search tab when leaving a directions step
+    if (window.innerWidth > 768 && !step.autoSwitchTab && step.id !== 'desktop-wayfinding') {
+      try {
+        const searchTabEl = document.getElementById('tab-search') as HTMLElement | null;
+        const isDirectionsActive = document.getElementById('tab-directions')?.classList.contains('active');
+        if (isDirectionsActive && searchTabEl) searchTabEl.click();
       } catch (e) {}
     }
 
@@ -2350,9 +2445,18 @@ async function init() {
       try { localStorage.setItem(USER_GUIDE_COMPLETED_KEY, "true"); } catch (e) { }
     }
 
+    // Restore search tab if directions tab was activated during the guide
+    if (window.innerWidth > 768) {
+      try {
+        const searchTabEl = document.getElementById('tab-search') as HTMLElement | null;
+        const isDirectionsActive = document.getElementById('tab-directions')?.classList.contains('active');
+        if (isDirectionsActive && searchTabEl) searchTabEl.click();
+      } catch (e) {} }
+
     userGuideModal?.classList.add('hidden');
     userGuideHighlight?.classList.add('hidden');
     if (userGuideHighlight) userGuideHighlight.innerHTML = '';
+    clearUserGuideArrowPaths();
     userGuideArrowLayer?.classList.add('hidden');
     document.body.classList.remove('user-guide-open');
     guideReturnFocus?.focus?.();
@@ -2495,9 +2599,10 @@ async function init() {
     // Reset camera to initial center and 16.5 zoom when going full screen
     if (typeof mapView !== 'undefined' && mapView?.Camera && typeof initialVenueCenter !== 'undefined' && initialVenueCenter) {
       try {
-        mapView.Camera.animate({
+        mapView.Camera.animateTo({
           center: initialVenueCenter,
-          zoomLevel: 16.5,
+          zoomLevel: 16.5
+        }, {
           duration: 800,
           easing: "ease-in-out"
         });
