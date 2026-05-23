@@ -2896,8 +2896,8 @@ async function init() {
       // Animate camera để zoom IN mượt mà với bearing = bearing - 35
       cameraAny.animateTo({
         zoomLevel: targetZoom,
-        bearing: mapView.Camera.bearing - 36.7, // Set bearing về góc nhìn ban đầu
-        pitch: mapView.Camera.pitch,
+        bearing: initialBearing || 322.85, // Set bearing chuẩn xác về 322.85
+        pitch: initialPitch || 33.08,
         center: mapView.Camera.center, // Giữ nguyên center
       }, {
         duration: STARTUP_CAMERA_ZOOM_DURATION_MS, // 3 giây để zoom IN mượt mà
@@ -12190,25 +12190,30 @@ async function init() {
     }
     overviewShadowInstances.length = 0; // Clear array
 
-    // Step 2: If we ARE on Overview, originals are shown by SDK - no shadows needed
-    if (currentFloorId === overviewId) {
-      console.log(`✈️ On Overview floor - originals visible, no shadows needed.`);
-      return;
-    }
-
-    // Step 3: For each model on the Overview floor, create a shadow copy on the CURRENT floor
+    // (Bỏ check early return Overview floor để xử lý cả model ngoài Overview)
+    
+    // Step 3: For each model on the Overview floor AND Airplanes, create a shadow copy on the CURRENT floor
     const currentFloor = mapView.currentFloor;
     let shadowCount = 0;
 
-    // Collect Overview models first (iterate registry)
     const overviewModels: { meta: any; instance: any }[] = [];
     MODEL_ID_REGISTRY.forEach((meta) => {
-      if (meta.floorId !== overviewId) return;
+      // Bỏ qua nếu model GỐC đang nằm sẵn ở tầng HIỆN TẠI (tránh duplicate/Z-fighting)
+      if (meta.floorId === currentFloorId) return;
+
+      const urlStr = String(meta.url || "").toLowerCase();
+      const nameStr = String(meta.name || "").toLowerCase();
+      // Nhận diện các model là máy bay (dựa trên URL hoặc tên)
+      const isAirplane = urlStr.includes('plane') || urlStr.includes('a3') || urlStr.includes('b7') || urlStr.includes('aircraft') || nameStr.includes('bay');
+      
+      // Chỉ copy nếu model thuộc tầng Overview HOẶC model đó là máy bay
+      if (meta.floorId !== overviewId && !isAirplane) return;
+      
       const instance = MODEL_INSTANCE_REGISTRY.get(meta.uuid);
       if (!instance) return;
       overviewModels.push({ meta, instance });
     });
-
+    
     for (const { meta, instance } of overviewModels) {
       try {
         // Create coordinate on CURRENT floor (same lat/lon, different floor)
@@ -13186,7 +13191,6 @@ async function init() {
           if (String(v) === String(selectedSubCategoryId)) pendingAssignments.add(k);
         });
       }
-
       renderMainCategories();
       renderSubCategories();
 
@@ -13758,16 +13762,49 @@ async function init() {
       counters: FlightNavigationCounter[];
     };
 
+    const formatLocalDateInputValue = (date: Date) => {
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    };
+
+    const getFlightDateRange = () => {
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const minDate = new Date(today);
+      minDate.setDate(today.getDate() - 3);
+
+      return {
+        minDate,
+        maxDate: today,
+        minValue: formatLocalDateInputValue(minDate),
+        maxValue: formatLocalDateInputValue(today)
+      };
+    };
+
+    const clampFlightDateToAllowedRange = (value: string) => {
+      const range = getFlightDateRange();
+      if (!value) return range.maxValue;
+      if (value < range.minValue) return range.minValue;
+      if (value > range.maxValue) return range.maxValue;
+      return value;
+    };
+
+    const applyFlightDateBounds = () => {
+      const range = getFlightDateRange();
+      dateInput.min = range.minValue;
+      dateInput.max = range.maxValue;
+      state.date = clampFlightDateToAllowedRange(state.date);
+      dateInput.value = state.date;
+      return range;
+    };
+
     const state = {
       mode: 'D' as 'A' | 'D',
-      date: dateInput.value || (() => {
-        const d = new Date();
-        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      })(),
+      date: clampFlightDateToAllowedRange(dateInput.value),
       search: '',
       status: 'ALL',
       flights: [] as FlightRecord[]
     };
+    applyFlightDateBounds();
 
     let currentCalendarDate = new Date(state.date);
 
@@ -13775,14 +13812,9 @@ async function init() {
       const firstDay = new Date(year, month, 1).getDay();
       const lastDate = new Date(year, month + 1, 0).getDate();
 
-      const now = new Date();
-      const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      const range = getFlightDateRange();
+      const todayStr = range.maxValue;
       const selectedStr = state.date;
-
-      // Calculate valid range: Today and previous 7 days
-      const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const minDate = new Date(todayMidnight);
-      minDate.setDate(todayMidnight.getDate() - 7);
 
       let html = '';
       // Empty slots before first day of month
@@ -13794,7 +13826,7 @@ async function init() {
         const fullDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
 
         const currentDate = new Date(year, month, d);
-        const isValidDate = currentDate >= minDate && currentDate <= todayMidnight;
+        const isValidDate = currentDate >= range.minDate && currentDate <= range.maxDate;
 
         const classes = ['calendar-day'];
         if (!isValidDate) classes.push('disabled');
@@ -13857,8 +13889,7 @@ async function init() {
       // Today Selection
       calendarDropdown.querySelector('.calendar-today-btn')?.addEventListener('click', (e) => {
         e.stopPropagation();
-        const today = new Date();
-        state.date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+        state.date = getFlightDateRange().maxValue;
         updateDateText();
         calendarDropdown?.classList.add('hidden');
         void loadFlights();
@@ -13870,7 +13901,7 @@ async function init() {
           e.stopPropagation();
           const dayStr = (el as HTMLElement).getAttribute('data-date');
           if (dayStr) {
-            state.date = dayStr;
+            state.date = clampFlightDateToAllowedRange(dayStr);
             updateDateText();
             calendarDropdown?.classList.add('hidden');
             void loadFlights();
@@ -13908,6 +13939,7 @@ async function init() {
     };
 
     const updateDateText = () => {
+      applyFlightDateBounds();
       dateInput.value = state.date;
       const parts = state.date.split('-');
       if (parts.length === 3) {
@@ -14217,8 +14249,10 @@ async function init() {
       empty.classList.add('hidden');
       container.classList.add('hidden');
       try {
+        state.date = clampFlightDateToAllowedRange(state.date);
+        updateDateText();
         const params = new URLSearchParams();
-        params.set('date', state.date);
+        params.set('date', clampFlightDateToAllowedRange(state.date));
         params.set('arrDep', state.mode);
         if (state.search.trim()) params.set('search', state.search.trim());
         const response = await fetch(`${flightApiBaseUrl}/flights?${params.toString()}`);
@@ -14293,7 +14327,7 @@ async function init() {
       }
     });
     dateInput.addEventListener('change', () => {
-      state.date = dateInput.value || state.date;
+      state.date = clampFlightDateToAllowedRange(dateInput.value || state.date);
       updateDateText();
       void loadFlights();
     });
