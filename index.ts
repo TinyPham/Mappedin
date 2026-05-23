@@ -1756,6 +1756,8 @@ async function init() {
   let animationDistances: number[] = []; // Distance table của segment
   let animationTotalDistance: number = 0; // Tổng khoảng cách của segment
   let initialVenueCenter: any = null; // Lưu tọa độ trung tâm khởi tạo để đổi tầng
+  let initialBearing: number = 322.85; // Lưu góc quay bearing ban đầu
+  let initialPitch: number = 33.08; // Lưu góc nhìn pitch ban đầu
   let isManualFloorSwitch: boolean = false; // Cờ đánh dấu đang chuyển tầng thủ công (vô hiệu hóa AUTO-SWITCH)
   let _isWarmupSwitch: boolean = false; // Cờ đánh dấu đang warm-up floor (bỏ qua side effects)
   let isProgrammaticZoom: boolean = false; // Cờ đánh dấu đang zoom từ category (vô hiệu hóa AUTO-SWITCH)
@@ -2666,7 +2668,16 @@ async function init() {
     }
   }
 
-  function expandSidebar(fromSearchBar = false) {
+  function expandSidebar(fromSearchBar = false, disableFocus = false) {
+    (window as any).expandSidebar = expandSidebar; // Expose to window
+    // Focus back on selected space if exists
+    if (typeof selectedSpace !== 'undefined' && selectedSpace) {
+      setTimeout(() => {
+        if (typeof (window as any).focusOnObject === 'function' && typeof (window as any).getSmartZoomLevel === 'function') {
+           (window as any).focusOnObject(selectedSpace, (window as any).getSmartZoomLevel(selectedSpace));
+        }
+      }, 100);
+    }
     if (!sidebarEl || !sidebarToggleBtn || !floatingSearchBar) return;
     isSidebarCollapsed = false;
 
@@ -2684,16 +2695,18 @@ async function init() {
     sidebarEl.classList.remove("sidebar-collapsed");
     sidebarToggleBtn.title = "Thu gọn thanh bên";
 
+    if (!disableFocus) {
     setTimeout(() => {
       const searchInput = document.getElementById("location-search") as HTMLInputElement;
       if (searchInput) searchInput.focus();
     }, 850);
   }
+    }
 
   if (sidebarToggleBtn) {
     sidebarToggleBtn.addEventListener("click", () => {
       if (isSidebarCollapsed) {
-        expandSidebar();
+        expandSidebar(false, true); // Do NOT auto focus search input on manual toggle
       } else {
         collapseSidebar();
       }
@@ -2742,10 +2755,13 @@ async function init() {
 
   // Lưu tọa độ trung tâm khởi tạo để dùng cho việc căn giữa sau này
   initialVenueCenter = { ...mapView.Camera.center };
+  initialBearing = 322.85;
+  initialPitch = 33.08;
 
   // Xoay camera một góc để có góc nhìn tốt hơn (Chạy không chặn luồng khởi động)
   const cameraRotationResult = mapView.Camera.animateTo({
-    bearing: mapView.Camera.bearing - 36.7,
+    bearing: 322.85,
+    pitch: 33.08,
   }, {
     duration: STARTUP_CAMERA_ROTATION_DURATION_MS
   });
@@ -2853,8 +2869,8 @@ async function init() {
     // Set zoom ban đầu = 12.0 (để có hiệu ứng zoom vào 15.0)
     cameraAny.animateTo({
       zoomLevel: 12.0,
-      bearing: mapView.Camera.bearing,
-      pitch: mapView.Camera.pitch,
+      bearing: initialBearing || mapView.Camera.bearing,
+      pitch: initialPitch || mapView.Camera.pitch,
       center: mapView.Camera.center,
     });
 
@@ -5498,8 +5514,8 @@ async function init() {
     mapView.Camera.animateTo({
       zoomLevel: targetZoom,
       center: initialVenueCenter || mapView.Camera.center,
-      bearing: mapView.Camera.bearing,
-      pitch: mapView.Camera.pitch
+      bearing: initialBearing || mapView.Camera.bearing,
+      pitch: initialPitch || mapView.Camera.pitch
     }, { duration: 1000, easing: "ease-in-out" });
 
     // Reset cờ sau khi animation hoàn tất
@@ -6503,6 +6519,9 @@ async function init() {
   let isFloorSwitching = false;
 
   mapView.on("camera-change", (transform: any) => {
+    // Yêu cầu: console log góc quay ngang và dọc của bản đồ mỗi khi xoay
+    console.log(`[Camera] Bearing (Ngang): ${transform.bearing?.toFixed(2) ?? mapView.Camera.bearing.toFixed(2)}, Pitch (Dọc): ${transform.pitch?.toFixed(2) ?? mapView.Camera.pitch.toFixed(2)}`);
+
     const zoom = transform.zoomLevel;
     const isZoomingIn = zoom > lastZoomLevel;
     const isZoomingOut = zoom < lastZoomLevel;
@@ -7757,6 +7776,57 @@ async function init() {
             (s as HTMLElement).style.borderLeft = (i === index) ? '4px solid #214ca6' : '4px solid transparent';
           });
         };
+        // Tự động focus về điểm đi (origin) và chuyển tầng tương ứng khi vẽ đường
+        if (wayfindingOrigin) {
+          const originFloorId = wayfindingOrigin.floor?.id || wayfindingOrigin.floorId || wayfindingOrigin.coordinate?.floorId;
+          const originCoord = wayfindingOrigin.coordinate || wayfindingOrigin.anchor;
+          
+          setTimeout(async () => {
+            let isFloorSwitched = false;
+            if (originFloorId && originFloorId !== mapView.currentFloor.id) {
+              await mapView.setFloor(originFloorId);
+              const fSelector = document.getElementById('floor-selector') as HTMLSelectElement;
+              if (fSelector) fSelector.value = originFloorId;
+              
+              // KHÔNG CẦN CHỜ LÂU NỮA - await setFloor đã tải xong mặt bằng cơ bản
+              await new Promise(r => setTimeout(r, 50));
+              isFloorSwitched = true;
+            }
+            
+            if (wayfindingOrigin) {
+              const targetZoom = typeof (window as any).getSmartZoomLevel === 'function' ? (window as any).getSmartZoomLevel(wayfindingOrigin) : 19.0;
+              
+              if (isFloorSwitched && originCoord) {
+                 // NẾU CHUYỂN TẦNG: Snap camera ngay lập tức (không bay lượn) để tránh giật lag
+                 try {
+                   (mapView.Camera as any).set({
+                     center: originCoord,
+                     zoomLevel: targetZoom,
+                     bearing: initialBearing || 322.85,
+                     pitch: initialPitch || 33.08
+                   });
+                 } catch(e) {
+                   mapView.Camera.animateTo({
+                     center: originCoord,
+                     zoomLevel: targetZoom,
+                     bearing: initialBearing || 322.85,
+                     pitch: initialPitch || 33.08
+                   }, { duration: 0 });
+                 }
+              } else if (typeof (window as any).focusOnObject === 'function') {
+                // NẾU CÙNG TẦNG: Vẫn bay lượn mượt mà bình thường
+                (window as any).focusOnObject(wayfindingOrigin, targetZoom, initialBearing || 322.85, initialPitch || 33.08);
+              } else if (originCoord) {
+                mapView.Camera.animateTo({
+                  center: originCoord,
+                  zoomLevel: targetZoom,
+                  bearing: initialBearing || 322.85,
+                  pitch: initialPitch || 33.08,
+                }, { duration: 1000, easing: 'ease-in-out' });
+              }
+            }
+          }, 100); // Đợi Navigation.draw hoàn tất rồi đè lên
+        }
         // Gọi hàm applyAreaColors để render lại toàn bộ mảng sáng tối theo bảng màu Premium
         // applyAreaColors() tự động nhận diện Focus để spotlight đường đi và làm mờ các không gian xung quanh
         applyAreaColors();
@@ -8314,6 +8384,7 @@ async function init() {
    * Tính toán mức Zoom thông minh dựa trên diện tích và loại đối tượng
    */
   const getSmartZoomLevel = (obj: any): number => {
+    (window as any).getSmartZoomLevel = getSmartZoomLevel;
     if (!obj) return 20.0;
 
     // 1. Dựa vào diện tích Polygon (Nếu có)
@@ -8351,9 +8422,20 @@ async function init() {
     return isLargeArea ? 18.5 : 20.0;
   };
 
-  const focusOnObject = (obj: any, zoomLevel: number) => {
+  const focusOnObject = async (obj: any, zoomLevel: number, forceBearing?: number, forcePitch?: number) => {
+    (window as any).focusOnObject = focusOnObject;
     try {
       if (!obj) return;
+      
+      const objFloorId = obj.floor?.id || obj.floorId || obj.coordinate?.floorId;
+      if (objFloorId && mapView.currentFloor && objFloorId !== mapView.currentFloor.id) {
+        console.log(`Focusing on object on different floor: switching to ${objFloorId}`);
+        await mapView.setFloor(objFloorId);
+        const fSelector = document.getElementById('floor-selector') as HTMLSelectElement;
+        if (fSelector) fSelector.value = objFloorId;
+        await new Promise(r => setTimeout(r, 50));
+      }
+
       const cameraAny = mapView.Camera as any;
 
       // Set min/max to allow the target zoom
@@ -8362,8 +8444,8 @@ async function init() {
 
       (mapView.Camera as any).focusOn(obj, {
         duration: 1000,
-        pitch: mapView.Camera.pitch,
-        bearing: mapView.Camera.bearing,
+        pitch: forcePitch !== undefined ? forcePitch : mapView.Camera.pitch,
+        bearing: forceBearing !== undefined ? forceBearing : mapView.Camera.bearing,
         minZoomLevel: zoomLevel,
         maxZoomLevel: zoomLevel,
         padding: { top: 0, bottom: 0, left: 380, right: 0 } // Offset for sidebar (380px)
@@ -8380,6 +8462,13 @@ async function init() {
    * Update Information Panel
    */
   updateInfo = function (space: any) {
+    // USER REQUEST: Mở sidebar khi click vào khu vực trên bản đồ nhưng KHÔNG focus search input
+    if (typeof (window as any).expandSidebar === 'function') {
+      (window as any).expandSidebar(false, true);
+    } else if (typeof expandSidebar === 'function') {
+      expandSidebar(false, true);
+    }
+
     if (!space) return;
     syncURL(false); // Update URL when info opens
 
@@ -9573,6 +9662,12 @@ async function init() {
         // ============================================
         // Nếu click vào cùng object, không làm gì
         if (selectedSpace && selectedSpace.id === clickedObject.id) {
+          // USER REQUEST: N?u click vo cng object m sidebar dang dng th m? ra v focus l?i
+          if (typeof isSidebarCollapsed !== 'undefined' && isSidebarCollapsed) {
+            if (typeof (window as any).expandSidebar === 'function') {
+              (window as any).expandSidebar(false, true);
+            }
+          }
           return;
         }
 
@@ -10775,8 +10870,8 @@ async function init() {
   const cameraAny = mapView.Camera as any;
 
   // Lưu bearing và pitch ban đầu để dùng cho nút home
-  const initialBearing = mapView.Camera.bearing - 36;
-  const initialPitch = mapView.Camera.pitch;
+  // const initialBearing... moved to global
+  // const initialPitch... moved to global
 
   /**
    * Helper: Thiết lập sự kiện nhấn giữ (Long Press) cho nút bấm
@@ -13551,19 +13646,30 @@ async function init() {
             selectedSpace = targetObj;
             updateHighlights();
 
+            const targetZoom = typeof getSmartZoomLevel === 'function' ? getSmartZoomLevel(targetObj) : 22.0;
             if (typeof (window as any).focusOnObject === 'function') {
-              (window as any).focusOnObject(targetObj, 22.0);
+              (window as any).focusOnObject(targetObj, targetZoom, initialBearing || 322.85, initialPitch || 33.08);
             } else {
               mapView.Camera.focusOn(targetObj, {
                 duration: 1500,
-                minZoomLevel: 22.0,
-                maxZoomLevel: 22.0
+                minZoomLevel: targetZoom,
+                maxZoomLevel: targetZoom,
+                bearing: initialBearing || 322.85,
+                pitch: initialPitch || 33.08
               });
             }
 
             if (typeof (window as any).updateInfo === 'function') {
               (window as any).updateInfo(targetObj);
             }
+          } else {
+            // Force rotation reset for first load if only floor is specified
+            mapView.Camera.animateTo({
+              center: initialVenueCenter || mapView.Camera.center,
+              zoomLevel: 16.5,
+              bearing: initialBearing || 322.85,
+              pitch: initialPitch || 33.08
+            }, { duration: 1000, easing: "ease-in-out" });
           }
         }, waitTime);
       }
