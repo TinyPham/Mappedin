@@ -2198,7 +2198,7 @@ async function init() {
     return { x: panelRect.left, y: panelCenterY };
   };
 
-  const renderUserGuideArrow = (targetRect: DOMRect, arrowPath: SVGPathElement = userGuideArrowPath) => {
+  const renderUserGuideArrow = (targetRect: DOMRect, arrowPath: SVGPathElement | null = userGuideArrowPath) => {
     if (!userGuideArrowLayer || !arrowPath || !userGuidePanel) return;
 
     const panelRect = userGuidePanel.getBoundingClientRect();
