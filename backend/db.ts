@@ -9,13 +9,55 @@ dotenv.config({ path: path.join(__dirname, '../.env') });
 
 let config: sql.config | null = null;
 
+function buildConfigFromConnectionString(connectionString: string): sql.config {
+    const getPart = (key: string) => {
+        const regex = new RegExp(`${key}\\s*=\\s*([^;]+)`, 'i');
+        const match = connectionString.match(regex);
+        return match ? match[1].trim() : null;
+    };
+
+    return {
+        server: getPart('Server') || 'localhost',
+        database: getPart('Database') || 'MappedIn3DModels',
+        user: getPart('User Id') || getPart('User') || 'sa',
+        password: getPart('Password') || '',
+        options: {
+            encrypt: getPart('Encrypt') === 'true',
+            trustServerCertificate: getPart('TrustServerCertificate') === 'true'
+        },
+        connectionTimeout: 30000,
+        requestTimeout: 30000
+    };
+}
+
+if (process.env.DB_CONNECTION_STRING) {
+    console.log('[DB] Using DB_CONNECTION_STRING from environment');
+    config = buildConfigFromConnectionString(process.env.DB_CONNECTION_STRING);
+}
+
+if (!config && process.env.DB_SERVER) {
+    console.log('[DB] Using DB_* environment variables');
+    config = {
+        server: process.env.DB_SERVER,
+        database: process.env.DB_NAME || 'MappedIn3DModels',
+        user: process.env.DB_USER || 'sa',
+        password: process.env.DB_PASSWORD || '',
+        options: {
+            encrypt: process.env.DB_ENCRYPT !== 'false',
+            trustServerCertificate: process.env.DB_TRUST_SERVER_CERTIFICATE === 'true'
+        },
+        connectionTimeout: 30000,
+        requestTimeout: 30000
+    };
+}
+
 // 1. ƯU TIÊN: Appsettings.json (Dành cho Localhost - Máy của bạn)
 let appSettingsPath = path.join(__dirname, 'appsettings.json');
 if (!fs.existsSync(appSettingsPath)) {
     appSettingsPath = path.join(__dirname, '..', 'appsettings.json');
 }
 
-if (fs.existsSync(appSettingsPath)) {
+if (!config && fs.existsSync(appSettingsPath)) {
     try {
         const appSettings = JSON.parse(fs.readFileSync(appSettingsPath, 'utf-8'));
         const connectionString = appSettings.ConnectionStrings?.DefaultConnection;
@@ -113,6 +155,9 @@ export const getDbConnection = async () => {
 
 export const sqlQuery = async (query: string, params: { name: string, type: any, value: any }[] = []) => {
     const db = await getDbConnection();
+    if (!db) {
+        throw new Error('Database connection currently unavailable');
+    }
     const request = db.request();
 
     params.forEach(p => {

@@ -107,64 +107,7 @@ BEGIN
 END
 GO
 
--- 4. SP_Admin_UpsertLocation: Handle master data and translation updates for a location
-IF OBJECT_ID('SP_Admin_UpsertLocation', 'P') IS NOT NULL DROP PROCEDURE SP_Admin_UpsertLocation;
-GO
-CREATE PROCEDURE SP_Admin_UpsertLocation
-    @MappedinId NVARCHAR(100),
-    @CategoryId INT,
-    @SlugKey VARCHAR(255),
-    @LogoUrl VARCHAR(500),
-    @CoverImageUrl VARCHAR(500),
-    @PhoneNumber VARCHAR(50),
-    @WebsiteLink VARCHAR(500),
-    @SocialMediaLinks NVARCHAR(MAX),
-    @OperatingHours NVARCHAR(MAX),
-    @VN NVARCHAR(255),
-    @EN NVARCHAR(255),
-    @ZH NVARCHAR(255),
-    @JA NVARCHAR(255),
-    @KO NVARCHAR(255)
-AS
-BEGIN
-    SET NOCOUNT ON;
-    BEGIN TRANSACTION;
-    BEGIN TRY
-        DECLARE @LocationId BIGINT;
-        SELECT @LocationId = LocationId FROM MasterData_Locations WHERE MappedinId = @MappedinId;
-
-        -- 1. Upsert MasterData_Locations
-        IF @LocationId IS NOT NULL
-        BEGIN
-            UPDATE MasterData_Locations 
-            SET CategoryId=@CategoryId, SlugKey=@SlugKey, LogoUrl=@LogoUrl, CoverImageUrl=@CoverImageUrl, 
-                PhoneNumber=@PhoneNumber, WebsiteLink=@WebsiteLink, SocialMediaLinks=@SocialMediaLinks, 
-                OperatingHours=@OperatingHours, ModifiedDate=GETDATE()
-            WHERE LocationId=@LocationId;
-        END
-        ELSE
-        BEGIN
-            INSERT INTO MasterData_Locations (MappedinId, CategoryId, SlugKey, LogoUrl, CoverImageUrl, PhoneNumber, WebsiteLink, SocialMediaLinks, OperatingHours)
-            VALUES (@MappedinId, @CategoryId, @SlugKey, @LogoUrl, @CoverImageUrl, @PhoneNumber, @WebsiteLink, @SocialMediaLinks, @OperatingHours);
-            SET @LocationId = SCOPE_IDENTITY();
-        END
-
-        -- 2. Upsert AreaList Translations
-        UPDATE AreaList 
-        SET VN=@VN, EN=@EN, ZH=@ZH, JA=@JA, KO=@KO
-        WHERE MappedinID = @MappedinId;
-
-        COMMIT TRANSACTION;
-        SELECT @LocationId AS LocationId;
-    END TRY
-    BEGIN CATCH
-        ROLLBACK TRANSACTION;
-        THROW;
-    END CATCH
-END
-GO
-
--- 5. SP_SyncMappedinLocation: Single location sync from Mappedin source
+-- 4. SP_SyncMappedinLocation: Single location sync from Mappedin source
 IF OBJECT_ID('SP_SyncMappedinLocation', 'P') IS NOT NULL DROP PROCEDURE SP_SyncMappedinLocation;
 GO
 CREATE PROCEDURE SP_SyncMappedinLocation
@@ -414,5 +357,4 @@ BEGIN
     ORDER BY DisplayOrder, SubCategoryName;
 END
 GO
-
 

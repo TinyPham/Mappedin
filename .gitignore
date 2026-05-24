@@ -11,6 +11,8 @@ uploads/
 # Environment
 .env
 *.env.local
+appsettings.json
+backend/appsettings.json
 
 # OS files
 Thumbs.db

@@ -4080,11 +4080,24 @@ async function init() {
     clearConnectionOverlays();
     const currentZoom = getCameraZoom();
     const coordKey = (c: any) =>
-      `${c?.floorId || ""}:${c?.latitude?.toFixed?.(6) ?? c?.latitude}:${c?.longitude?.toFixed?.(6) ?? c?.longitude}`;
+      `${c?.floorId || c?.floor?.id || ""}:${c?.latitude?.toFixed?.(6) ?? c?.latitude}:${c?.longitude?.toFixed?.(6) ?? c?.longitude}`;
 
     (connections || []).forEach((conn: any) => {
-      const coords = Array.isArray(conn.coordinates) ? conn.coordinates : [];
-      const floorCoords = coords.filter((c: any) => !currentFloorId || c?.floorId === currentFloorId);
+      // Resolve coordinates from native connections or keyword fallbacks
+      let coords: any[] = [];
+      if (Array.isArray(conn.coordinates) && conn.coordinates.length > 0) {
+        coords = conn.coordinates;
+      } else if (conn.coordinate) {
+        coords = [conn.coordinate];
+      } else if (conn.anchor) {
+        coords = [conn.anchor];
+      }
+
+      const floorCoords = coords.filter((c: any) => {
+        if (!currentFloorId) return true;
+        const fId = c?.floorId || c?.floor?.id || conn.floorId || conn.floor?.id;
+        return fId === currentFloorId;
+      });
       if (floorCoords.length === 0) return;
 
       // Loại bỏ duplicate coordinates trên cùng floor

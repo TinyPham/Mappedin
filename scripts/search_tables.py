@@ -22,10 +22,10 @@ def search_tables():
         print("DEFINITION Translation_Locations:")
         print(text[start:end])
     
-    if 'MasterData_Locations' in tables:
-        start = text.find('CREATE TABLE [dbo].[MasterData_Locations]')
+    if 'AreaInformation' in tables:
+        start = text.find('CREATE TABLE [dbo].[AreaInformation]')
         end = text.find('GO', start)
-        print("DEFINITION MasterData_Locations:")
+        print("DEFINITION AreaInformation:")
         print(text[start:end])
 
 search_tables()

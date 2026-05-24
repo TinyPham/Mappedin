@@ -19,6 +19,6 @@ def extract_table(table_name):
     else:
         print(f"Not found: {table_name}")
 
-extract_table('Translation_Locations')
-extract_table('MasterData_Locations')
+extract_table('AreaList')
+extract_table('AreaInformation')
 extract_table('Translation_UI')
