@@ -4,8 +4,20 @@ import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs';
 
-// Load .env from root (fallback)
-dotenv.config({ path: path.join(__dirname, '../.env') });
+// Load .env from the common launch locations:
+// - root/.env when running ts-node backend/server.ts
+// - root/.env when running node backend/dist/server.js
+// - current working directory .env for service managers launched from project root
+for (const envPath of [
+    path.join(process.cwd(), '.env'),
+    path.join(__dirname, '../.env'),
+    path.join(__dirname, '../../.env')
+]) {
+    if (fs.existsSync(envPath)) {
+        dotenv.config({ path: envPath });
+        break;
+    }
+}
 
 let config: sql.config | null = null;
 

@@ -28,7 +28,6 @@ import { syncMappedinAreas } from './areaSyncRepository';
 import { syncAvailableModel } from './availableModelSyncRepository';
 import { assignSubCategoryAreas } from './categoryAssignmentRepository';
 import { syncCategoryDirectory } from './categorySyncRepository';
-import { syncMappedinLocations } from './locationSyncRepository';
 import { buildAreaInformationPayloadFromAdminLocation } from './adminLocationRepository';
 import { upsertAreaInformation } from './areaInfoRepository';
 import { parseOverviewFloorSyncPayload } from './overviewFloorSync';
@@ -791,26 +790,6 @@ app.post('/api/admin/locations', requireAdmin, async (req, res) => {
         res.json({ success: true });
     } catch (err: any) {
         console.error('Error saving location:', err);
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// BULK SYNC: Push Mappedin locations from frontend to DB
-// Implements logic: Only overwrite if Mappedin actually changed, preserving manual UI edits.
-app.post('/api/sync-locations', requireAdmin, async (req, res) => {
-    try {
-        const { locations } = req.body; // Array of { id, name, description, imageUrl }
-        if (!Array.isArray(locations) || locations.length === 0) {
-            return res.status(400).json({ error: 'No locations provided' });
-        }
-
-        const db = await getDbConnection();
-        if (!db) return res.status(503).json({ error: 'Database connection currently unavailable' });
-        const { inserted, updated } = await syncMappedinLocations(db, sql, locations);
-
-        res.json({ success: true, inserted, updated });
-    } catch (err: any) {
-        console.error('Sync Error:', err);
         res.status(500).json({ error: err.message });
     }
 });

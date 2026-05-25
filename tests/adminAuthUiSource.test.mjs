@@ -18,6 +18,14 @@ test('frontend checks admin session through cookie-backed auth endpoint', () => 
   assert.match(source, /setAdminAuthenticated\(false\)/);
 });
 
+test('logout on admin login URL returns to the login dialog', () => {
+  const logoutIndex = source.indexOf('/auth/logout');
+  assert.notEqual(logoutIndex, -1, 'logout request must exist');
+  const logoutBlock = source.slice(logoutIndex, logoutIndex + 500);
+  assert.match(logoutBlock, /setAdminAuthenticated\(false\)/);
+  assert.match(logoutBlock, /isAdminLoginRequested[\s\S]*showAdminLoginDialog\(\)/);
+});
+
 test('admin write requests include credentials for JWT cookies', () => {
   const writeMarkers = [
     '/models/sync-overview-floor',
@@ -25,7 +33,6 @@ test('admin write requests include credentials for JWT cookies', () => {
     '/models/${uuid}',
     '/areas/sync',
     '/categories/subcategory/${subCatId}/assign',
-    '/sync-locations',
     '/api/upload-image',
     '/api/update-area-info',
     '/area-colors'

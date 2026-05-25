@@ -24,8 +24,7 @@ test('admin write endpoints are protected by requireAdmin middleware', () => {
     "app.post('/api/models/batch', requireAdmin",
     "app.post('/api/areas/sync', requireAdmin",
     "app.post('/api/categories/subcategory/:id/assign', requireAdmin",
-    "app.post('/api/admin/locations', requireAdmin",
-    "app.post('/api/sync-locations', requireAdmin"
+    "app.post('/api/admin/locations', requireAdmin"
   ];
 
   for (const route of protectedRoutes) {

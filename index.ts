@@ -68,41 +68,187 @@ function checkIsLocal(): boolean {
   return hostname === "localhost" || hostname === "127.0.0.1" || hostname.startsWith("192.168.") || hostname.startsWith("10.") || hostname.startsWith("172.");
 }
 
-const isViewOnly = (function () {
+function isMapRuntimeDebugEnabled(): boolean {
   try {
-    const urlParams = new URLSearchParams(window.location.search);
-    const hasAdminParam = urlParams.get('admin') === 'true';
-    const hasViewOnlyParam = urlParams.get('viewOnly') === 'true' || urlParams.get('viewonly') === 'true';
+    const params = new URLSearchParams(window.location.search);
+    return params.get("debug") === "true" ||
+      (window as any).__MAP_DEBUG__ === true ||
+      window.localStorage?.getItem("mapDebug") === "1";
+  } catch {
+    return false;
+  }
+}
 
-    // If explicitly requested admin, show admin tools
-    if (hasAdminParam) return false;
+function mapDebugLog(...args: any[]) {
+  if (isMapRuntimeDebugEnabled()) console.log(...args);
+}
 
-    // If explicitly requested view-only
-    if (hasViewOnlyParam) return true;
-
-    // Check environment (Iframe or specific port)
-    const isIframe = window.self !== window.top;
-    const isWebsiteHost = window.location.port === '7141' || document.referrer.includes(':7141');
-
-    // DEFAULT: Hide admin buttons on main UI unless ?admin=true is present
-    return true;
-  } catch (e) { return true; }
+const isAdminLoginRequested = (() => {
+  try {
+    return new URLSearchParams(window.location.search).get('admin') === 'true';
+  } catch {
+    return false;
+  }
 })();
+let isViewOnly = true;
+let isAdminAuthenticated = false;
+let adminPollingInterval: ReturnType<typeof setInterval> | null = null;
+const ADMIN_HIDE_STYLE_ID = 'admin-auth-hide-style';
+let runAdminPollingStart = () => { };
+let runAdminPollingStop = () => { };
 
 // Detect Mobile Device
 const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-// Apply global hide style ASAP if viewOnly
-if (isViewOnly) {
-  const style = document.createElement('style');
-  style.textContent = `
-    #btn-add-model, #btn-open-classification, #btn-open-admin-info, #btn-open-area-color, .sidebar-actions, #controls-panel {
-      display: none !important;
+function applyAdminVisibility() {
+  let style = document.getElementById(ADMIN_HIDE_STYLE_ID);
+  if (isViewOnly) {
+    if (!style) {
+      style = document.createElement('style');
+      style.id = ADMIN_HIDE_STYLE_ID;
+      style.textContent = `
+        #btn-add-model, #btn-open-classification, #btn-open-admin-info, #btn-open-area-color, .sidebar-actions, #controls-panel {
+          display: none !important;
+        }
+      `;
+      document.head.appendChild(style);
     }
-  `;
-  document.head.appendChild(style);
-  console.log("🚀 Mappedin: View-Only mode active. Admin bits hidden.");
+  } else {
+    style?.remove();
+  }
+
+  const adminActions = document.getElementById("sidebar-admin-actions");
+  if (adminActions) adminActions.style.display = isViewOnly ? "none" : "flex";
+  renderAdminSessionBar();
 }
+
+function setAdminAuthenticated(authenticated: boolean) {
+  isAdminAuthenticated = authenticated;
+  isViewOnly = !authenticated;
+  applyAdminVisibility();
+  if (authenticated) {
+    startAdminPolling();
+  } else {
+    stopAdminPolling();
+  }
+}
+
+function startAdminPolling() {
+  runAdminPollingStart();
+}
+
+function stopAdminPolling() {
+  runAdminPollingStop();
+}
+
+function renderAdminSessionBar() {
+  let bar = document.getElementById('admin-session-bar');
+  if (!isAdminAuthenticated) {
+    bar?.remove();
+    return;
+  }
+
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.id = 'admin-session-bar';
+    bar.style.cssText = 'position:fixed;right:16px;bottom:16px;z-index:9000;background:#111827;color:#fff;border-radius:8px;box-shadow:0 10px 30px rgba(15,23,42,.25);display:flex;align-items:center;gap:10px;padding:8px 10px;font:700 13px Arial,sans-serif;';
+    bar.innerHTML = `
+      <span>Admin</span>
+      <button id="admin-logout-btn" type="button" style="border:0;background:#ef4444;color:#fff;border-radius:6px;padding:6px 10px;font-weight:800;cursor:pointer;">Logout</button>
+    `;
+    document.body.appendChild(bar);
+    document.getElementById('admin-logout-btn')?.addEventListener('click', async () => {
+      await fetch(`${getApiBaseUrl()}/auth/logout`, {
+        method: 'POST',
+        credentials: 'include'
+      }).catch(() => null);
+      setAdminAuthenticated(false);
+      if (isAdminLoginRequested) {
+        showAdminLoginDialog();
+      }
+    });
+  }
+}
+
+async function checkAdminSession() {
+  try {
+    const res = await fetch(`${getApiBaseUrl()}/auth/me`, { credentials: 'include' });
+    setAdminAuthenticated(res.ok);
+  } catch {
+    setAdminAuthenticated(false);
+  }
+}
+
+function showAdminLoginDialog() {
+  if (document.getElementById('admin-login-modal')) return;
+
+  const overlay = document.createElement('div');
+  overlay.id = 'admin-login-modal';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px;';
+  overlay.innerHTML = `
+    <form id="admin-login-form" style="width:min(360px,100%);background:#fff;border-radius:10px;padding:22px;box-shadow:0 20px 60px rgba(15,23,42,.25);font-family:Arial,sans-serif;">
+      <div style="font-size:20px;font-weight:800;color:#0f172a;margin-bottom:16px;">Admin login</div>
+      <label style="display:block;font-size:13px;font-weight:700;color:#334155;margin-bottom:6px;">Username</label>
+      <input id="admin-login-username" autocomplete="username" style="width:100%;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:8px;padding:10px 12px;margin-bottom:12px;" />
+      <label style="display:block;font-size:13px;font-weight:700;color:#334155;margin-bottom:6px;">Password</label>
+      <div style="position:relative;margin-bottom:10px;">
+        <input id="admin-login-password" type="password" autocomplete="current-password" style="width:100%;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:8px;padding:10px 44px 10px 12px;" />
+        <button id="admin-login-password-toggle" type="button" aria-label="Show password" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);width:32px;height:32px;border:0;background:transparent;color:#475569;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;">👁</button>
+      </div>
+      <div id="admin-login-error" style="min-height:18px;color:#dc2626;font-size:13px;margin-bottom:12px;"></div>
+      <div style="display:flex;justify-content:flex-end;gap:10px;">
+        <button id="admin-login-cancel" type="button" style="border:1px solid #cbd5e1;background:#fff;color:#334155;border-radius:8px;padding:9px 14px;font-weight:700;cursor:pointer;">Cancel</button>
+        <button type="submit" style="border:0;background:#214ca6;color:#fff;border-radius:8px;padding:9px 16px;font-weight:800;cursor:pointer;">Login</button>
+      </div>
+    </form>
+  `;
+  document.body.appendChild(overlay);
+
+  const form = document.getElementById('admin-login-form') as HTMLFormElement;
+  const usernameInput = document.getElementById('admin-login-username') as HTMLInputElement;
+  const passwordInput = document.getElementById('admin-login-password') as HTMLInputElement;
+  const passwordToggle = document.getElementById('admin-login-password-toggle') as HTMLButtonElement;
+  const errorEl = document.getElementById('admin-login-error') as HTMLElement;
+  document.getElementById('admin-login-cancel')?.addEventListener('click', () => overlay.remove());
+  passwordToggle?.addEventListener('click', () => {
+    passwordInput.type = passwordInput.type === 'password' ? 'text' : 'password';
+    passwordToggle.setAttribute('aria-label', passwordInput.type === 'password' ? 'Show password' : 'Hide password');
+  });
+
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    errorEl.textContent = '';
+    const res = await fetch(`${getApiBaseUrl()}/auth/login`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: usernameInput.value.trim(),
+        password: passwordInput.value
+      })
+    });
+
+    if (!res.ok) {
+      errorEl.textContent = 'Invalid admin credentials or admin login is not configured.';
+      return;
+    }
+
+    setAdminAuthenticated(true);
+    overlay.remove();
+  });
+
+  setTimeout(() => usernameInput.focus(), 0);
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+  applyAdminVisibility();
+  await checkAdminSession();
+  if (isAdminLoginRequested && !isAdminAuthenticated) {
+    showAdminLoginDialog();
+  }
+});
+
+applyAdminVisibility();
 
 /**
  * Kiểm tra điểm có nằm trong polygon không (Ray casting algorithm)
@@ -11323,6 +11469,7 @@ async function init() {
       try {
         const res = await fetch(`${API_BASE_URL}/models/sync-overview-floor`, {
           method: "POST",
+          credentials: "include",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ overviewFloorId })
         });
@@ -11355,6 +11502,7 @@ async function init() {
       try {
         await fetch(`${API_BASE_URL}/models`, {
           method: "POST",
+          credentials: "include",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(model)
         });
@@ -11365,7 +11513,7 @@ async function init() {
 
     async deleteModel(uuid: string) {
       try {
-        await fetch(`${API_BASE_URL}/models/${uuid}`, { method: "DELETE" });
+        await fetch(`${API_BASE_URL}/models/${uuid}`, { method: "DELETE", credentials: "include" });
       } catch (err) {
         console.error("API Delete Error:", err);
       }
@@ -11387,6 +11535,7 @@ async function init() {
         await fetch(`${API_BASE_URL}/areas/sync`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          credentials: "include",
           body: JSON.stringify({ areas })
         });
       } catch (err) {
@@ -11407,6 +11556,7 @@ async function init() {
       try {
         const res = await fetch(`${API_BASE_URL}/categories/subcategory/${subCatId}/assign`, {
           method: "POST",
+          credentials: "include",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ areaIds })
         });
@@ -14433,40 +14583,6 @@ function initAdminUI(allMapObjects: any[]) {
     btnSaveEl.style.color = 'white';
   }
 
-  // Sync helper
-  const syncLocationsWithDB = async () => {
-    try {
-      const objects = (window as any).allMapObjects || allMapObjects;
-      const payload = {
-        locations: objects.map((o: any) => {
-          // Image URL Resolution (Same as console log)
-          let resolvedImageUrl = "";
-          if (o.images && Array.isArray(o.images) && o.images.length > 0) {
-            resolvedImageUrl = o.images[0].url || o.images[0];
-          } else if (o.media && Array.isArray(o.media) && o.media.length > 0) {
-            resolvedImageUrl = o.media[0].url || o.media[0];
-          } else {
-            resolvedImageUrl = o.logo?.original || o.logo?.large || o.logo?.medium || o.logo?.small || o.logo || o.image || o.x_ray_image_url || "";
-          }
-
-          return {
-            id: o.id,
-            name: o.name || "",
-            description: o.description || "",
-            imageUrl: resolvedImageUrl
-          };
-        })
-      };
-      await fetch(`${getApiBaseUrl()}/sync-locations`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-    } catch (e) {
-      console.warn('Sync failed', e);
-    }
-  };
-
   // Open Modal
   btnOpen.onclick = async () => {
     // Close other modals
@@ -14484,10 +14600,6 @@ function initAdminUI(allMapObjects: any[]) {
       modal.classList.remove('hidden');
       btnOpen.classList.add('active');
 
-      // 1. Sync in background (No await) - Loads list instantly
-      syncLocationsWithDB();
-
-      // 2. Populate select immediately from memory
       if (searchFilter) searchFilter.value = "";
       populateAreaSelect();
 
@@ -14564,7 +14676,6 @@ function initAdminUI(allMapObjects: any[]) {
 
   if (btnRefresh) {
     btnRefresh.onclick = async () => {
-      syncLocationsWithDB(); // Run in background
       populateAreaSelect(searchFilter.value);
     };
   }
@@ -14813,6 +14924,7 @@ function initAdminUI(allMapObjects: any[]) {
 
         const res = await fetch(`${apiOrigin}/api/upload-image`, {
           method: 'POST',
+          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ image: base64, filename: file.name })
         });
@@ -14896,6 +15008,7 @@ function initAdminUI(allMapObjects: any[]) {
 
         const res = await fetch(`${apiOrigin}/api/update-area-info`, {
           method: 'POST',
+          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
@@ -14934,10 +15047,11 @@ function initAdminUI(allMapObjects: any[]) {
 
 
 
-  // Auto-open if URL has ?admin=true
+  // Auto-open login if URL has ?admin=true; this must not grant admin rights by itself.
   try {
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.has('admin')) {
+    if (isAdminLoginRequested && isViewOnly) {
+      showAdminLoginDialog();
+    } else if (isAdminLoginRequested && !isViewOnly) {
       modal.classList.remove('hidden');
       populateAreaSelect();
       if (btnOpen) {
@@ -15068,6 +15182,7 @@ export function initAreaColorUI(allMapObjects: any[], mapView: any, mapData: any
   const setAreaColorsOnServer = async (areaIds: string[], color: string) => {
     const response = await fetch(`${apiBaseUrl}/area-colors`, {
       method: 'POST',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ areaIds, color })
     });
@@ -15081,6 +15196,7 @@ export function initAreaColorUI(allMapObjects: any[], mapView: any, mapData: any
   const clearAreaColorsOnServer = async (areaIds: string[]) => {
     const response = await fetch(`${apiBaseUrl}/area-colors`, {
       method: 'DELETE',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ areaIds })
     });

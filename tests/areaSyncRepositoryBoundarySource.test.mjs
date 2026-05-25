@@ -8,7 +8,7 @@ const repositorySource = readFileSync(new URL('../backend/areaSyncRepository.ts'
 test('area sync SQL lives in areaSyncRepository', () => {
   assert.match(repositorySource, /syncMappedinAreas/);
   assert.match(repositorySource, /INSERT INTO AreaList/);
-  assert.match(repositorySource, /UPDATE AreaList/);
+  assert.doesNotMatch(repositorySource, /UPDATE AreaList/);
 
   const routeBlock = serverSource.slice(
     serverSource.indexOf("app.post('/api/areas/sync'"),

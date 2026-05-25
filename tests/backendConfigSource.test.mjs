@@ -12,6 +12,19 @@ test('database config prefers environment connection string before appsettings',
   assert.ok(envIndex < appsettingsIndex, 'environment connection string must be checked before appsettings');
 });
 
+test('backend env loader supports ts-node and compiled dist entrypoints', () => {
+  assert.match(
+    dbSource,
+    /process\.cwd\(\)[\s\S]*['"]\.env['"]/,
+    'backend should try the current working directory .env used by root-launched dist/server.js'
+  );
+  assert.match(
+    dbSource,
+    /\.\.\/\.\.\/\.env/,
+    'backend should try ../../.env so backend/dist/db.js can load the root .env'
+  );
+});
+
 test('backend TypeScript build includes nested source folders', () => {
   assert.ok(
     tsconfig.include.some((pattern) => pattern.includes('**/*.ts')),
