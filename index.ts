@@ -29,6 +29,11 @@ import { rankWayfindingSearchResults } from "./wayfindingSearchRules.js";
 import { getCategoryAreaListStyle } from "./categoryDropdownLayout.js";
 import { getModelStreamingZoomThresholds } from "./modelStreamingThresholds.js";
 import {
+  STARTUP_LOADING_MAX_MS,
+  getStartupGateTimeoutMs,
+  withStartupTimeout
+} from "./startupLoadingBudget.js";
+import {
   STARTUP_CAMERA_ROTATION_DURATION_MS,
   STARTUP_CAMERA_ZOOM_DELAY_MS,
   STARTUP_CAMERA_ZOOM_DURATION_MS,
@@ -1859,6 +1864,28 @@ async function init() {
 
   let simProgress = 0;
   let progressInterval: any = null;
+  (window as any)._isStartupCameraAnimating = false;
+  let startupAssetsReadySettled = false;
+  let resolveStartupAssetsReady: (reason?: string) => void = () => { };
+  const startupAssetsReadyPromise = new Promise<string | undefined>((resolve) => {
+    resolveStartupAssetsReady = resolve;
+  });
+  const markStartupAssetsReady = (reason: string) => {
+    if (startupAssetsReadySettled) return;
+    startupAssetsReadySettled = true;
+    resolveStartupAssetsReady(reason);
+  };
+  const startupGatePromise = withStartupTimeout(
+    startupAssetsReadyPromise,
+    getStartupGateTimeoutMs(0),
+    'timeout'
+  ).then((reason) => {
+    if (reason === 'timeout' && !startupAssetsReadySettled) {
+      console.warn(`Startup loading budget reached ${STARTUP_LOADING_MAX_MS}ms; continuing with background streaming.`);
+      markStartupAssetsReady('timeout');
+    }
+    return reason;
+  });
 
   if (loadingScreen && loadingText && loadingBar) {
     loadingScreen.style.display = "flex";
@@ -2101,7 +2128,7 @@ async function init() {
       '[class*="mappedin-ctrl-attrib"]',
       '[class*="copyright"]'
     ];
-    
+
     const applyStyle = (el: any) => {
       if (!el) return;
       el.style.setProperty('display', 'none', 'important');
@@ -2114,7 +2141,7 @@ async function init() {
     selectors.forEach(sel => {
       try {
         document.querySelectorAll(sel).forEach(applyStyle);
-      } catch (e) {}
+      } catch (e) { }
     });
 
     // 2. Target Shadow DOM if any
@@ -2126,13 +2153,13 @@ async function init() {
           selectors.forEach(sel => {
             try {
               root.shadowRoot?.querySelectorAll(sel).forEach(applyStyle);
-            } catch (e) {}
+            } catch (e) { }
           });
           walkShadow(root.shadowRoot);
         }
         root.childNodes?.forEach(child => walkShadow(child));
       };
-      try { walkShadow(mapContainer); } catch (e) {}
+      try { walkShadow(mapContainer); } catch (e) { }
     }
   };
 
@@ -2186,10 +2213,10 @@ async function init() {
 
       if (themeUrl && (mapView as any).Outdoor) {
         console.log(`🎨 Switching theme to: ${themeName} (${themeUrl})`);
-        
+
         try {
           (mapView as any).Outdoor.setStyle(themeUrl);
-          
+
           // UI Updates
           themeOptions.forEach(opt => opt.classList.remove('active'));
           option.classList.add('active');
@@ -2218,7 +2245,7 @@ async function init() {
   const updateMapDisplay = (val: number) => {
     if (!mapElem) return;
     const brightnessFactor = val / 100;
-    
+
     // Calculate contrast: as it gets darker (anti-glare), we boost contrast slightly
     const contrast = 1 + (1 - brightnessFactor) * 0.33;
     const saturate = 1 - (1 - brightnessFactor) * 0.5;
@@ -2562,7 +2589,7 @@ async function init() {
     if (window.innerWidth > 768 && step.id === 'desktop-layout-overview') {
       try {
         if (typeof expandSidebar === 'function') expandSidebar();
-      } catch (e) {}
+      } catch (e) { }
     }
 
 
@@ -2572,7 +2599,7 @@ async function init() {
         const tabId = step.autoSwitchTab === 'directions' ? 'tab-directions' : 'tab-search';
         const tabBtn = document.getElementById(tabId) as HTMLElement | null;
         if (tabBtn) tabBtn.click();
-      } catch (e) {}
+      } catch (e) { }
     }
 
     if (isMobileGuide && step.autoSwitchTab) {
@@ -2580,7 +2607,7 @@ async function init() {
         const tabId = step.autoSwitchTab === 'directions' ? 'tab-directions' : 'tab-search';
         const tabBtn = document.getElementById(tabId) as HTMLElement | null;
         if (tabBtn) tabBtn.click();
-      } catch (e) {}
+      } catch (e) { }
     }
 
     if (isMobileGuide && !step.autoSwitchTab && step.id === 'mobile-floor-language') {
@@ -2588,7 +2615,7 @@ async function init() {
         const searchTabEl = document.getElementById('tab-search') as HTMLElement | null;
         const isDirectionsActive = document.getElementById('tab-directions')?.classList.contains('active');
         if (isDirectionsActive && searchTabEl) searchTabEl.click();
-      } catch (e) {}
+      } catch (e) { }
     }
 
     // Auto-switch back to search tab when leaving a directions step
@@ -2597,7 +2624,7 @@ async function init() {
         const searchTabEl = document.getElementById('tab-search') as HTMLElement | null;
         const isDirectionsActive = document.getElementById('tab-directions')?.classList.contains('active');
         if (isDirectionsActive && searchTabEl) searchTabEl.click();
-      } catch (e) {}
+      } catch (e) { }
     }
 
     if (userGuideImage) {
@@ -2655,7 +2682,8 @@ async function init() {
         const searchTabEl = document.getElementById('tab-search') as HTMLElement | null;
         const isDirectionsActive = document.getElementById('tab-directions')?.classList.contains('active');
         if (isDirectionsActive && searchTabEl) searchTabEl.click();
-      } catch (e) {} }
+      } catch (e) { }
+    }
 
     userGuideModal?.classList.add('hidden');
     userGuideHighlight?.classList.add('hidden');
@@ -2717,6 +2745,7 @@ async function init() {
     }
   });
 
+  const dismissStartupLoadingOverlay = () => {
   if (progressInterval) clearInterval(progressInterval);
 
   if (loadingScreen && loadingText && loadingBar) {
@@ -2736,11 +2765,18 @@ async function init() {
   } else {
     resolveLoadingOverlayDismissed();
   }
+  };
+
+  startupGatePromise.then(dismissStartupLoadingOverlay);
 
   // Tải ngầm cực chậm trong Background (Không block UI/Lag máy)
   setTimeout(async () => {
     try {
       for (const floor of allFloors) {
+        while ((window as any)._isStartupCameraAnimating) {
+          await new Promise(r => setTimeout(r, 250));
+        }
+
         // Bỏ qua tầng đang hiển thị
         if (floor.id === mapView.currentFloor?.id) continue;
 
@@ -2810,7 +2846,7 @@ async function init() {
           duration: 800,
           easing: "ease-in-out"
         });
-      } catch(e) {}
+      } catch (e) { }
     }
   }
 
@@ -2820,7 +2856,7 @@ async function init() {
     if (typeof selectedSpace !== 'undefined' && selectedSpace) {
       setTimeout(() => {
         if (typeof (window as any).focusOnObject === 'function' && typeof (window as any).getSmartZoomLevel === 'function') {
-           (window as any).focusOnObject(selectedSpace, (window as any).getSmartZoomLevel(selectedSpace));
+          (window as any).focusOnObject(selectedSpace, (window as any).getSmartZoomLevel(selectedSpace));
         }
       }, 100);
     }
@@ -2842,12 +2878,12 @@ async function init() {
     sidebarToggleBtn.title = "Thu gọn thanh bên";
 
     if (!disableFocus) {
-    setTimeout(() => {
-      const searchInput = document.getElementById("location-search") as HTMLInputElement;
-      if (searchInput) searchInput.focus();
-    }, 850);
-  }
+      setTimeout(() => {
+        const searchInput = document.getElementById("location-search") as HTMLInputElement;
+        if (searchInput) searchInput.focus();
+      }, 850);
     }
+  }
 
   if (sidebarToggleBtn) {
     sidebarToggleBtn.addEventListener("click", () => {
@@ -2905,12 +2941,8 @@ async function init() {
   initialPitch = 33.08;
 
   // Xoay camera một góc để có góc nhìn tốt hơn (Chạy không chặn luồng khởi động)
-  const cameraRotationResult = mapView.Camera.animateTo({
-    bearing: 322.85,
-    pitch: 33.08,
-  }, {
-    duration: STARTUP_CAMERA_ROTATION_DURATION_MS
-  });
+  // Startup camera animations are delayed until the startup loading gate is released.
+  const cameraRotationResult = startupGatePromise.then(() => runStartupCameraSequence());
 
   // ============================================
   // TỰ ĐỘNG BẬT HƯỚNG DẪN SAU KHI XOAY CAMERA XONG
@@ -3001,6 +3033,16 @@ async function init() {
   // INITIAL CAMERA SETUP - Set kích thước ban đầu
   // ============================================
   // Set minZoomLevel và maxZoomLevel, và zoom ban đầu = 1.0
+  function runStartupCameraSequence() {
+    // Start camera motion only after startup data/model preload has settled.
+    (window as any)._isStartupCameraAnimating = true;
+    const startupRotationResult = mapView.Camera.animateTo({
+      bearing: 322.85,
+      pitch: 33.08,
+    }, {
+      duration: STARTUP_CAMERA_ROTATION_DURATION_MS
+    });
+
   try {
     const cameraAny = mapView.Camera as any;
 
@@ -3049,16 +3091,25 @@ async function init() {
         duration: STARTUP_CAMERA_ZOOM_DURATION_MS, // 3 giây để zoom IN mượt mà
         easing: "ease-in-out",
       });
-      setTimeout(
-        resolveStartupCameraSequenceCompleted,
-        STARTUP_CAMERA_ZOOM_DURATION_MS + STARTUP_GUIDE_AFTER_ROTATION_BUFFER_MS
-      );
+      setTimeout(() => {
+        (window as any)._isStartupCameraAnimating = false;
+        resolveStartupCameraSequenceCompleted();
+        const currentFloorId = mapView.currentFloor?.id;
+        const currentFloorType = getFloorType(mapView.currentFloor);
+        if (currentFloorId && currentFloorType === "overview") {
+          _loadModelsForFloor(currentFloorId);
+        }
+      }, STARTUP_CAMERA_ZOOM_DURATION_MS + STARTUP_GUIDE_AFTER_ROTATION_BUFFER_MS);
       console.log(`🎬 Initial animation: Zoom IN lên ${targetZoom} tại Overview`);
     } catch (e) {
+      (window as any)._isStartupCameraAnimating = false;
       resolveStartupCameraSequenceCompleted();
       console.warn("Error in initial camera animation:", e);
     }
   }, STARTUP_CAMERA_ZOOM_DELAY_MS); // Delay 1 giây 
+
+    return startupRotationResult;
+  }
 
   // ============================================
   // 2. THIẾT LẬP FLOOR SELECTOR
@@ -3439,7 +3490,7 @@ async function init() {
 
       // 2. Filter results (DO NOT GROUP, as per user request to list all independently)
       // Tìm kiếm trả kết quả từ TẤT CẢ các tầng, không filter theo tầng hiện tại
-    const uniqueResults: any[] = (rankWayfindingSearchResults as any)({
+      const uniqueResults: any[] = (rankWayfindingSearchResults as any)({
         query,
         objects: allMapObjects,
         nodeType: 'destination',
@@ -5604,7 +5655,7 @@ async function init() {
           if (connectionMarkersVisible) renderConnectionOverlaysForCurrentFloor();
           renderObjectMarkersForCurrentFloor();
           updateMarkersForCurrentFloor();
-          
+
           // Defer UI/Categories update to the next frame
           requestAnimationFrame(() => {
             updateUIVisibility();
@@ -5666,7 +5717,9 @@ async function init() {
       console.warn("Error setting floor:", err);
     } finally {
       // Nhả khoá sau khi camera animation hoàn tất (1000ms) + buffer
-      setTimeout(() => { isGlobalSwitchingFloor = false; }, 1200);
+      setTimeout(() => {
+        isGlobalSwitchingFloor = false;
+      }, 1200);
     }
 
     // Sau khi floor đã được set, animate camera (easeInOut cho mượt mà)
@@ -6669,7 +6722,9 @@ async function init() {
       console.warn("Error in smart floor switch:", e);
     } finally {
       // Delay nhỏ để tránh spam
-      setTimeout(() => { isFloorSwitching = false; }, 500);
+      setTimeout(() => {
+        isFloorSwitching = false;
+      }, 500);
     }
   };
 
@@ -7200,7 +7255,7 @@ async function init() {
 
       const statusEl = document.getElementById("wayfinding-status");
       const instructionsListEl = document.getElementById("instructions-list");
-      
+
       if (statusEl) {
         statusEl.textContent = TranslationManager.t('loading_route', "Đang tìm đường đi...");
         statusEl.style.display = "block";
@@ -7939,39 +7994,39 @@ async function init() {
         if (wayfindingOrigin) {
           const originFloorId = wayfindingOrigin.floor?.id || wayfindingOrigin.floorId || wayfindingOrigin.coordinate?.floorId;
           const originCoord = wayfindingOrigin.coordinate || wayfindingOrigin.anchor;
-          
+
           setTimeout(async () => {
             let isFloorSwitched = false;
             if (originFloorId && originFloorId !== mapView.currentFloor.id) {
               await mapView.setFloor(originFloorId);
               const fSelector = document.getElementById('floor-selector') as HTMLSelectElement;
               if (fSelector) fSelector.value = originFloorId;
-              
+
               // KHÔNG CẦN CHỜ LÂU NỮA - await setFloor đã tải xong mặt bằng cơ bản
               await new Promise(r => setTimeout(r, 50));
               isFloorSwitched = true;
             }
-            
+
             if (wayfindingOrigin) {
               const targetZoom = typeof (window as any).getSmartZoomLevel === 'function' ? (window as any).getSmartZoomLevel(wayfindingOrigin) : 19.0;
-              
+
               if (isFloorSwitched && originCoord) {
-                 // NẾU CHUYỂN TẦNG: Snap camera ngay lập tức (không bay lượn) để tránh giật lag
-                 try {
-                   (mapView.Camera as any).set({
-                     center: originCoord,
-                     zoomLevel: targetZoom,
-                     bearing: initialBearing || 322.85,
-                     pitch: initialPitch || 33.08
-                   });
-                 } catch(e) {
-                   mapView.Camera.animateTo({
-                     center: originCoord,
-                     zoomLevel: targetZoom,
-                     bearing: initialBearing || 322.85,
-                     pitch: initialPitch || 33.08
-                   }, { duration: 0 });
-                 }
+                // NẾU CHUYỂN TẦNG: Snap camera ngay lập tức (không bay lượn) để tránh giật lag
+                try {
+                  (mapView.Camera as any).set({
+                    center: originCoord,
+                    zoomLevel: targetZoom,
+                    bearing: initialBearing || 322.85,
+                    pitch: initialPitch || 33.08
+                  });
+                } catch (e) {
+                  mapView.Camera.animateTo({
+                    center: originCoord,
+                    zoomLevel: targetZoom,
+                    bearing: initialBearing || 322.85,
+                    pitch: initialPitch || 33.08
+                  }, { duration: 0 });
+                }
               } else if (typeof (window as any).focusOnObject === 'function') {
                 // NẾU CÙNG TẦNG: Vẫn bay lượn mượt mà bình thường
                 (window as any).focusOnObject(wayfindingOrigin, targetZoom, initialBearing || 322.85, initialPitch || 33.08);
@@ -8192,12 +8247,12 @@ async function init() {
 
       const totalNodes = wayfindingStopovers.length + 2;
       const useDragAndDrop = totalNodes >= 3;
-      
+
       const getDragAttributes = (index: number) => {
         if (!useDragAndDrop) return '';
         return `draggable="true" ondragstart="window.onWayfindingDragStart(event, ${index})" ondragend="window.onWayfindingDragEnd(event)" ondragover="window.onWayfindingDragOver(event)" ondrop="window.onWayfindingDrop(event, ${index})"`;
       };
-      
+
       const dragHandleHtml = useDragAndDrop ? `
         <div style="cursor:grab; display:flex; align-items:center; color:#adb5bd; padding-right:4px;" onmousedown="event.stopPropagation();">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="9" x2="20" y2="9"></line><line x1="4" y1="15" x2="20" y2="15"></line></svg>
@@ -8449,9 +8504,9 @@ async function init() {
         <span>${TranslationManager.t('suggested_places', 'Địa điểm gợi ý')}</span>
         <svg id="${arrowId}" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.3s;"><polyline points="6 9 12 15 18 9"></polyline></svg>
       `;
-      
+
       itemsWrapper = document.createElement("div");
-      
+
       let isOpen = true;
       header.onclick = () => {
         isOpen = !isOpen;
@@ -8551,15 +8606,15 @@ async function init() {
       let coordinates = null;
       if (obj.polygons && obj.polygons.length > 0) {
         coordinates = obj.polygons[0].coordinates;
-      } 
+      }
       else if (obj.geoJSON && obj.geoJSON.geometry && obj.geoJSON.geometry.type === 'Polygon') {
         coordinates = obj.geoJSON.geometry.coordinates[0].map((c: any) => ({ longitude: c[0], latitude: c[1] }));
       }
 
       if (coordinates) {
         const area = calculatePolygonArea(coordinates);
-        if (area < 15) return 22.0; 
-        if (area < 40) return 21.0; 
+        if (area < 15) return 22.0;
+        if (area < 40) return 21.0;
         if (area < 100) return 20.0;
       }
     } catch (e) { }
@@ -8568,8 +8623,8 @@ async function init() {
     const categories = obj.categories || [];
     const isPriorityDetailed = categories.some((c: any) => {
       const cname = (c.name || "").toLowerCase();
-      return cname.includes('gate') || cname.includes('cửa ra') || cname.includes('quầy') || 
-             cname.includes('check-in') || cname.includes('toilet') || cname.includes('vệ sinh');
+      return cname.includes('gate') || cname.includes('cửa ra') || cname.includes('quầy') ||
+        cname.includes('check-in') || cname.includes('toilet') || cname.includes('vệ sinh');
     });
 
     if (isPriorityDetailed) return 21.5;
@@ -8577,7 +8632,7 @@ async function init() {
     // 3. Fallback theo zone (dùng style màu để nhận diện quy mô lớn như Public/Hall)
     const style = getObjectBaseStyle(obj);
     const isLargeArea = (style.color === "#FFF176" || style.color === "#FFCDD2" || style.color === "#FBC02D" || style.color === "#EF9A9A");
-    
+
     return isLargeArea ? 18.5 : 20.0;
   };
 
@@ -8585,7 +8640,7 @@ async function init() {
     (window as any).focusOnObject = focusOnObject;
     try {
       if (!obj) return;
-      
+
       const objFloorId = obj.floor?.id || obj.floorId || obj.coordinate?.floorId;
       if (objFloorId && mapView.currentFloor && objFloorId !== mapView.currentFloor.id) {
         console.log(`Focusing on object on different floor: switching to ${objFloorId}`);
@@ -11043,7 +11098,7 @@ async function init() {
     const start = (e: Event) => {
       if (e instanceof MouseEvent && e.button !== 0) return;
       isHolding = true;
-      action(false); 
+      action(false);
       timeout = setTimeout(() => {
         if (isHolding) {
           timer = setInterval(() => action(true), intervalTime);
@@ -11159,7 +11214,7 @@ async function init() {
         // Chặn auto-floor-switch trong suốt quá trình animation
         (window as any)._isResettingCamera = true;
 
-         cameraAny.animateTo({
+        cameraAny.animateTo({
           zoomLevel: 16.5, // Zoom về 16.5x
           bearing: initialBearing, // Bearing ban đầu (bearing - 36)
           pitch: initialPitch, // Pitch ban đầu (góc nhìn dọc)
@@ -11870,7 +11925,7 @@ async function init() {
   const _loadModelsForFloor = async (floorId: string) => {
     console.log(`🌐 [STREAMING] Activating model stream for floor: ${floorId}`);
     _loadedFloors.add(floorId);
-    (window as any).updateModelStreaming(); // Kích hoạt ngay lập tức
+    (window as any).updateModelStreaming();
   };
 
   /**
@@ -11939,6 +11994,7 @@ async function init() {
    */
   const updateModelStreaming = debounce(async () => {
     // Bỏ qua khi đang reset camera (Home) hoặc chuyển tầng để tránh lag
+    if ((window as any)._isStartupCameraAnimating) return;
     if ((window as any)._isResettingCamera || isGlobalSwitchingFloor) return;
     const currentFloor = mapView.currentFloor;
     if (!currentFloor) return;
@@ -12307,22 +12363,26 @@ async function init() {
 
       if (!models || models.length === 0) {
         console.log("🆕 Empty DB - No models to load.");
+        markStartupAssetsReady('empty-models');
         return;
       }
 
       _allModelMetadata = models;
       console.log(`📦 Cached ${models.length} model metadata from DB`);
 
-      // Khởi động load cho tầng hiện tại (delay nhẹ để map render xong floor plan)
-      setTimeout(async () => {
-        const currentFloorId = mapView.currentFloor?.id;
-        if (currentFloorId) {
-          await _loadModelsForFloor(currentFloorId);
+      const currentFloorId = mapView.currentFloor?.id;
+      if (currentFloorId) {
+        if (loadingText && loadingBar) {
+          const baseMsg = TranslationManager.t('loading_3d_map', 'Đang khởi tạo bản đồ...');
+          loadingText.textContent = `${baseMsg} 95%`;
+          loadingBar.style.width = `95%`;
         }
-      }, 1000);
+      }
+      markStartupAssetsReady('models-ready');
 
     } catch (e) {
       console.error("❌ Error loading from API:", e);
+      markStartupAssetsReady('model-load-error');
     }
   };
 
@@ -12354,7 +12414,7 @@ async function init() {
     overviewShadowInstances.length = 0; // Clear array
 
     // (Bỏ check early return Overview floor để xử lý cả model ngoài Overview)
-    
+
     // Step 3: For each model on the Overview floor AND Airplanes, create a shadow copy on the CURRENT floor
     const currentFloor = mapView.currentFloor;
     let shadowCount = 0;
@@ -12368,15 +12428,15 @@ async function init() {
       const nameStr = String(meta.name || "").toLowerCase();
       // Nhận diện các model là máy bay (dựa trên URL hoặc tên)
       const isAirplane = urlStr.includes('plane') || urlStr.includes('a3') || urlStr.includes('b7') || urlStr.includes('aircraft') || nameStr.includes('bay');
-      
+
       // Chỉ copy nếu model thuộc tầng Overview HOẶC model đó là máy bay
       if (meta.floorId !== overviewId && !isAirplane) return;
-      
+
       const instance = MODEL_INSTANCE_REGISTRY.get(meta.uuid);
       if (!instance) return;
       overviewModels.push({ meta, instance });
     });
-    
+
     for (const { meta, instance } of overviewModels) {
       try {
         // Create coordinate on CURRENT floor (same lat/lon, different floor)
