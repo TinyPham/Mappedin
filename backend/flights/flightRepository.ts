@@ -1,15 +1,76 @@
 import { getDbConnection, sql } from '../db';
+import fs from 'fs';
+import path from 'path';
 import { parseCheckInCounterSpec, pickRandomCheckInCounter } from './checkInCounterSpec';
 import type { FlightNavigationPayload, FlightRecord } from './flightModels';
 
-const FLIGHT_DB_PROC_PREFIX = 'LongThanhFlightBK.dbo.';
+const DEFAULT_FLIGHT_DATABASE_NAME = 'LongThanhFlightBK';
+const DEFAULT_FLIGHT_SCHEMA = 'dbo';
+
+type FlightDataSettings = {
+  databaseName: string;
+  schema: string;
+};
 
 const GATE_MAPPING_TABLE = 'dbo.FlightGateNavigationMap';
 const BELT_MAPPING_TABLE = 'dbo.FlightBeltNavigationMap';
 const CHECKIN_MAPPING_TABLE = 'dbo.FlightCheckInCounterNavigationMap';
 
+function findAppSettingsPath() {
+  for (const candidate of [
+    path.join(__dirname, 'appsettings.json'),
+    path.join(__dirname, '..', 'appsettings.json'),
+    path.join(__dirname, '..', '..', 'appsettings.json')
+  ]) {
+    if (fs.existsSync(candidate)) {
+      return candidate;
+    }
+  }
+
+  return null;
+}
+
+function loadFlightDataSettings(): Partial<FlightDataSettings> {
+  const appSettingsPath = findAppSettingsPath();
+  if (!appSettingsPath) return {};
+
+  try {
+    const appSettings = JSON.parse(fs.readFileSync(appSettingsPath, 'utf-8'));
+    return {
+      databaseName: appSettings.FlightData?.DatabaseName,
+      schema: appSettings.FlightData?.Schema
+    };
+  } catch (error) {
+    console.warn('[FlightData] Unable to read FlightData settings from appsettings.json:', error);
+    return {};
+  }
+}
+
+function getFlightDataSettings(): FlightDataSettings {
+  const appSettings = loadFlightDataSettings();
+
+  return {
+    databaseName: process.env.FLIGHT_DB_NAME || appSettings.databaseName || DEFAULT_FLIGHT_DATABASE_NAME,
+    schema: process.env.FLIGHT_DB_SCHEMA || appSettings.schema || DEFAULT_FLIGHT_SCHEMA
+  };
+}
+
+function assertSqlIdentifier(value: string, settingName: string) {
+  if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(value)) {
+    throw new Error(`Invalid FlightData.${settingName} value: ${value}`);
+  }
+}
+
+function buildFlightProcName(name: string, settings: FlightDataSettings = getFlightDataSettings()) {
+  assertSqlIdentifier(settings.databaseName, 'DatabaseName');
+  assertSqlIdentifier(settings.schema, 'Schema');
+  assertSqlIdentifier(name, 'ProcedureName');
+
+  return `${settings.databaseName}.${settings.schema}.${name}`;
+}
+
 function flightProc(name: string) {
-  return `${FLIGHT_DB_PROC_PREFIX}${name}`;
+  return buildFlightProcName(name);
 }
 
 function uniqueNumbers(values: Array<number | null | undefined>) {
@@ -211,5 +272,6 @@ export async function getFlightNavigationTargets(flightId: number): Promise<Flig
 }
 
 export const __testables = {
+  buildFlightProcName,
   flightProc
 };
