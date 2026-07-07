@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-import { getModelStreamingZoomThresholds } from '../modelStreamingThresholds.js';
+import { getModelStreamingZoomThresholds } from '../src/performance/modelStreamingThresholds.js';
 
 test('desktop model streaming keeps existing zoom thresholds', () => {
   assert.deepEqual(getModelStreamingZoomThresholds(false), {
@@ -40,9 +40,9 @@ test('mobile model streaming uses a wider center radius for lower zoom overview'
 });
 
 test('map streaming code uses device-specific model streaming thresholds', () => {
-  const source = readFileSync(new URL('../index.ts', import.meta.url), 'utf8');
+  const source = readFileSync(new URL('../main/main-function/index.ts', import.meta.url), 'utf8');
 
-  assert.match(source, /import\s+\{\s*getModelStreamingZoomThresholds\s*\}\s+from\s+["']\.\/modelStreamingThresholds\.js["']/);
+  assert.match(source, /import\s+\{\s*getModelStreamingZoomThresholds\s*\}\s+from\s+["']\.\.\/\.\.\/src\/performance\/modelStreamingThresholds\.js["']/);
   assert.match(source, /loadRadius:\s*LOAD_RADIUS/);
   assert.match(source, /unloadRadius:\s*UNLOAD_RADIUS/);
   assert.doesNotMatch(source, /const\s+LOAD_RADIUS\s*=\s*120/);

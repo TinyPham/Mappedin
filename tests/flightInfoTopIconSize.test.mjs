@@ -2,8 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-const css = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
+const html = readFileSync(new URL('../main/html/index.html', import.meta.url), 'utf8');
+const css = readFileSync(new URL('../main/css/styles.css', import.meta.url), 'utf8');
 
 function getRuleBlock(selector, startIndex = 0) {
   const selectorIndex = css.indexOf(selector, startIndex);

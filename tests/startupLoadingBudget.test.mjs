@@ -5,7 +5,7 @@ import {
   STARTUP_LOADING_MAX_MS,
   getStartupGateTimeoutMs,
   withStartupTimeout
-} from '../startupLoadingBudget.js';
+} from '../src/performance/startupLoadingBudget.js';
 
 test('startup gate budget keeps total loading under twenty five seconds', () => {
   assert.equal(STARTUP_LOADING_MAX_MS, 25000);

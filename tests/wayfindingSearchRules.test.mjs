@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {
   matchesWayfindingSearch,
   rankWayfindingSearchResults
-} from '../wayfindingSearchRules.js';
+} from '../src/navigation/wayfindingSearchRules.js';
 
 const coord = (latitude, longitude, floorId = 'floor-1') => ({ latitude, longitude, floorId });
 

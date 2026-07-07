@@ -797,11 +797,15 @@ app.post('/api/admin/locations', requireAdmin, async (req, res) => {
 // CATCH-ALL ROUTE: Hỗ trợ SPA (Sửa lỗi 404 khi truy cập /vn/...)
 // Chặn cuối cùng để nếu không khớp API hay file tĩnh thì mới trả về index.html
 app.get('*', (req, res) => {
-    const indexPath = fs.existsSync(path.join(FRONTEND_DIST, 'index.html'))
-        ? path.join(FRONTEND_DIST, 'index.html')
-        : path.join(ROOT_DIR, 'index.html');
+    const indexCandidates = [
+        path.join(FRONTEND_DIST, 'main', 'html', 'index.html'),
+        path.join(FRONTEND_DIST, 'index.html'),
+        path.join(ROOT_DIR, 'main', 'html', 'index.html'),
+        path.join(ROOT_DIR, 'index.html')
+    ];
+    const indexPath = indexCandidates.find(candidate => fs.existsSync(candidate));
 
-    if (fs.existsSync(indexPath)) {
+    if (indexPath) {
         res.sendFile(indexPath);
     } else {
         res.status(404).send('Not Found');

@@ -1,7 +1,6 @@
 {
   "compilerOptions": {
-    "target": "es2016",
-    "downlevelIteration": true,
+    "target": "ES2020",
     "strict": true,
     "module": "esnext",
     "jsx": "preserve",
@@ -9,10 +8,11 @@
     "sourceMap": true,
     "allowJs": true,
     "lib": [
-      "es6",
+      "ES2020",
+      "DOM.Iterable",
       "dom"
     ],
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "noEmit": true,
     "skipLibCheck": true

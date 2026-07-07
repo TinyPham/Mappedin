@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const html = readFileSync(new URL('../main/html/index.html', import.meta.url), 'utf8');
 
 test('user guide information button exists below flight info and before fullscreen', () => {
   const flightIndex = html.indexOf('id="btn-open-flight-info"');

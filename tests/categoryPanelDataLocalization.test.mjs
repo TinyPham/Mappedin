@@ -5,7 +5,7 @@ import {
   buildSubCategoryLocationEntries,
   getLocalizedAreaName,
   mergeLocationRowsByMappedinId
-} from '../categoryPanelData.js';
+} from '../src/data/categoryPanelData.js';
 
 test('localized area names prefer AreaList language columns', () => {
   const row = {

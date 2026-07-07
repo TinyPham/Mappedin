@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-const source = readFileSync(new URL('../index.ts', import.meta.url), 'utf8');
+const source = readFileSync(new URL('../main/main-function/index.ts', import.meta.url), 'utf8');
 
 test('flight date picker is limited to today and the previous three days', () => {
   assert.match(source, /const\s+getFlightDateRange\s*=\s*\(\s*\)\s*=>/);

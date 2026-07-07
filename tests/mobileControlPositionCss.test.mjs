@@ -2,8 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-const responsiveCss = readFileSync(new URL('../responsive.css', import.meta.url), 'utf8');
-const appCss = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
+const responsiveCss = readFileSync(new URL('../main/css/responsive.css', import.meta.url), 'utf8');
+const appCss = readFileSync(new URL('../main/css/styles.css', import.meta.url), 'utf8');
 const css = `${responsiveCss}\n${appCss}`;
 
 function getRuleBlock(selector, startIndex = 0) {

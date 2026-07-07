@@ -2,8 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
-const ts = fs.readFileSync('index.ts', 'utf8');
-const html = fs.readFileSync('index.html', 'utf8');
+const ts = fs.readFileSync('main/main-function/index.ts', 'utf8');
+const html = fs.readFileSync('main/html/index.html', 'utf8');
 
 test('startup user guide waits for loading overlay and camera rotation before opening', () => {
   assert.match(ts, /shouldAutoOpenUserGuide/);

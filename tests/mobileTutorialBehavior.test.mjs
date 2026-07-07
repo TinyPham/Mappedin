@@ -2,9 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-import { tutorialSteps } from '../tutorialSteps.js';
+import { tutorialSteps } from '../src/tutorial/tutorialSteps.js';
 
-const source = readFileSync(new URL('../index.ts', import.meta.url), 'utf8');
+const source = readFileSync(new URL('../main/main-function/index.ts', import.meta.url), 'utf8');
 
 function mobileStep(id) {
   const step = tutorialSteps.mobile.find(item => item.id === id);

@@ -7,14 +7,14 @@ export default defineConfig({
     build: {
         rollupOptions: {
             input: {
-                main: resolve(__dirname, 'index.html'),
-                admin: resolve(__dirname, 'admin.html')
+                main: resolve(__dirname, 'main/html/index.html'),
+                admin: resolve(__dirname, 'main/html/admin.html')
             }
         }
     },
     server: {
         port: 3000,
         host: true,
-        open: true
+        open: '/main/html/index.html'
     }
 });

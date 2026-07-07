@@ -1,0 +1,2893 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>3D Map - Long Thanh Airport</title>
+
+  <!-- PWA Meta Tags -->
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#214ca6">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="3D Map - Long Thanh Airport">
+  <link rel="icon" type="image/png" href="/ACV-logo.png">
+  <link rel="apple-touch-icon" href="/pwa-icon.png">
+
+  <!-- Google Fonts: Inter with full Vietnamese support -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+    }
+
+    #layout {
+      display: flex;
+      height: 100vh;
+      width: 100vw;
+      overflow: hidden;
+      position: relative;
+    }
+
+    #main-content {
+      flex: 1;
+      position: relative;
+      height: 100%;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #mappedin-map {
+      width: 100%;
+      height: 100%;
+      touch-action: none;
+      /* Cực kỳ quan trọng để tăng độ nhạy cảm ứng trên Mobile */
+    }
+
+    #floor-selector {
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1000;
+      width: 280px;
+      max-width: 80%;
+      padding: 10px 40px 10px 20px;
+      border-radius: 30px;
+      border: 2px solid #d4af37;
+      background: rgba(255, 255, 255, 0.95);
+      box-shadow: 0 4px 20px rgba(212, 175, 55, 0.3);
+      cursor: pointer;
+      font-size: 15px;
+      font-weight: 600;
+      color: #333;
+      outline: none;
+      appearance: none;
+      -webkit-appearance: none;
+      background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23d4af37' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 15px center;
+      background-size: 18px;
+      transition: all 0.3s ease;
+      font-family: 'Inter', sans-serif;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      overflow: hidden;
+    }
+
+    #camera-controls {
+      position: absolute;
+      right: 45px;
+      bottom: 25px;
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+    }
+
+    #camera-actions {
+      position: absolute;
+      right: 11px;
+      /* Aligned with the outer edge of the D-pad below */
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      align-items: center;
+    }
+
+    /* Individual button groups/containers */
+    .camera-control-group {
+      background: transparent;
+      border: none;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    .camera-btn,
+    #btn-open-flight-info {
+      background: #214ca6 !important;
+      backdrop-filter: blur(8px) !important;
+      -webkit-backdrop-filter: blur(8px) !important;
+      color: #ffffff !important;
+      border: 2px solid #5b8fd9 !important;
+      border-radius: 8px !important;
+      width: 40px !important;
+      height: 40px !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      box-sizing: border-box !important;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
+      cursor: pointer;
+      transition: all 0.2s;
+      line-height: 0;
+      border-left: 2px solid #5b8fd9 !important;
+      /* Remove the 4px blue accent if it exists */
+    }
+
+    .camera-btn svg,
+    #btn-open-flight-info svg {
+      flex-shrink: 0;
+      display: block;
+      width: 22px;
+      height: 22px;
+    }
+
+    .camera-btn:hover,
+    #btn-open-flight-info:hover {
+      background: #1a3673 !important;
+      transform: scale(1.05);
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12) !important;
+    }
+
+    /* Explicit 2-Axis Cross (+) Layout */
+    .nav-cross-container {
+      position: relative;
+      width: 125px;
+      height: 125px;
+      margin-top: 15px;
+      margin-bottom: 15px;
+      margin-right: -43px;
+      /* Align center of 125px cross with 40px stack */
+    }
+
+    .nav-axis {
+      position: absolute;
+      display: flex;
+      justify-content: space-between;
+      z-index: 2;
+    }
+
+    .nav-axis.vertical {
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      flex-direction: column;
+      height: 100%;
+      width: 40px;
+    }
+
+    .nav-axis.horizontal {
+      left: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      flex-direction: row;
+      width: 100%;
+      height: 40px;
+    }
+
+    .nav-cross-container .camera-btn {
+      width: 40px !important;
+      height: 40px !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      background: #214ca6 !important;
+      border: 2px solid #5b8fd9 !important;
+      border-radius: 8px !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05) !important;
+    }
+
+    #btn-open-flight-info .airplane-icon {
+      color: #ffffff !important;
+    }
+
+    @media (max-width: 768px) {
+      #camera-controls {
+        position: fixed;
+        right: 10px;
+        top: calc(50% + 40px);
+        bottom: auto;
+        transform: translateY(-50%);
+        gap: 10px;
+      }
+
+      .mobile-camera-stack {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+        padding: 0;
+        background: transparent !important;
+      }
+
+      .mobile-camera-stack .camera-btn,
+      .mobile-camera-stack #btn-open-flight-info {
+        position: static !important;
+        transform: none !important;
+        margin: 0 !important;
+      }
+
+      /* Hide complex navigation on mobile to keep it simple */
+      .dual-nav-box {
+        display: none !important;
+      }
+
+      .camera-btn.center {
+        position: static;
+        transform: none;
+        width: 24px;
+        height: 24px;
+      }
+
+      .camera-btn.center svg {
+        width: 12px;
+        height: 12px;
+      }
+
+      .camera-btn.center:hover {
+        transform: none;
+      }
+    }
+
+    .modal-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.4);
+      z-index: 2000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(2px);
+    }
+
+    .modal-overlay.hidden {
+      display: none !important;
+    }
+
+
+    #info-popup {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      width: 300px;
+      border: 1px solid #ddd;
+      padding: 0;
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      display: none;
+      z-index: 1000;
+      overflow: hidden;
+    }
+
+    #info-popup .popup-header {
+      position: relative;
+      padding: 0;
+      margin: 0;
+      background: transparent;
+    }
+
+    #info-popup .close-btn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: rgba(255, 255, 255, 0.9);
+      border: none;
+      font-size: 20px;
+      cursor: pointer;
+      color: #666;
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      transition: background-color 0.2s;
+      z-index: 10;
+    }
+
+    #info-popup .close-btn:hover {
+      background-color: #fff;
+      color: #333;
+    }
+
+
+    #info-popup .popup-content {
+      padding: 15px;
+    }
+
+    #info-popup #area-title,
+    #sidebar-info-panel #area-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin: 0 0 8px 0;
+      color: #333;
+    }
+
+    #info-popup #area-description,
+    #sidebar-info-panel #area-description {
+      font-size: 14px;
+      color: #666;
+      margin: 0 0 15px 0;
+      line-height: 1.5;
+    }
+
+    #info-popup #area-image,
+    #sidebar-info-panel #area-image {
+      width: 100%;
+      height: auto;
+      max-height: 200px;
+      object-fit: cover;
+      display: none;
+      margin: 0 0 15px 0;
+      padding: 0;
+      border-radius: 8px;
+    }
+
+    #info-popup #directions-btn,
+    #sidebar-info-panel #directions-btn {
+      width: 100%;
+      padding: 10px;
+      /* Style giống nút Phân loại khu vực */
+      background-color: #E8E6df;
+      color: #085ebb;
+      border: 1px solid #085ebb;
+      border-radius: 4px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      margin-top: 20px;
+    }
+
+    #info-popup #directions-btn:hover,
+    #sidebar-info-panel #directions-btn:hover,
+    #sidebar-info-panel #directions-btn.active {
+      background-color: #085ebb;
+      color: white;
+    }
+
+    #info-popup #directions-btn::after,
+    #sidebar-info-panel #directions-btn::after {
+      content: none;
+      /* Bỏ mũi tên */
+    }
+
+    /* Wayfinding UI */
+    #wayfinding-panel {
+      margin-top: 15px;
+      padding: 12px;
+      background: #f5f5f5;
+      border-radius: 6px;
+      display: none;
+    }
+
+    #wayfinding-panel.active {
+      display: block;
+    }
+
+    .wayfinding-route {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .wayfinding-point {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px;
+      background: white;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+
+    .wayfinding-point-label {
+      font-weight: 600;
+      min-width: 60px;
+      color: #666;
+    }
+
+    .wayfinding-point-name {
+      flex: 1;
+      color: #085ebb;
+      font-weight: 500;
+      user-select: none;
+      transition: all 0.2s;
+      cursor: pointer;
+    }
+
+    .wayfinding-point-name:hover {
+      color: #1976D2;
+      font-weight: 600;
+    }
+
+    .wayfinding-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .wayfinding-btn {
+      flex: 1;
+      padding: 8px;
+      border: none;
+      border-radius: 4px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .wayfinding-btn.preview {
+      background: white;
+      /* Nền trắng */
+      color: #085ebb;
+      border: 1px solid #085ebb;
+      font-weight: 700;
+    }
+
+    .wayfinding-btn.swap:hover,
+    .wayfinding-btn.preview:hover,
+    .wayfinding-btn.swap:active,
+    .wayfinding-btn.preview:active {
+      background: #085ebb;
+      color: white;
+    }
+
+    .wayfinding-btn.clear {
+      background: #f44336;
+      color: white;
+      border: 1px solid #f44336;
+    }
+
+    .wayfinding-btn.clear:hover {
+      background: #d32f2f;
+      border-color: #d32f2f;
+    }
+
+    .wayfinding-status {
+      font-size: 12px;
+      color: #666;
+      margin-top: 8px;
+      font-style: italic;
+    }
+
+
+
+
+    /* Search Bar */
+
+
+    /* Search Section */
+    #search-section {
+      width: 100%;
+      position: relative;
+    }
+
+
+    #location-search {
+      width: 100%;
+      padding: 12px 40px 12px 16px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+      outline: none;
+      background: white;
+      box-sizing: border-box;
+      height: 44px;
+      /* Fixed height for alignment */
+    }
+
+    #location-search:focus {
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    #search-results {
+      position: relative;
+      margin-top: 10px;
+      margin-bottom: 10px;
+      background: #fdfdfd;
+      border-radius: 12px;
+      border: 1px solid #eee;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+      max-height: 50vh;
+      overflow-y: auto;
+      display: none;
+      z-index: 5;
+    }
+
+    .search-result-item {
+      padding: 12px 16px;
+      cursor: pointer;
+      border-bottom: 1px solid #f0f0f0;
+      transition: background-color 0.2s;
+    }
+
+    .search-result-item:last-child {
+      border-bottom: none;
+    }
+
+    .search-result-item:hover {
+      background-color: #f5f5f5;
+    }
+
+    .search-result-name {
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 4px;
+    }
+
+    .search-result-category {
+      font-size: 12px;
+      color: #666;
+    }
+
+    #search-clear-btn {
+      position: absolute;
+      right: 12px;
+      top: 22px;
+      /* Center in 44px input */
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      font-size: 20px;
+      color: #999;
+      cursor: pointer;
+      padding: 4px 8px;
+      display: none;
+    }
+
+    #search-clear-btn:hover {
+      color: #666;
+    }
+
+    /* Category Section */
+    #category-section {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    /* The Main Toggle Button (When closed) */
+    #category-toggle-main-btn {
+      height: 44px;
+      width: 44px;
+      border-radius: 8px;
+      border: none;
+      background: white;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+      cursor: pointer;
+      display: none;
+      /* Hidden by default as panel is open */
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      color: #555;
+    }
+
+    #category-toggle-main-btn:hover {
+      background-color: #f5f5f5;
+    }
+
+    /* The Panel */
+    #category-panel {
+      width: 340px;
+      background: #E8E6df;
+      /* Beige */
+      border-radius: 6px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+      padding: 6px;
+      display: flex;
+      /* Flex to show content */
+      flex-direction: column;
+    }
+
+    /* When hidden, we use display:none or just toggle visibility properties */
+    #category-panel.hidden {
+      display: none;
+    }
+
+    #category-list {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4px;
+      max-height: 500px;
+      overflow-y: auto;
+    }
+
+    /* Category Item Styling */
+    .category-item {
+      display: flex;
+      align-items: stretch;
+      cursor: pointer;
+      border-radius: 4px;
+      overflow: hidden;
+      background: white;
+      min-height: 36px;
+      height: auto;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+      transition: transform 0.1s;
+    }
+
+    .category-item:active {
+      transform: scale(0.98);
+    }
+
+    .category-item.active {
+      background-color: #085ebb !important;
+      color: white !important;
+      box-shadow: 0 2px 8px rgba(8, 94, 187, 0.4);
+      height: 36px;
+      /* Fixed height same as other items */
+      min-height: 36px;
+      align-items: center;
+      /* Ensure vertical centering */
+    }
+
+    .category-item.active .category-icon-box {
+      background-color: #085ebb !important;
+      color: white !important;
+      position: relative;
+      height: 36px;
+      /* Match parent height */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* White circular icon inside active state */
+    .category-item.active .category-icon-box::before {
+      content: '';
+      position: absolute;
+      width: 26px;
+      height: 26px;
+      background-color: white;
+      border-radius: 50%;
+      z-index: 0;
+    }
+
+    .category-item.active .category-icon-box>* {
+      position: relative;
+      z-index: 1;
+      color: #085ebb !important;
+    }
+
+    .category-item.active .category-label-box {
+      color: white !important;
+      padding: 0 8px 0 12px;
+      /* Consistent padding */
+      display: flex;
+      align-items: center;
+      /* Vertically center text */
+      height: 36px;
+      /* Match parent height */
+    }
+
+    .category-icon-box {
+      width: 36px;
+      min-width: 36px;
+      background-color: #C1A568;
+      /* Gold */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #000;
+      font-size: 18px;
+    }
+
+    .category-label-box {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      padding: 0 8px;
+      font-size: 13px;
+      font-weight: 500;
+      color: #085ebb;
+      /* Blue instead of dark grey */
+      white-space: normal;
+      overflow-wrap: break-word;
+      word-break: break-word;
+      line-height: 1.25;
+      padding: 4px 8px;
+    }
+
+    /* Collapse Button */
+    #category-collapse-container {
+      display: flex;
+      justify-content: center;
+      margin-top: 4px;
+      border-top: 1px solid rgba(0, 0, 0, 0.05);
+      /* Subtle separator */
+      padding-top: 4px;
+    }
+
+    #category-collapse-btn {
+      width: 40px;
+      height: 20px;
+      background-color: transparent;
+      color: #888;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+    }
+
+    #category-collapse-btn:hover {
+      color: #555;
+      background-color: rgba(0, 0, 0, 0.05);
+      border-radius: 4px;
+    }
+
+    /* Search Marker Animations */
+    .search-marker {
+      position: absolute;
+      transform: translate(-50%, -100%);
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      z-index: 2000;
+      animation: bounce-marker 1.5s infinite ease-in-out;
+    }
+
+    .search-marker-icon {
+      width: 36px;
+      height: 36px;
+      background: #4CAF50;
+      border: 2px solid white;
+      border-radius: 50%;
+      box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 20px;
+    }
+
+    .search-marker-arrow {
+      width: 0;
+      height: 0;
+      border-left: 8px solid transparent;
+      border-right: 8px solid transparent;
+      border-top: 10px solid #4CAF50;
+      margin-top: -1px;
+    }
+
+    @keyframes bounce-marker {
+
+      0%,
+      100% {
+        transform: translate(-50%, -100%);
+      }
+
+      50% {
+        transform: translate(-50%, -120%);
+      }
+    }
+
+    /* =========================================
+       PREMIUM ACV LOADING SCREEN (RAZOR STYLE)
+       ========================================= */
+    #global-loading-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: #ffffff;
+      z-index: 999999;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+      overflow: hidden;
+    }
+
+    #global-loading-screen.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    /* Particles Animation */
+    .particles-container {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .particle {
+      position: absolute;
+      width: 4px;
+      height: 4px;
+      background: rgba(33, 76, 166, 0.4);
+      border-radius: 50%;
+      animation: particleFloat 6s ease-in-out infinite;
+    }
+
+    @keyframes particleFloat {
+
+      0%,
+      100% {
+        transform: translateY(0px) translateX(0px) scale(1);
+        opacity: 0.4;
+      }
+
+      25% {
+        transform: translateY(-20px) translateX(10px) scale(1.2);
+        opacity: 0.6;
+      }
+
+      50% {
+        transform: translateY(-10px) translateX(-15px) scale(0.8);
+        opacity: 0.2;
+      }
+
+      75% {
+        transform: translateY(-30px) translateX(5px) scale(1.1);
+        opacity: 0.5;
+      }
+    }
+
+    /* Loading Container */
+    .loading-container-master {
+      position: relative;
+      width: 180px;
+      height: 180px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: containerFloat 3s ease-in-out infinite;
+      z-index: 10;
+      margin-bottom: 20px;
+    }
+
+    @keyframes containerFloat {
+
+      0%,
+      100% {
+        transform: translateY(0px);
+      }
+
+      50% {
+        transform: translateY(-8px);
+      }
+    }
+
+    .logo-wrapper {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .acv-logo-img {
+      width: 100px;
+      height: auto;
+      object-fit: contain;
+      filter: drop-shadow(0 4px 20px rgba(33, 76, 166, 0.15));
+      animation: logoPulse 3s ease-in-out infinite;
+    }
+
+    @keyframes logoPulse {
+
+      0%,
+      100% {
+        transform: scale(1);
+        filter: drop-shadow(0 4px 20px rgba(33, 76, 166, 0.15));
+      }
+
+      50% {
+        transform: scale(1.05);
+        filter: drop-shadow(0 6px 25px rgba(33, 76, 166, 0.3));
+      }
+    }
+
+    /* Airplane Orbit */
+    .airplane-orbit {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 118px;
+      height: 118px;
+      transform: translate(-50%, -50%);
+      animation: airplaneOrbit 3s linear infinite;
+      z-index: 20;
+    }
+
+    .airplane-orbit::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 100%;
+      height: 100%;
+      border: 1px solid rgba(33, 76, 166, 0.03);
+      /* Mờ hơn nữa */
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      animation: orbitGlow 3s ease-in-out infinite;
+      filter: blur(0.5px);
+      /* Làm nhòe nhẹ nét vẽ */
+    }
+
+    @keyframes orbitGlow {
+
+      0%,
+      100% {
+        border-color: rgba(33, 76, 166, 0.02);
+        opacity: 0.3;
+      }
+
+      50% {
+        border-color: rgba(33, 76, 166, 0.06);
+        opacity: 0.6;
+      }
+    }
+
+    .airplane-unit {
+      position: absolute;
+      top: -12px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 24px;
+      height: 24px;
+    }
+
+    .airplane-icon-svg {
+      width: 20px;
+      height: 20px;
+      color: #214ca6;
+      transform: rotate(90deg);
+      filter: drop-shadow(0 2px 5px rgba(33, 76, 166, 0.4));
+    }
+
+    @keyframes airplaneOrbit {
+      0% {
+        transform: translate(-50%, -50%) rotate(0deg);
+      }
+
+      100% {
+        transform: translate(-50%, -50%) rotate(360deg);
+      }
+    }
+
+    /* Progress Info Section */
+    .loading-info-zone {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      z-index: 10;
+    }
+
+    #loading-text {
+      font-size: 14px;
+      font-weight: 600;
+      color: #64748b;
+      font-family: 'Inter', sans-serif;
+      letter-spacing: 0.5px;
+    }
+
+    #loading-progress-container {
+      width: 280px;
+      height: 4px;
+      background: #f1f5f9;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    #loading-progress-bar {
+      height: 100%;
+      width: 0%;
+      background: #214ca6;
+      box-shadow: 0 0 10px rgba(33, 76, 166, 0.3);
+      transition: width 0.3s ease;
+    }
+
+
+    /* =========================================
+   MODERN UI STYLES - #214ca6 THEME
+========================================== */
+
+    /* Layout & Sidebar */
+    #layout {
+      display: flex;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background: #f8f9fa;
+    }
+
+    #main-content {
+      flex: 1;
+      position: relative;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #mappedin-map {
+      flex: 1;
+      width: 100%;
+      height: 100%;
+      position: relative;
+      background: #eef2f7;
+    }
+
+    #main-sidebar-left.modern-sidebar {
+      width: 380px;
+      background: #ffffff;
+      box-shadow: 4px 0 30px rgba(0, 0, 0, 0.08);
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      border-right: none;
+    }
+
+    .modern-sidebar-content {
+      padding: 24px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .sidebar-install-footer {
+      flex-shrink: 0;
+      margin-top: auto;
+      padding: 15px;
+      background: #f0f4ff;
+      border-top: 1px solid #eee;
+      border-left: 1px dashed #214ca6;
+      border-right: 1px dashed #214ca6;
+      border-bottom: 1px dashed #214ca6;
+      box-shadow: 0 -6px 18px rgba(33, 76, 166, 0.08);
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    /* Modern Scrollbar */
+    .modern-sidebar-content::-webkit-scrollbar,
+    #search-results::-webkit-scrollbar,
+    #instructions-list::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .modern-sidebar-content::-webkit-scrollbar-track,
+    #search-results::-webkit-scrollbar-track,
+    #instructions-list::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 4px;
+    }
+
+    .modern-sidebar-content::-webkit-scrollbar-thumb,
+    #search-results::-webkit-scrollbar-thumb,
+    #instructions-list::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+
+    .modern-sidebar-content::-webkit-scrollbar-thumb:hover,
+    #search-results::-webkit-scrollbar-thumb:hover,
+    #instructions-list::-webkit-scrollbar-thumb:hover {
+      background: #214ca6;
+    }
+
+    /* Buttons */
+    .modern-btn-primary {
+      width: 100%;
+      padding: 12px;
+      background: #214ca6;
+      color: #ffffff !important;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(33, 76, 166, 0.3);
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .modern-btn-primary:hover {
+      background: #1a3673;
+      box-shadow: 0 6px 16px rgba(33, 76, 166, 0.4);
+    }
+
+    .modern-btn-outline {
+      width: 100%;
+      padding: 12px;
+      background: #ffffff;
+      color: #333;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .modern-btn-outline:hover {
+      border-color: #f44336;
+      color: #f44336;
+      background: #fff5f5;
+    }
+
+    /* Admin Toolbar */
+    .modern-admin-toolbar .admin-toolbar-btn {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      color: #333;
+      padding: 10px 16px;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+
+    .modern-admin-toolbar .admin-toolbar-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+      color: #214ca6;
+    }
+
+    .modern-admin-toolbar .admin-toolbar-btn.primary {
+      background: #214ca6;
+      color: white;
+      border: none;
+    }
+
+    .modern-admin-toolbar .admin-toolbar-btn.primary:hover {
+      background: #1a3673;
+      color: white;
+    }
+
+    /* Category Panel Override */
+    .modern-category-panel {
+      width: 100% !important;
+      background: transparent !important;
+      box-shadow: none !important;
+      padding: 0 !important;
+    }
+
+    .modern-category-list {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px !important;
+    }
+
+    .category-item {
+      background: #ffffff;
+      border: 1px solid #eef;
+      border-radius: 12px !important;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03) !important;
+      min-height: 48px !important;
+      transition: all 0.2s ease !important;
+    }
+
+    .category-item:hover {
+      border-color: #214ca6;
+      box-shadow: 0 4px 12px rgba(33, 76, 166, 0.1) !important;
+    }
+
+    .category-item.active {
+      background: #ffffff !important;
+      color: #333 !important;
+      box-shadow: 0 4px 12px rgba(33, 76, 166, 0.16) !important;
+      border-color: #214ca6 !important;
+      height: auto !important;
+      min-height: 48px !important;
+    }
+
+    .category-icon-box {
+      width: 48px !important;
+      min-width: 48px !important;
+      background-color: #f4f7fa !important;
+      color: #214ca6 !important;
+      border-radius: 12px 0 0 12px;
+      font-size: 20px !important;
+    }
+
+    .category-item.active .category-icon-box {
+      background-color: #f4f7fa !important;
+      color: #214ca6 !important;
+    }
+
+    .category-item.active .category-icon-box::before {
+      display: none !important;
+    }
+
+    .category-label-box {
+      color: #333 !important;
+      font-size: 14px !important;
+      font-weight: 600 !important;
+      padding: 10px 14px !important;
+    }
+
+    .category-item.active .category-label-box {
+      background-color: #214ca6 !important;
+      color: white !important;
+      border-radius: 0 12px 12px 0;
+      margin: -1px -1px -1px 0;
+      align-self: stretch;
+      display: flex;
+      align-items: center;
+      flex: 1;
+    }
+
+    #wayfinding-panel.modern-wayfinding {
+      background: transparent;
+      border: none;
+      padding: 4px 0 16px 0;
+    }
+  </style>
+  <link rel="stylesheet" href="../css/responsive.css">
+</head>
+
+<body>
+  <!-- LOADING SCREEN -->
+  <!-- PREMIUM LOADING SCREEN (SINC WITH ACV SYSTEM) -->
+  <div id="global-loading-screen">
+    <!-- Background Particles -->
+    <div class="particles-container">
+      <div class="particle" style="top:20%; left:10%; animation-delay:0s; animation-duration:8s;"></div>
+      <div class="particle" style="top:30%; right:15%; animation-delay:1s; animation-duration:7s;"></div>
+      <div class="particle" style="top:60%; left:20%; animation-delay:2s; animation-duration:9s;"></div>
+      <div class="particle" style="top:70%; right:25%; animation-delay:3s; animation-duration:6s;"></div>
+      <div class="particle" style="top:40%; left:50%; animation-delay:4s; animation-duration:8s;"></div>
+      <div class="particle" style="top:80%; left:70%; animation-delay:5s; animation-duration:7s;"></div>
+    </div>
+
+    <div class="loading-container-master">
+      <!-- ACV Logo with Pulse -->
+      <div class="logo-wrapper">
+        <img src="/ACV-logo.png" alt="ACV Logo" class="acv-logo-img" />
+      </div>
+
+      <!-- Airplane Orbit -->
+      <div class="airplane-orbit">
+        <div class="airplane-unit">
+          <svg class="airplane-icon-svg" viewBox="0 0 24 24" fill="currentColor">
+            <path
+              d="M21 16V14L13 9V3.5C13 2.67 12.33 2 11.5 2S10 2.67 10 3.5V9L2 14V16L10 13.5V19L8 20.5V22L11.5 21L15 22V20.5L13 19V13.5L21 16Z" />
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- Progress Info -->
+    <div class="loading-info-zone">
+      <div id="loading-text">...</div>
+      <script>
+        (function () {
+          var p = window.location.pathname.split('/')[1] || '';
+          var s = new URLSearchParams(window.location.search).get('lang') || '';
+          var b = (navigator.language || 'vn').split('-')[0].toLowerCase();
+          var lang = (s || p || (b === 'vi' ? 'vn' : b)).toLowerCase();
+          var m = {
+            'en': 'Initializing 3D Map...',
+            'zh': '正在初始化3D地图...',
+            'ja': '3Dマップを初期化中...',
+            'ko': '3D 지도 초기화 중...'
+          };
+          var t = m[lang] || 'Đang khởi tạo bản đồ 3D...';
+          document.getElementById('loading-text').innerText = t + ' 0%';
+        })();
+      </script>
+      <div id="loading-progress-container">
+        <div id="loading-progress-bar"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="layout">
+    <!-- Left Sidebar -->
+    <div id="main-sidebar-left" class="modern-sidebar sidebar-collapsed">
+      <div id="sidebar-header" style="padding: 24px 24px 12px 24px; display: flex; flex-direction: column; gap: 16px;">
+        <!-- Sidebar Tabs (Incheon style) -->
+        <div class="sidebar-tabs" style="display: flex; gap: 8px;">
+          <button id="tab-search" class="modern-tab-btn active" style="
+          flex: 1; padding: 10px; border-radius: 20px; border: 1px solid #e0e0e0; 
+          background: #214ca6; color: white; font-weight: 600; cursor: pointer; transition: all 0.2s;
+          display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 14px;
+        ">
+            <span data-i18n="tab_search">Search</span>
+            <svg class="tab-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+              aria-hidden="true" focusable="false">
+              <circle cx="11" cy="11" r="8"></circle>
+              <path d="m21 21-4.35-4.35"></path>
+            </svg>
+          </button>
+          <button id="tab-directions" class="modern-tab-btn" style="
+          flex: 1; padding: 10px; border-radius: 20px; border: 1px solid #e0e0e0; 
+          background: white; color: #555; font-weight: 600; cursor: pointer; transition: all 0.2s;
+          display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 14px;
+        ">
+            <span data-i18n="tab_directions">Directions</span>
+            <svg class="tab-location-icon" width="14" height="14" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+              aria-hidden="true" focusable="false">
+              <path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0Z"></path>
+              <circle cx="12" cy="10" r="3"></circle>
+            </svg>
+          </button>
+          <button id="desktop-map-settings-toggle" class="desktop-map-settings-toggle"
+            onclick="toggleDesktopMapSettings(event)" aria-controls="desktop-map-settings-panel"
+            aria-expanded="false" title="Cài đặt hiển thị">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"
+              focusable="false">
+              <path d="M12 15.5A3.5 3.5 0 1 0 12 8a3.5 3.5 0 0 0 0 7.5Z"></path>
+              <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6l-.09.1a2 2 0 0 1-3.82 0L10 20a1.7 1.7 0 0 0-1-.6 1.7 1.7 0 0 0-1.88.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1l-.1-.09a2 2 0 0 1 0-3.82L4 10a1.7 1.7 0 0 0 .6-1 1.7 1.7 0 0 0-.34-1.88l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6l.09-.1a2 2 0 0 1 3.82 0L14 4a1.7 1.7 0 0 0 1 .6 1.7 1.7 0 0 0 1.88-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9c.36.14.7.35 1 .6l.1.09a2 2 0 0 1 0 3.82l-.1.09a1.7 1.7 0 0 0-1 .6Z"></path>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Search Tab Header -->
+        <div id="search-tab-header" style="display: block;">
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <div class="modern-search-wrapper"
+              style="flex: 1; box-shadow: 0 4px 15px rgba(0,0,0,0.04); border-radius: 12px; background: #f8f9fa; border: 1px solid #e0e0e0; display: flex; align-items: center; padding: 2px; position: relative;">
+              <svg style="margin-left: 14px; color: #214ca6;" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+              <input type="text" id="location-search" autocomplete="off" placeholder="Tìm kiếm khu vực, điểm đến..."
+                data-i18n-placeholder="search_placeholder"
+                onfocus="if(window.innerWidth <= 768) { document.getElementById('category-section').classList.add('mobile-expanded'); document.getElementById('mobile-category-toggle').classList.add('active'); }"
+                style="width: 100%; border: none !important; box-shadow: none !important; outline: none !important; padding: 12px 44px 12px 10px !important; font-size: 14px !important; background: transparent !important; color: #333 !important; font-weight: 500 !important; height: auto !important;">
+              <button id="search-clear-btn"
+                style="display: none; background: none; border: none; font-size: 20px; color: #999; cursor: pointer; padding: 0 14px; transition: color 0.2s;">&times;</button>
+              <button id="mobile-category-toggle" class="mobile-only-btn"
+                style="display: none; background: none; border: none; padding: 0 14px; cursor: pointer; color: #214ca6; border-left: 1px solid #e0e0e0; align-items: center; justify-content: center;"
+                onclick="const sect = document.getElementById('category-section'); sect.classList.toggle('mobile-expanded'); this.classList.toggle('active');">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                  stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.3s ease;"
+                  class="toggle-icon">
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+              </button>
+              <div id="search-results"
+                style="margin-top: 8px; background: white; border-radius: 12px; box-shadow: 0 8px 25px rgba(0,0,0,0.1); max-height: 40vh; overflow-y: auto; display: none; border: 1px solid #f0f0f0; z-index: 2000; position: absolute; width: 100%; left: 0; top: 100%;">
+              </div>
+            </div>
+            
+            <button id="mobile-settings-btn" class="mobile-only-btn desktop-map-settings-toggle"
+              onclick="toggleDesktopMapSettings(event)" aria-controls="desktop-map-settings-panel"
+              title="Cài đặt hiển thị"
+              style="display: none; background: white; border: 1px solid #e0e0e0; border-radius: 12px; width: 44px; height: 46px; justify-content: center; align-items: center; color: #214ca6; box-shadow: 0 4px 15px rgba(0,0,0,0.04); margin: 0; padding: 0;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 15.5A3.5 3.5 0 1 0 12 8a3.5 3.5 0 0 0 0 7.5Z"></path>
+                <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6l-.09.1a2 2 0 0 1-3.82 0L10 20a1.7 1.7 0 0 0-1-.6 1.7 1.7 0 0 0-1.88.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1l-.1-.09a2 2 0 0 1 0-3.82L4 10a1.7 1.7 0 0 0 .6-1 1.7 1.7 0 0 0-.34-1.88l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6l.09-.1a2 2 0 0 1 3.82 0L14 4a1.7 1.7 0 0 0 1 .6 1.7 1.7 0 0 0 1.88-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9c.36.14.7.35 1 .6l.1.09a2 2 0 0 1 0 3.82l-.1.09a1.7 1.7 0 0 0-1 .6Z"></path>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Directions Tab Header -->
+        <div id="directions-tab-header" style="display: none; width: 100%;">
+          <div id="wayfinding-header-target" style="width: 100%;"></div>
+        </div>
+      </div>
+      <div id="sidebar-content" class="modern-sidebar-content">
+
+        <!-- NEW: Sidebar Info Panel (Replaces Popup) -->
+        <!-- Moved UP as requested: Below Search, Above Categories -->
+        <div id="sidebar-info-panel" class="modern-info-panel" style="display:none; flex-direction: column; flex: 1;">
+
+          <!-- Mobile Drag Handle -->
+          <div class="mobile-drag-handle"
+            style="display: none; width: 40px; height: 5px; background: #ccc; border-radius: 10px; margin: 10px auto; flex-shrink: 0;">
+          </div>
+
+          <!-- Image Section with Overlay Close Button -->
+          <div class="popup-header" style="position: relative; margin-bottom: 15px; width: 100%;">
+            <img id="area-image" src="" alt=""
+              style="width: 100%; height: 200px; object-fit: cover; border-radius: 0; display: none; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+
+            <button class="close-btn" onclick="hideInfo()" style="
+            position: absolute; 
+            top: 12px; 
+            right: 12px; 
+            z-index: 10; 
+            width: 32px;
+            height: 32px;
+            background: rgba(255,255,255,0.9);
+            color: #333;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            transition: background 0.2s;
+            line-height: 1;
+            padding: 0;
+          ">&times;</button>
+          </div>
+
+          <div class="popup-content" style="padding: 0;">
+            <div style="padding: 15px;">
+              <div style="display: flex; align-items: flex-start; justify-content: space-between;">
+                <h3 id="area-title"
+                  style="margin: 0 0 10px 0; font-size: 22px; font-weight: 700; color: #15306B; line-height: 1.3; padding-right: 10px;">
+                  Nhấp vào một khu vực để xem thông tin...</h3>
+                <button id="btn-edit-current-area-color" class="icon-btn"
+                  style="display: none; background: #f4f7fa; border: 1px solid #e0e0e0; padding: 6px; border-radius: 8px; cursor: pointer; transition: all 0.2s;"
+                  title="Đổi màu nền khu vực">🎨</button>
+              </div>
+              <p id="area-description" style="margin-bottom: 15px; color: #555; line-height: 1.6; font-size: 15px;"></p>
+
+              <!-- Premium Meta Info (Changi/Incheon Style) -->
+              <div id="area-meta-info"
+                style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #f1f5f9; display: none;">
+                <!-- Hours -->
+                <div id="meta-hours-row"
+                  style="display: flex; align-items: center; margin-bottom: 12px; font-size: 14.5px;">
+                  <span
+                    style="color: #64748b; margin-right: 12px; display: flex; align-items: center; width: 20px; justify-content: center;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                      stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="12" cy="12" r="10" />
+                      <polyline points="12 6 12 12 16 14" />
+                    </svg>
+                  </span>
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <span id="meta-status" style="color: #3b82f6; font-weight: 500;">Open</span>
+                    <span style="color: #cbd5e1;">|</span>
+                    <span id="meta-hours" style="color: #334155;">00:00 ~ 24:00</span>
+                  </div>
+                </div>
+
+                <!-- Location Detail -->
+                <div id="meta-location-row"
+                  style="display: flex; align-items: flex-start; margin-bottom: 12px; font-size: 14.5px;">
+                  <span
+                    style="color: #64748b; margin-right: 12px; display: flex; align-items: center; width: 20px; justify-content: center; margin-top: 2px;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                      stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </svg>
+                  </span>
+                  <div id="meta-location" style="color: #334155; line-height: 1.4;">Near Gate 235 on 3F, Terminal 2
+                  </div>
+                </div>
+
+                <!-- Phone -->
+                <div id="meta-phone-row" style="display: flex; align-items: center; font-size: 14.5px;">
+                  <span
+                    style="color: #64748b; margin-right: 12px; display: flex; align-items: center; width: 20px; justify-content: center;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                      stroke-linecap="round" stroke-linejoin="round">
+                      <path
+                        d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l2.25-2.25a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+                    </svg>
+                  </span>
+                  <a id="meta-phone" href="tel:15772600" style="color: #334155; text-decoration: none;">1577-2600</a>
+                </div>
+              </div>
+
+              <div id="routing-actions" style="display:none; gap: 10px; margin-top: 20px;">
+                <button id="btn-route-start" data-i18n="route_start"
+                  style="flex:1; padding: 10px 0; border:none; border-radius:30px; background: #214ca6; color: white; font-weight: 700; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(33,76,166,0.25); transition: all 0.2s;">Start</button>
+                <button id="btn-route-via" data-i18n="route_via"
+                  style="flex:1; padding: 10px 0; border:none; border-radius:30px; background: #64748b; color: white; font-weight: 700; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(100,116,139,0.25); transition: all 0.2s;">Via</button>
+                <button id="btn-route-end" data-i18n="route_end"
+                  style="flex:1; padding: 10px 0; border:none; border-radius:30px; background: #d97706; color: white; font-weight: 700; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(217,119,6,0.25); transition: all 0.2s;">End</button>
+              </div>
+            </div>
+
+            <!-- Wayfinding Panel (Always available but toggled by tabs) -->
+            <div id="wayfinding-panel" class="modern-wayfinding" style="padding: 0; width: 100%;">
+              <!-- Dynamic Waypoints Container -->
+              <div style="display:flex; gap:0; padding: 0 5px; margin-top: 5px;">
+                <!-- Left: Route rows -->
+                <div id="wayfinding-nodes-container"
+                  style="flex:1; display:flex; flex-direction:column; border:1px solid #e0e4ef; border-radius:6px; background:white;">
+                  <!-- Will be populated by JS -->
+                </div>
+                <!-- Right: Swap Button Area -->
+                <div id="wayfinding-swap-container"
+                  style="display:flex; flex-direction:column; align-items:center; justify-content:space-evenly; background:transparent; border:none; padding:10px 0 10px 10px; gap:8px;">
+                  <!-- Will be populated by JS -->
+                </div>
+              </div>
+
+              <!-- Wayfinding Inline Search Results -->
+              <div id="wayfinding-search-results"
+                style="display:none; background: white; margin-top: 15px; max-height: min(520px, calc(100vh - 340px)); overflow-y: auto; height: auto; padding-bottom: 28px; overscroll-behavior: contain;">
+                <!-- Populated by JS -->
+              </div>
+
+              <!-- Action Buttons -->
+              <div class="wayfinding-actions" style="display:none; gap:10px; margin-top:12px;">
+              </div>
+              <div class="wayfinding-status" id="wayfinding-status"
+                style="margin-top:8px; font-size:12px; color:#666; text-align:center; padding: 0 15px;"></div>
+
+              <!-- Bảng hướng dẫn từng bước -->
+              <div id="instructions-list" style="margin-top:0; padding: 0;">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab Contents -->
+        <div id="tab-content-container">
+          <!-- Search Content -->
+          <div id="search-tab-content">
+            <!-- Dynamic Category Panel -->
+            <div id="category-section" style="margin-bottom: 20px;">
+              <div id="category-panel" class="modern-category-panel">
+                <div id="category-list" class="modern-category-list">
+                  <!-- Injected via JS -->
+                </div>
+              </div>
+            </div>
+
+            <div id="active-category-grid" class="category-panel-grid" style="display:none;"></div>
+          </div>
+
+          <!-- Directions Content -->
+          <div id="directions-tab-content" style="display: none;">
+            <div id="directions-empty-state"
+              style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px; text-align: center;">
+              <h2 data-i18n="need_directions"
+                style="font-size: 28px; font-weight: 700; color: #1a1a2e; margin-bottom: 30px;">
+                Need <span style="color: #214ca6;">directions</span>?
+              </h2>
+              <img src="/lotus-blue.png" alt="Directions"
+                style="width: 280px; height: auto; object-fit: contain; opacity: 0.4; mix-blend-mode: multiply; pointer-events: none;">
+            </div>
+
+            <!-- Route Summary area (Time/Distance) -->
+            <div id="wayfinding-summary-container" style="display: none; background: white;"></div>
+
+            <!-- Video Control Bar (Redesigned as Card) -->
+            <div id="video-control-bar"
+              style="display: none; background: white; border-radius: 16px; padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.06); margin: 0 20px 25px; border: 1px solid #f0f4f8;">
+              <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px;">
+                <button id="video-play"
+                  style="width: 44px; height: 44px; background: #214ca6; color: white; border: none; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; box-shadow: 0 4px 10px rgba(33, 76, 166, 0.2);">
+                  <svg id="play-pause-icon" width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+                  </svg>
+                </button>
+                <button id="video-stop"
+                  style="width: 44px; height: 44px; background: #f44336; color: white; border: none; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; box-shadow: 0 4px 10px rgba(244, 67, 54, 0.2);">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M6 6h12v12H6z" />
+                  </svg>
+                </button>
+
+                <div style="display: flex; align-items: center; gap: 8px; margin-left: auto;">
+                  <span id="speed-label" style="font-size: 13px; font-weight: 700; color: #666;">Tốc độ:</span>
+                  <div id="custom-speed-wrapper" style="position: relative; min-width: 65px;">
+                    <div id="speed-selected-display"
+                      style="background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; padding: 6px 12px; font-size: 13px; font-weight: 800; color: #1a1a2e; cursor: pointer; display: flex; align-items: center; justify-content: space-between; transition: all 0.2s;">
+                      <span id="speed-value-text">1x</span>
+                      <svg style="margin-left: 6px;" width="10" height="10" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="6 9 12 15 18 9"></polyline>
+                      </svg>
+                    </div>
+                    <div id="speed-options-menu"
+                      style="display: none; position: absolute; top: 100%; right: 0; width: 80px; background: white; border-radius: 10px; box-shadow: 0 8px 25px rgba(0,0,0,0.12); border: 1px solid #f0f4f8; z-index: 100; margin-top: 8px; overflow: hidden; transform-origin: top right;">
+                      <div class="speed-item" data-value="0.5"
+                        style="padding: 10px 15px; font-size: 13px; font-weight: 700; color: #4a5568; cursor: pointer; transition: all 0.2s; border-bottom: 1px solid #f8f9fa;">
+                        0.5x</div>
+                      <div class="speed-item" data-value="1"
+                        style="padding: 10px 15px; font-size: 13px; font-weight: 700; color: #214ca6; background: #f0f6ff; cursor: pointer; transition: all 0.2s; border-bottom: 1px solid #f8f9fa;">
+                        1x</div>
+                      <div class="speed-item" data-value="2"
+                        style="padding: 10px 15px; font-size: 13px; font-weight: 700; color: #4a5568; cursor: pointer; transition: all 0.2s; border-bottom: 1px solid #f8f9fa;">
+                        2x</div>
+                      <div class="speed-item" data-value="4"
+                        style="padding: 10px 15px; font-size: 13px; font-weight: 700; color: #4a5568; cursor: pointer; transition: all 0.2s;">
+                        4x</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div style="display: flex; align-items: center; justify-content: flex-end; margin-bottom: 12px;">
+                <div
+                  style="font-family: monospace; font-size: 15px; font-weight: 800; color: #1a1a2e; letter-spacing: -0.5px;">
+                  <span id="video-time">0:00</span> <span
+                    style="color:#adb5bd; font-weight: 400; margin: 0 4px;">/</span>
+                  <span id="video-duration" style="color: #6c757d;">0:00</span>
+                </div>
+              </div>
+
+              <div style="position: relative; height: 30px; display: flex; align-items: center;">
+                <input type="range" id="video-progress" min="0" max="100" value="0" step="0.1" disabled
+                  style="width:100%; cursor:pointer; height:6px; background:#e9ecef; border-radius:10px; outline:none; appearance:none; -webkit-appearance:none; accent-color: #214ca6;">
+              </div>
+            </div>
+
+            <!-- Instructions List will be moved here when active -->
+            <div id="directions-instructions-container" style="overflow: visible; padding-bottom: 20px;"></div>
+          </div>
+        </div>
+
+        <!-- MỚI: Thanh Quản Trị (Admin Setup) -->
+        <div id="sidebar-admin-actions" class="sidebar-actions"
+          style="margin-top: 30px; display: flex; flex-direction: column; gap: 10px; border-top: 1px solid #f0f0f0; padding-top: 20px;">
+          <button id="btn-add-model" class="modern-btn-primary" data-i18n="add_model">Thêm model 3D</button>
+          <button id="btn-open-classification" class="modern-btn-outline" data-i18n="classification_btn">Phân loại khu
+            vực</button>
+          <button id="btn-open-admin-info" class="modern-btn-outline" data-i18n="sidebar_area_info">Thông tin khu
+            vực</button>
+          <button id="btn-open-area-color" class="modern-btn-outline" data-i18n="area_color_btn">Màu nền khu
+            vực</button>
+        </div>
+
+      </div>
+
+      <!-- PWA Install Button (activated when the browser supports app install) -->
+      <div id="pwa-install-container" class="sidebar-install-footer" style="display: none;">
+        <div data-i18n="pwa_install_title" style="font-size: 13px; font-weight: 600; color: #214ca6; text-align: center;">Trải nghiệm tốt hơn với ứng dụng</div>
+        <button id="pwa-install-btn" class="modern-btn-primary"
+          style="background: #214ca6; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+            stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          <span data-i18n="pwa_install_btn_label">Cài đặt 3D Map</span>
+        </button>
+      </div>
+
+      <!-- Bottom Action Bar (Route Preview) - Fixed at the bottom of sidebar but outside scrollable area -->
+      <div id="route-preview-bar"
+        style="display: none; width: 100%; border-top: 1px solid #eee; background: white; z-index: 4500;">
+        <div style="display: flex; width: 100%;">
+          <button id="wayfinding-preview-btn-main"
+            style="flex: 1; background: #214ca6; color: white; border: none; padding: 16px; font-size: 16px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: background 0.2s;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"
+              stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="5 3 19 12 5 21 5 3"></polygon>
+            </svg>
+            <span data-i18n="route_preview">Route preview</span>
+          </button>
+
+          <button id="mobile-full-route-btn" class="mobile-only-action"
+            onclick="const list = document.getElementById('instructions-list'); if(list) { list.classList.toggle('show-on-mobile'); this.classList.toggle('expanded'); }"
+            style="display: none; flex: 1; background: white; color: #214ca6; border: none; border-left: 1px solid #e0e0e0; padding: 16px; font-size: 16px; font-weight: 700; cursor: pointer; align-items: center; justify-content: center; gap: 8px; transition: background 0.2s;">
+            <span data-i18n="full_route">Full route</span>
+            <svg class="chevron-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.3s ease;">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sidebar Toggle Button (Desktop Only) -->
+    <button id="sidebar-toggle-btn" type="button" title="Mở thanh bên" aria-label="Toggle sidebar">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="15 18 9 12 15 6"></polyline>
+      </svg>
+    </button>
+
+    <div id="main-content">
+
+      <!-- Floating Search Bar (Visible when sidebar collapsed, Desktop only) -->
+      <div id="floating-search-bar" class="visible" role="button" tabindex="0" aria-label="Tìm kiếm">
+        <svg class="floating-search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <span class="floating-search-text" data-i18n="search_placeholder">Tìm kiếm khu vực, điểm đến...</span>
+      </div>
+
+      <!-- Script to revert desktop default state on mobile -->
+      <script>
+        if (window.innerWidth <= 768) {
+          document.getElementById('main-sidebar-left').classList.remove('sidebar-collapsed');
+          document.getElementById('floating-search-bar').classList.remove('visible');
+        }
+      </script>
+
+      <!-- HIDE NATIVE SELECTS -->
+      <select id="language-selector" onchange="window.setLanguage(this.value)" style="display:none;">
+        <option value="vn">Tiếng Việt</option>
+        <option value="en">English</option>
+      </select>
+      <select id="floor-selector" style="display:none;"></select>
+
+      <!-- Desktop settings popover. On mobile/tablet the wrapper is display: contents so existing controls keep their positions. -->
+      <div id="desktop-map-settings-panel" class="desktop-map-settings-panel" aria-hidden="true">
+        <!-- Close button for settings panel -->
+        <button id="desktop-map-settings-close" class="settings-panel-close-btn" onclick="document.getElementById('desktop-map-settings-toggle').click()" aria-label="Close settings" style="position: absolute; top: -10px; right: -10px; width: 24px; height: 24px; background: #e11d48; color: white; border: none; border-radius: 50%; font-size: 14px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(225, 29, 72, 0.4); z-index: 10;">
+          ✕
+        </button>
+
+      <!-- MỚI: Theme Selector (Tách biệt để điều hướng độc lập) -->
+        <!-- MỚI: Thanh chỉnh độ sáng và chống chói (Redesigned) -->
+        <div class="brightness-selector-wrapper" id="brightness-selector-wrapper">
+          <div class="brightness-toggle">
+            <button class="brightness-btn minus" id="brightness-minus">−</button>
+            <div class="brightness-slider-container">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#214ca6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="18.36" x2="5.64" y2="16.92"/><line x1="18.36" y1="5.64" x2="19.78" y2="7.06"/></svg>
+              <input type="range" id="brightness-slider" min="50" max="100" step="1" value="100">
+            </div>
+            <button class="brightness-btn plus" id="brightness-plus">+</button>
+            <span class="brightness-value" id="brightness-value">100</span>
+          </div>
+        </div>
+
+        <div class="theme-selector-wrapper" id="theme-selector-wrapper">
+          <div class="theme-selector-toggle" onclick="toggleThemeSelector(event)">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="white" stroke="#333" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;"><path d="m9.06 11.9 8.07-8.06a2.85 2.85 0 1 1 4.03 4.03l-8.06 8.08"/><path d="M7.07 14.94c-3.91.35-7.07 3.73-7.07 7.06v1h2c3.33 0 6.7-3.17 7.06-7.07l-2-2z"/></svg>
+            <span id="current-theme-name" data-i18n="theme_classic">Classic</span>
+            <svg class="arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </div>
+          <div class="theme-selector-menu" id="theme-selector-menu">
+            <div class="theme-option active" data-theme="classic" data-url="https://tiles-cdn.mappedin.com/styles/mappedin/style.json">
+              <div class="theme-thumb classic"></div>
+              <div class="theme-info">
+                <span class="theme-name" data-i18n="theme_classic">Classic</span>
+                <span class="theme-desc" data-i18n="theme_desc_classic">Neutral and minimal</span>
+              </div>
+            </div>
+            <div class="theme-option" data-theme="honeycrisp" data-url="https://tiles-cdn.mappedin.com/styles/honeycrisp/style.json">
+              <div class="theme-thumb honeycrisp"></div>
+              <div class="theme-info">
+                <span class="theme-name" data-i18n="theme_honeycrisp">Honeycrisp</span>
+                <span class="theme-desc" data-i18n="theme_desc_honeycrisp">Sharp and flavorful</span>
+              </div>
+            </div>
+            <div class="theme-option" data-theme="nightblue" data-url="https://tiles-cdn.mappedin.com/styles/midnightblue/style.json">
+              <div class="theme-thumb nightblue"></div>
+              <div class="theme-info">
+                <span class="theme-name" data-i18n="theme_nightblue">Night Blue</span>
+                <span class="theme-desc" data-i18n="theme_desc_nightblue">Serene and moody</span>
+              </div>
+            </div>
+            <div class="theme-option" data-theme="beachplease" data-url="https://tiles-cdn.mappedin.com/styles/beachplease/style.json">
+              <div class="theme-thumb beachplease"></div>
+              <div class="theme-info">
+                <span class="theme-name" data-i18n="theme_beachplease">Beach Please</span>
+                <span class="theme-desc" data-i18n="theme_desc_beachplease">Bright and breezy</span>
+              </div>
+            </div>
+            <div class="theme-option" data-theme="freshmint" data-url="https://tiles-cdn.mappedin.com/styles/freshmint/style.json">
+              <div class="theme-thumb freshmint"></div>
+              <div class="theme-info">
+                <span class="theme-name" data-i18n="theme_freshmint">Fresh Mint</span>
+                <span class="theme-desc" data-i18n="theme_desc_freshmint">Cool and refreshing</span>
+              </div>
+            </div>
+            <div class="theme-option" data-theme="starlight" data-url="https://tiles-cdn.mappedin.com/styles/starlight/style.json">
+              <div class="theme-thumb starlight"></div>
+              <div class="theme-info">
+                <span class="theme-name" data-i18n="theme_starlight">Starlight</span>
+                <span class="theme-desc" data-i18n="theme_desc_starlight">Enchanting and cosmic</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MAP TOP-LEFT CONTROLS (Floor Selector + Flight Info) -->
+      <div id="map-top-left-controls">
+        <!-- CUSTOM FLOOR SELECTOR -->
+        <div id="custom-floor-wrapper" class="pro-dropdown-wrapper">
+          <div class="pro-dropdown-toggle primary" onclick="toggleCustomDropdown('floor-options')"
+            id="floor-toggle-btn">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+            </svg>
+            <span id="custom-floor-text">Tầng</span>
+            <svg class="arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </div>
+          <div id="floor-options" class="pro-dropdown-menu">
+            <!-- Tự động Render từ Script -->
+          </div>
+        </div>
+
+        <!-- FLIGHT INFO BUTTON (Top-left, desktop only) -->
+        <button id="btn-flight-info-topleft" class="pro-dropdown-toggle flight-info-top-btn"
+          onclick="document.getElementById('btn-open-flight-info').click()"
+          title="Thông tin chuyến bay" data-i18n-title="flight_info_title">
+          <svg class="airplane-icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"
+            stroke="none">
+            <path d="M20.19 4H4c-1.1 0-1.99.9-1.99 2v4c1.1 0 1.99.9 1.99 2s-.89 2-2 2v4c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2v-4c-1.1 0-2-.9-2-2s.89-2 2-2V6c0-1.1-.9-2-2-2Zm-2.46 9.1-8.86 2.36-1.66-2.88.93-.25 1.26.99 2.19-.64-2.4-4.16 1.4-.38 4.01 3.74 2.44-.65c.51-.14 1.04.17 1.18.68.13.51-.17 1.04-.69 1.19" />
+          </svg>
+          <span data-i18n="flight_info_btn">Chuyến bay</span>
+        </button>
+      </div>
+
+      <!-- MAP CONTROLS HEADER (TOP RIGHT) -->
+      <div id="map-top-controls"
+        style="position:absolute; top:20px; right:20px; z-index:1000; display:flex; gap:12px; align-items:center;">
+
+        <!-- CUSTOM LANGUAGE DROPDOWN -->
+        <div id="custom-lang-wrapper" class="pro-dropdown-wrapper">
+          <div class="pro-dropdown-toggle" onclick="toggleCustomDropdown('lang-options')" id="lang-toggle-btn">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="2" y1="12" x2="22" y2="12"></line>
+              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1 4-10z">
+              </path>
+            </svg>
+            <span id="custom-lang-text">...</span>
+            <script>
+              /* Instant Language Detection to prevent UI flicker before index.ts loads */
+              (function () {
+                var p = window.location.pathname.split('/')[1] || '';
+                var s = new URLSearchParams(window.location.search).get('lang') || '';
+                var b = (navigator.language || 'vn').split('-')[0].toLowerCase();
+                var lang = (s || p || (b === 'vi' ? 'vn' : b)).toLowerCase();
+                var m = { 'en': 'English', 'zh': '中文', 'ja': '日本語', 'ko': '한국어' };
+                var t = m[lang] || 'Tiếng Việt';
+                document.getElementById('custom-lang-text').innerText = t;
+              })();
+            </script>
+            <svg class="arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </div>
+          <div id="lang-options" class="pro-dropdown-menu">
+            <div class="pro-dropdown-item custom-active" onclick="selectLangOverlay('vn', 'Tiếng Việt')">Tiếng Việt
+            </div>
+            <div class="pro-dropdown-item" onclick="selectLangOverlay('en', 'English')">English</div>
+            <div class="pro-dropdown-item" onclick="selectLangOverlay('zh', '中文')">中文 (Chinese)</div>
+            <div class="pro-dropdown-item" onclick="selectLangOverlay('ja', '日本語')">日本語 (Japanese)</div>
+            <div class="pro-dropdown-item" onclick="selectLangOverlay('ko', '한국어')">한국어 (Korean)</div>
+          </div>
+        </div>
+
+      </div>
+
+
+
+
+
+      <div id="mappedin-map"></div>
+
+      <!-- Vertical Action Stack (Middle Right) -->
+      <div id="camera-actions">
+        <!-- 1. Flight Info -->
+        <div id="flight-info-container" class="camera-control-group">
+          <button id="btn-open-flight-info" class="camera-btn" type="button" title="Thông tin chuyến bay">
+            <svg class="airplane-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path
+                d="M21 16V14L13 9V3.5C13 2.67 12.33 2 11.5 2S10 2.67 10 3.5V9L2 14V16L10 13.5V19L8 20.5V22L11.5 21L15 22V20.5L13 19V13.5L21 16Z" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- 2. User Guide -->
+        <div id="user-guide-container" class="camera-control-group">
+          <button class="camera-btn" id="btn-user-guide" type="button" title="Hướng dẫn sử dụng"
+            aria-label="Hướng dẫn sử dụng">
+            <span class="user-guide-icon" aria-hidden="true">i</span>
+          </button>
+        </div>
+
+        <!-- 2. Fullscreen Toggle -->
+        <div id="fullscreen-container" class="camera-control-group">
+          <button class="camera-btn" id="btn-fullscreen" title="Toàn màn hình">
+            <svg id="icon-fullscreen-enter" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M15 3h6v6M9 3H3v6M15 21h6v-6M9 21H3v-6"></path>
+            </svg>
+            <svg id="icon-fullscreen-exit" style="display: none;" width="18" height="18" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 4v5h-5M15 4v5h5M9 20v-5h-5M15 20v-5h5"></path>
+            </svg>
+          </button>
+        </div>
+
+        <!-- 3. Zoom In -->
+        <div id="zoom-in-container" class="camera-control-group">
+          <button class="camera-btn" id="btn-zoom-in" title="Phóng to (Zoom In)">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              <line x1="11" y1="8" x2="11" y2="14"></line>
+              <line x1="8" y1="11" x2="14" y2="11"></line>
+            </svg>
+          </button>
+        </div>
+
+        <!-- 4. Zoom Out -->
+        <div id="zoom-out-container" class="camera-control-group">
+          <button class="camera-btn" id="btn-zoom-out" title="Thu nhỏ (Zoom Out)">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              <line x1="8" y1="11" x2="14" y2="11"></line>
+            </svg>
+          </button>
+        </div>
+
+        <!-- 5. Home (Reset) -->
+        <div id="home-container" class="camera-control-group">
+          <button class="camera-btn" id="btn-reset" title="Về mặc định (Reset camera)">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+              <polyline points="9 22 9 12 15 12 15 22"></polyline>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Bottom Right Navigation (D-pad) -->
+      <div id="camera-controls">
+
+        <!-- 6. Cross Navigation (Explicit 2-Axis Plus) -->
+        <div id="nav-cross-container" class="nav-cross-container">
+          <div class="nav-axis vertical">
+            <button class="camera-btn" id="btn-up" title="Lật bản đồ lên (Pitch Up)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="18 15 12 9 6 15"></polyline>
+              </svg>
+            </button>
+            <button class="camera-btn" id="btn-down" title="Lật bản đồ xuống (Pitch Down)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </button>
+          </div>
+          <div class="nav-axis horizontal">
+            <button class="camera-btn" id="btn-left" title="Xoay bản đồ sang trái (Rotate Left)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="15 18 9 12 15 6"></polyline>
+              </svg>
+            </button>
+            <button class="camera-btn" id="btn-right" title="Xoay bản đồ sang phải (Rotate Right)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="9 18 15 12 9 6"></polyline>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div id="user-guide-modal" class="user-guide-modal hidden" role="dialog" aria-modal="true"
+        aria-labelledby="user-guide-title" aria-describedby="user-guide-description">
+        <div id="user-guide-highlight" class="user-guide-highlight hidden"></div>
+        <svg id="user-guide-arrow-layer" class="user-guide-arrow-layer hidden" aria-hidden="true">
+          <defs>
+            <marker id="user-guide-arrow-head" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"
+              markerUnits="strokeWidth">
+              <path d="M1,1 L7,4 L1,7 Z" fill="#e11d48"></path>
+            </marker>
+          </defs>
+          <path id="user-guide-backdrop-path" fill="rgba(15, 23, 42, 0.48)" fill-rule="evenodd" d=""></path>
+          <path id="user-guide-arrow-path" class="user-guide-arrow-path" d=""></path>
+        </svg>
+        <div class="user-guide-panel" tabindex="-1">
+          <button id="user-guide-close" class="user-guide-close" type="button" aria-label="Đóng">×</button>
+          <div class="user-guide-media">
+            <img id="user-guide-image" class="user-guide-image" alt="">
+          </div>
+          <div class="user-guide-copy-card">
+            <div class="user-guide-body">
+              <div id="user-guide-progress" class="user-guide-progress"></div>
+              <h2 id="user-guide-title"></h2>
+              <p id="user-guide-description"></p>
+            </div>
+            <div class="user-guide-actions">
+              <button id="user-guide-back" type="button" aria-label="Lùi">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="display: block; pointer-events: none;"><path d="M15 19l-7-7 7-7"/></svg>
+              </button>
+              <button id="user-guide-next" type="button" aria-label="Tiếp">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="display: block; pointer-events: none;"><path d="M9 19l7-7-7-7"/></svg>
+              </button>
+              <button id="user-guide-done" type="button">Đã xong</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3D Model Controls (Floating) -->
+      <div id="model-controls-panel" class="model-controls-panel hidden">
+        <div class="controls-header-row">
+          <span class="drag-handle">⋮⋮</span>
+          <span class="panel-title">Thông tin Model</span>
+          <div class="header-actions">
+            <button id="btn-copy-model" class="icon-btn copy" title="Copy">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#085ebb" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+              </svg>
+            </button>
+            <button id="btn-cut-model" class="icon-btn cut" title="Cut">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#085ebb" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="6" cy="6" r="3"></circle>
+                <circle cx="6" cy="18" r="3"></circle>
+                <line x1="20" y1="4" x2="8.12" y2="15.88"></line>
+                <line x1="14.47" y1="14.48" x2="20" y2="20"></line>
+                <line x1="8.12" y1="8.12" x2="12" y2="12"></line>
+              </svg>
+            </button>
+            <button id="btn-delete-model" class="icon-btn delete" title="Delete">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#085ebb" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                <line x1="10" y1="11" x2="10" y2="17"></line>
+                <line x1="14" y1="11" x2="14" y2="17"></line>
+              </svg>
+            </button>
+            <button id="btn-close-controls" class="icon-btn close" title="Close">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#085ebb" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="control-scroll-content">
+          <!-- Metadata -->
+          <div class="control-group">
+            <label>Tên Model</label>
+            <input type="text" id="inp-model-name" placeholder="Tên Model">
+          </div>
+          <div class="control-group">
+            <label>Mô tả</label>
+            <input type="text" id="inp-model-desc" placeholder="Nhập thông tin mô tả của thiết bị vào đây">
+          </div>
+
+          <!-- Position -->
+          <div class="control-group">
+            <label>Latitude (Vĩ độ)</label>
+            <input type="number" id="inp-lat" step="0.000001">
+          </div>
+          <div class="control-group">
+            <label>Longitude (Kinh độ)</label>
+            <input type="number" id="inp-lon" step="0.000001">
+          </div>
+
+          <!-- Rotation -->
+          <div class="control-group">
+            <label>Xoay mô hình</label>
+            <input type="range" id="slider-rot-z" min="0" max="360" value="0" class="slider">
+            <input type="number" id="inp-rot-z" value="0">
+          </div>
+
+          <!-- Elevation -->
+          <div class="control-group">
+            <label>Độ cao (từ mặt sàn)</label>
+            <input type="range" id="slider-elevation" min="-10" max="50" step="0.1" value="0" class="slider">
+            <input type="number" id="inp-elevation" step="0.1" value="0">
+          </div>
+
+          <!-- Scale -->
+          <div class="control-group">
+            <label>Kích thước (X, Y, Z)</label>
+            <div class="input-row three-col">
+              <input type="number" id="scale-x" value="1" step="0.1">
+              <input type="number" id="scale-y" value="1" step="0.1">
+              <input type="number" id="scale-z" value="1" step="0.1">
+            </div>
+          </div>
+
+          <!-- Public visibility -->
+          <div class="control-group"
+            style="display: flex; flex-direction: row; align-items: center; justify-content: space-between; margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee;">
+            <label for="inp-model-public" style="font-weight: 600; color: #085ebb; cursor: pointer; margin: 0;">Hiển thị
+              trên Website</label>
+            <input type="checkbox" id="inp-model-public" style="width: 20px; height: 20px; cursor: pointer;">
+          </div>
+        </div>
+      </div>
+
+
+      <!-- NEW: Admin Information Modal -->
+      <div id="admin-info-modal" class="modal-overlay hidden" style="padding: 40px 0;">
+        <div class="modal-container"
+          style="width: 680px; max-width: 95%; background: white; border-radius: 16px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.25); margin: auto;">
+          <div class="modal-header" style="padding: 20px 25px; border-bottom: 1px solid #f0f0f0;">
+            <h3 data-i18n="admin_modal_title">Quản lý Thông tin Khu vực</h3>
+            <button id="btn-close-admin" class="close-btn" style="font-size: 20px; transition: color 0.2s;">✕</button>
+          </div>
+          <div class="modal-body" style="padding: 25px; overflow-y: auto; max-height: 75vh; min-height: 400px;">
+
+            <!-- Area Selection -->
+            <div style="margin-bottom: 20px;">
+              <label data-i18n="select_area_label" style="display:block; font-weight:600; margin-bottom:5px;">Chọn khu
+                vực
+                để chỉnh sửa:</label>
+              <div style="display:flex; gap:10px;">
+                <select id="admin-area-select" style="flex:1; padding:8px; border-radius:4px; border:1px solid #ccc;">
+                  <option value="">-- Chọn khu vực --</option>
+                </select>
+                <button id="btn-refresh-areas" title="Làm mới" data-i18n-title="refresh_btn"
+                  style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; background:#f9f9f9; cursor:pointer; display:flex; align-items:center; justify-content:center; transition: all 0.2s;">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round" style="color:#666;">
+                    <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.3" />
+                  </svg>
+                </button>
+              </div>
+              <div style="margin-top: 5px; position: relative;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round"
+                  style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #999; pointer-events: none;">
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+                <input type="text" id="admin-search-filter" placeholder="Lọc theo tên..."
+                  data-i18n-placeholder="filter_by_name"
+                  style="width: 100%; padding: 8px 8px 8px 32px; font-size: 13px; border: 1px solid #ddd; border-radius: 4px; outline: none;">
+              </div>
+            </div>
+
+            <!-- Edit Form (Hidden until selected) -->
+            <div id="admin-form" style="display:none; flex-direction:column; gap:15px;">
+
+              <!-- Image Section -->
+              <div
+                style="display:flex; gap:20px; align-items:flex-start; border:1px solid #eee; padding:15px; border-radius:8px;">
+                <div style="flex:1;">
+                  <label data-i18n="image_url_label" style="display:block; font-weight:600; margin-bottom:5px;">Hình ảnh
+                    (URL hoặc Upload):</label>
+                  <input type="text" id="admin-image-url" placeholder="https://..."
+                    style="width:100%; padding:8px; border-radius:4px; border:1px solid #ccc; margin-bottom:10px;">
+                  <input type="file" id="admin-image-upload" accept="image/*" style="display:none;">
+                  <button id="btn-trigger-upload" data-i18n="upload_image_btn"
+                    style="padding:8px 15px; background:#085ebb; color:white; border:none; border-radius:4px; cursor:pointer;">
+                    Upload ảnh mới</button>
+                  <span id="upload-status" style="margin-left:10px; font-size:13px; color:#666;"></span>
+                </div>
+                <div
+                  style="width:120px; height:120px; background:#f5f5f5; border-radius:8px; overflow:hidden; display:flex; align-items:center; justify-content:center; border:1px solid #ddd;">
+                  <img id="admin-image-preview" src="" alt="Preview" referrerpolicy="no-referrer"
+                    style="width:100%; height:100%; object-fit:cover; display:none;">
+                  <span id="no-image-text" data-i18n="no_image" style="color:#999; font-size:12px;">No Image</span>
+                </div>
+              </div>
+
+              <!-- Content Tabs -->
+              <div>
+                <div style="display:flex; border-bottom:1px solid #ddd; margin-bottom:10px;">
+                  <button class="tab-btn active" data-lang="vi"
+                    style="padding:8px 15px; background:none; border:none; border-bottom:2px solid #085ebb; font-weight:600; cursor:pointer;">Tiếng
+                    Việt</button>
+                  <button class="tab-btn" data-lang="en"
+                    style="padding:8px 15px; background:none; border:none; border-bottom:2px solid transparent; cursor:pointer;">Tiếng
+                    Anh</button>
+                  <button class="tab-btn" data-lang="zh"
+                    style="padding:8px 15px; background:none; border:none; border-bottom:2px solid transparent; cursor:pointer;">Tiếng
+                    Trung</button>
+                  <button class="tab-btn" data-lang="ja"
+                    style="padding:8px 15px; background:none; border:none; border-bottom:2px solid transparent; cursor:pointer;">Tiếng
+                    Nhật</button>
+                  <button class="tab-btn" data-lang="ko"
+                    style="padding:8px 15px; background:none; border:none; border-bottom:2px solid transparent; cursor:pointer;">Tiếng
+                    Hàn</button>
+                </div>
+
+                <div
+                  style="margin-bottom: 20px; padding: 15px; background: #fbfcfe; border: 1px solid #e2e8f0; border-radius: 8px;">
+                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                      <span style="font-size: 18px;">📞</span>
+                      <div style="flex: 1;">
+                        <label
+                          style="display:block; font-weight:600; font-size:13px; color:#1e293b; margin-bottom:3px;">Số
+                          điện thoại (Chung)</label>
+                        <input type="text" id="phone-global" placeholder="Ví dụ: 1577-2600"
+                          style="width:100%; padding:8px; border-radius:4px; border:1px solid #cbd5e1; font-size:14px;">
+                      </div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                      <span style="font-size: 18px;">🕒</span>
+                      <div style="flex: 1;">
+                        <label
+                          style="display:block; font-weight:600; font-size:13px; color:#1e293b; margin-bottom:3px;">Giờ
+                          mở cửa (Chung)</label>
+                        <input type="text" id="hours-global" placeholder="Ví dụ: 00:00 ~ 24:00"
+                          style="width:100%; padding:8px; border-radius:4px; border:1px solid #cbd5e1; font-size:14px;">
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- VI Tab -->
+                <div id="tab-content-vi" class="tab-content">
+                  <div
+                    style="background:#f0f4f9; padding:8px 12px; border-left:4px solid #085ebb; margin-bottom:8px; font-weight:600; color:#085ebb;">
+                    Tên khu vực (Tiếng Việt)</div>
+                  <input type="text" id="name-vi"
+                    style="width:100%; padding:10px; border-radius:4px; border:1px solid #ccc; font-size:14px; margin-bottom:12px;"
+                    placeholder="Tên khu vực tiếng Việt...">
+                  <div
+                    style="background:#f0f4f9; padding:8px 12px; border-left:4px solid #085ebb; margin-bottom:8px; font-weight:600; color:#085ebb;">
+                    Mô tả khu vực (Tiếng Việt)</div>
+                  <textarea id="info-vi" rows="4"
+                    style="width:100%; padding:10px; border-radius:4px; border:1px solid #ccc; font-family:inherit; resize:vertical; margin-bottom:12px;"
+                    placeholder="Nhập thông tin mô tả tiếng Việt..."></textarea>
+
+                  <div
+                    style="background:#f8fafc; padding:6px 10px; border-left:3px solid #64748b; margin-bottom:5px; font-weight:600; font-size:12px; color:#475569;">
+                    Vị trí cụ thể (VI)</div>
+                  <input type="text" id="detail-vi"
+                    style="width:100%; padding:8px; border-radius:4px; border:1px solid #ccc; font-size:13px;"
+                    placeholder="Gần cổng 235...">
+                </div>
+                <!-- EN Tab -->
+                <div id="tab-content-en" class="tab-content" style="display:none;">
+                  <div
+                    style="background:#f0f4f9; padding:8px 12px; border-left:4px solid #085ebb; margin-bottom:8px; font-weight:600; color:#085ebb;">
+                    Area Name (English)</div>
+                  <input type="text" id="name-en"
+                    style="width:100%; padding:10px; border-radius:4px; border:1px solid #ccc; font-size:14px; margin-bottom:12px;"
+                    placeholder="Area name in English...">
+                  <textarea id="info-en" rows="4"
+                    style="width:100%; padding:10px; border-radius:4px; border:1px solid #ccc; font-family:inherit; resize:vertical; margin-bottom:12px;"
+                    placeholder="Enter English description..."></textarea>
+
+                  <div
+                    style="background:#f8fafc; padding:6px 10px; border-left:3px solid #64748b; margin-bottom:5px; font-weight:600; font-size:12px; color:#475569;">
+                    Specific Location (EN)</div>
+                  <input type="text" id="detail-en"
+                    style="width:100%; padding:8px; border-radius:4px; border:1px solid #ccc; font-size:13px;"
+                    placeholder="Near Gate 235...">
+                </div>
+                <!-- ZH Tab -->
+                <div id="tab-content-zh" class="tab-content" style="display:none;">
+                  <div
+                    style="background:#f0f4f9; padding:8px 12px; border-left:4px solid #085ebb; margin-bottom:8px; font-weight:600; color:#085ebb;">
+                    区域名称（中文）</div>
+                  <input type="text" id="name-zh"
+                    style="width:100%; padding:10px; border-radius:4px; border:1px solid #ccc; font-size:14px; margin-bottom:12px;"
+                    placeholder="中文区域名称...">
+                  <textarea id="info-zh" rows="4"
+                    style="width:100%; padding:10px; border-radius:4px; border:1px solid #ccc; font-family:inherit; resize:vertical; margin-bottom:12px;"
+                    placeholder="请输入中文描述..."></textarea>
+
+                  <div
+                    style="background:#f8fafc; padding:6px 10px; border-left:3px solid #64748b; margin-bottom:5px; font-weight:600; font-size:12px; color:#475569;">
+                    具体位置 (ZH)</div>
+                  <input type="text" id="detail-zh"
+                    style="width:100%; padding:8px; border-radius:4px; border:1px solid #ccc; font-size:13px;"
+                    placeholder="靠近 235 号登机口...">
+                </div>
+                <!-- JA Tab -->
+                <div id="tab-content-ja" class="tab-content" style="display:none;">
+                  <div
+                    style="background:#f0f4f9; padding:8px 12px; border-left:4px solid #085ebb; margin-bottom:8px; font-weight:600; color:#085ebb;">
+                    エリア名（日本語）</div>
+                  <input type="text" id="name-ja"
+                    style="width:100%; padding:10px; border-radius:4px; border:1px solid #ccc; font-size:14px; margin-bottom:12px;"
+                    placeholder="日本語のエリア名...">
+                  <textarea id="info-ja" rows="4"
+                    style="width:100%; padding:10px; border-radius:4px; border:1px solid #ccc; font-family:inherit; resize:vertical; margin-bottom:12px;"
+                    placeholder="日本語の説明を入力してください..."></textarea>
+
+                  <div
+                    style="background:#f8fafc; padding:6px 10px; border-left:3px solid #64748b; margin-bottom:5px; font-weight:600; font-size:12px; color:#475569;">
+                    詳細な場所 (JA)</div>
+                  <input type="text" id="detail-ja"
+                    style="width:100%; padding:8px; border-radius:4px; border:1px solid #ccc; font-size:13px;"
+                    placeholder="ゲート235の近く...">
+                </div>
+                <!-- KO Tab -->
+                <div id="tab-content-ko" class="tab-content" style="display:none;">
+                  <div
+                    style="background:#f0f4f9; padding:8px 12px; border-left:4px solid #085ebb; margin-bottom:8px; font-weight:600; color:#085ebb;">
+                    지역 이름 (한국어)</div>
+                  <input type="text" id="name-ko"
+                    style="width:100%; padding:10px; border-radius:4px; border:1px solid #ccc; font-size:14px; margin-bottom:12px;"
+                    placeholder="한국어 지역 이름...">
+                  <textarea id="info-ko" rows="4"
+                    style="width:100%; padding:10px; border-radius:4px; border:1px solid #ccc; font-family:inherit; resize:vertical; margin-bottom:12px;"
+                    placeholder="한국어 설명을 입력하세요..."></textarea>
+
+                  <div
+                    style="background:#f8fafc; padding:6px 10px; border-left:3px solid #64748b; margin-bottom:5px; font-weight:600; font-size:12px; color:#475569;">
+                    상세 위치 (KO)</div>
+                  <input type="text" id="detail-ko"
+                    style="width:100%; padding:8px; border-radius:4px; border:1px solid #ccc; font-size:13px;"
+                    placeholder="235번 게이트 근처...">
+                </div>
+              </div>
+
+              <!-- Actions -->
+              <div
+                style="display:flex; justify-content:flex-end; gap:10px; margin-top:10px; padding-top:10px; border-top:1px solid #eee;">
+                <button id="btn-cancel-admin" data-i18n="cancel_btn"
+                  style="padding:10px 20px; border:1px solid #ddd; background:white; border-radius:6px; cursor:pointer;">Hủy</button>
+                <button id="btn-save-admin" data-i18n="save_changes_btn"
+                  style="padding:10px 25px; background:#085ebb; color:white; border:none; border-radius:6px; font-weight:600; cursor:pointer;">
+                  Lưu Thay Đổi</button>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3D Model Picker Modal -->
+
+
+      <!-- 3D Model Picker Modal -->
+      <div id="model-picker-modal" class="modal-overlay hidden">
+        <div class="modal-container"
+          style="width: 600px; max-width: 90%; background: white; border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.2);">
+          <div class="modal-header">
+            <h3 data-i18n="select_model_title">Chọn mô hình 3D</h3>
+            <button id="btn-close-picker" class="close-btn">✕</button>
+          </div>
+          <div style="padding: 15px 20px 0 20px; border-bottom: 1px solid #f0f0f0;">
+            <div style="position: relative; display: flex; align-items: center;">
+              <input type="text" id="model-search-input" placeholder="Tìm kiếm mô hình 3D..."
+                style="width: 100%; padding: 10px 35px 10px 15px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; outline: none; box-sizing: border-box;">
+              <button id="model-search-clear"
+                style="position: absolute; right: 10px; background: none; border: none; font-size: 16px; color: #999; cursor: pointer; display: none; padding: 5px;">✕</button>
+            </div>
+          </div>
+          <div id="model-grid"
+            style="padding: 20px; display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 15px; max-height: 55vh; overflow-y: auto;">
+            <!-- Models injected via JS -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Area Classification Modal -->
+      <div id="classification-modal" class="modal-overlay hidden">
+        <div class="modal-container classification-container" style="box-shadow: 0 10px 40px rgba(0,0,0,0.2);">
+          <div class="modal-header">
+            <h3 data-i18n="classification_title">Phân loại khu vực</h3>
+            <button id="btn-close-classification" class="close-btn">✕</button>
+          </div>
+          <div class="modal-body classification-body">
+            <!-- Column 1: Main Categories -->
+            <div class="classification-col categories-col">
+              <div class="col-header" data-i18n="main_categories">Danh mục chính</div>
+              <div id="main-category-list" class="list-container"></div>
+            </div>
+            <!-- Column 2: Sub-categories -->
+            <div class="classification-col subcategories-col">
+              <div class="col-header" data-i18n="sub_categories">Danh mục con</div>
+              <div id="sub-category-list" class="list-container"></div>
+            </div>
+            <!-- Column 3: Area Assignment -->
+            <div class="classification-col assignment-col">
+              <div class="col-header">Gán khu vực</div>
+              <div id="area-assignment-container" class="list-container">
+                <div class="search-box">
+                  <input type="text" id="area-assign-search" placeholder="Lọc khu vực...">
+                </div>
+                <div id="area-checkbox-list"></div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button id="btn-save-classification" class="modal-btn save">Lưu thay đổi</button>
+            <button id="btn-cancel-classification" class="modal-btn cancel">Hủy</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Area Color Modal -->
+      <div id="area-color-modal" class="modal-overlay hidden">
+        <div class="modal-container"
+          style="width: 500px; max-width: 90%; background: white; border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.2); margin: auto;">
+          <div class="modal-header" style="border-bottom: 1px solid #eee; padding: 20px;">
+            <h3 style="margin: 0; font-size: 18px; color: #333;">Thay đổi màu nền khu vực</h3>
+            <button id="btn-close-area-color" class="close-btn" style="font-size: 20px;">✕</button>
+          </div>
+          <div class="modal-body" style="padding: 20px;">
+            <div style="margin-bottom: 15px;">
+              <label style="font-weight: 600; display: block; margin-bottom: 5px; color: #555;">Chọn khu vực:</label>
+              <div style="display:flex; flex-direction:column; gap:8px;">
+                <input type="text" id="color-area-search" placeholder="Tìm kiếm khu vực..."
+                  style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;">
+                <div id="color-area-list"
+                  style="border: 1px solid #ddd; border-radius: 4px; padding: 10px; max-height: 250px; overflow-y: auto; background: #fafafa;">
+                  <!-- rendered via JS: checkboxes -->
+                </div>
+              </div>
+            </div>
+            <div style="margin-bottom: 15px;">
+              <label style="font-weight: 600; display: block; margin-bottom: 5px; color: #555;">Chọn màu nền:</label>
+              <div style="display:flex; gap:10px; align-items:center;">
+                <input type="color" id="area-color-picker"
+                  style="width:40px; height:40px; padding:0; border:none; cursor:pointer;" value="#4CAF50">
+                <input type="text" id="area-color-hex"
+                  style="flex:1; padding:10px; border:1px solid #ddd; border-radius:4px; font-family: monospace; box-sizing: border-box;"
+                  value="#4CAF50" placeholder="#RRGGBB">
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer"
+            style="padding: 15px 20px; border-top: 1px solid #eee; display: flex; justify-content: flex-end; gap: 10px; background: #fafafa;">
+            <button id="btn-clear-area-color"
+              style="padding: 10px 20px; border: 1px solid #ddd; background: white; border-radius: 6px; cursor: pointer; color: #555;">Xóa
+              màu</button>
+            <button id="btn-apply-area-color"
+              style="padding: 10px 20px; background: #085ebb; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">Áp
+              dụng màu</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="flight-info-modal" class="modal-overlay hidden">
+        <div class="flight-modal-shell">
+          <div class="flight-modal-header">
+            <h3 id="flight-info-modal-title" data-i18n="flight_info_title">Thông tin chuyến bay</h3>
+            <button id="btn-close-flight-info" class="close-btn" type="button" aria-label="Close">✕</button>
+          </div>
+          <div class="flight-modal-body">
+            <aside class="flight-modal-sidebar">
+              <div class="flight-mode-toggle">
+                <button id="flight-tab-departure" class="flight-mode-btn active" type="button" data-mode="D"
+                  data-i18n="flight_departure">Chuyến bay đi</button>
+                <button id="flight-tab-arrival" class="flight-mode-btn" type="button" data-mode="A"
+                  data-i18n="flight_arrival">Chuyến bay đến</button>
+              </div>
+
+              <div class="flight-field-group">
+                <label for="flight-date-input" data-i18n="flight_date_label">Ngày bay</label>
+                <div class="flight-date-wrapper">
+                  <input id="flight-date-input" type="date" class="flight-date-hidden" />
+                  <button id="flight-date-display" type="button" class="flight-date-display">
+                    <span id="flight-date-text"></span>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                      stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                      <line x1="16" y1="2" x2="16" y2="6" />
+                      <line x1="8" y1="2" x2="8" y2="6" />
+                      <line x1="3" y1="10" x2="21" y2="10" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              <div class="flight-field-group">
+                <label for="flight-search-input" data-i18n="flight_search_label">Tìm kiếm chuyến bay</label>
+                <div class="flight-search-box">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                  </svg>
+                  <input id="flight-search-input" type="text" data-i18n-placeholder="flight_search_placeholder"
+                    placeholder="Nhập số hiệu chuyến bay" />
+                </div>
+              </div>
+
+              <div id="flight-list-summary" class="flight-list-summary">Chuyến bay đi (0 chuyến)</div>
+            </aside>
+
+            <section class="flight-modal-results">
+              <div class="flight-results-toolbar">
+                <div class="flight-status-filter">
+                  <label for="flight-status-filter" data-i18n="flight_status_filter_label">Trạng thái</label>
+                  <select id="flight-status-filter">
+                    <option value="ALL" data-i18n="flight_status_all">Tất cả trạng thái</option>
+                  </select>
+                </div>
+              </div>
+
+              <div id="flight-list-loading" class="flight-list-state hidden" data-i18n="loading_flights">
+                Đang tải dữ liệu chuyến bay...
+              </div>
+              <div id="flight-list-empty" class="flight-list-state hidden" data-i18n="flight_empty">
+                Không có chuyến bay phù hợp.
+              </div>
+              <div id="flight-list-error" class="flight-list-state hidden"></div>
+              <div id="flight-list-container" class="flight-list-container"></div>
+            </section>
+          </div>
+          <div class="flight-modal-footer">
+            <button id="btn-close-flight-info-footer" class="flight-close-action" type="button"
+              data-i18n="flight_close_btn">
+              Đóng
+            </button>
+          </div>
+        </div>
+      </div>
+
+
+
+    </div>
+  </div>
+
+  <!-- Success Popup -->
+  <div id="success-popup"
+    style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); z-index: 30000; align-items:center; justify-content:center;">
+    <div
+      style="background:white; padding:30px; border-radius:12px; text-align:center; box-shadow:0 10px 30px rgba(0,0,0,0.2); width: 300px;">
+      <div
+        style="width:60px; height:60px; background:#4CAF50; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 20px auto;">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"
+          stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+      </div>
+      <h3 style="margin:0 0 10px 0; color:#333; font-size:18px;">Thành công!</h3>
+      <p style="margin:0 0 25px 0; color:#666; font-size:14px;">Lưu thay đổi phân loại khu vực thành công.</p>
+      <button id="btn-success-ok"
+        style="background:#085ebb; color:white; border:none; padding:10px 30px; border-radius:6px; font-weight:600; cursor:pointer; width:100%;">OK</button>
+    </div>
+  </div>
+  <script>
+    // 1. Toggles
+    function toggleCustomDropdown(menuId) {
+      const wrapper = document.getElementById(menuId).parentElement;
+      if (wrapper.classList.contains('open')) {
+        wrapper.classList.remove('open');
+      } else {
+        document.querySelectorAll('.pro-dropdown-wrapper.open, .theme-selector-wrapper.open').forEach(w => w.classList.remove('open'));
+        wrapper.classList.add('open');
+      }
+    }
+
+    function toggleThemeSelector(e) {
+      if (e) e.stopPropagation();
+      const wrapper = document.getElementById('theme-selector-wrapper');
+      if (wrapper.classList.contains('open')) {
+        wrapper.classList.remove('open');
+      } else {
+        document.querySelectorAll('.pro-dropdown-wrapper.open, .theme-selector-wrapper.open').forEach(w => w.classList.remove('open'));
+        wrapper.classList.add('open');
+      }
+    }
+
+    function toggleDesktopMapSettings(e) {
+      if (e) e.stopPropagation();
+      const panel = document.getElementById('desktop-map-settings-panel');
+      if (!panel) return;
+
+      const isOpen = panel.classList.toggle('open');
+      panel.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
+      
+      document.querySelectorAll('.desktop-map-settings-toggle').forEach(toggle => {
+        toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        toggle.classList.toggle('active', isOpen);
+      });
+
+      if (isOpen) {
+        document.querySelectorAll('.pro-dropdown-wrapper.open, .theme-selector-wrapper.open').forEach(w => w.classList.remove('open'));
+      }
+    }
+
+    // Đóng khi click ra ngoài
+    document.addEventListener('click', function (e) {
+      if (!e.target.closest('.pro-dropdown-wrapper') && !e.target.closest('.theme-selector-wrapper')) {
+        document.querySelectorAll('.pro-dropdown-wrapper.open, .theme-selector-wrapper.open').forEach(w => w.classList.remove('open'));
+      }
+
+      if (!e.target.closest('#desktop-map-settings-panel') && !e.target.closest('.desktop-map-settings-toggle')) {
+        const panel = document.getElementById('desktop-map-settings-panel');
+        panel?.classList.remove('open');
+        panel?.setAttribute('aria-hidden', 'true');
+        document.querySelectorAll('.desktop-map-settings-toggle').forEach(toggle => {
+          toggle.classList.remove('active');
+          toggle.setAttribute('aria-expanded', 'false');
+        });
+      }
+    });
+
+    // 2. Language Sync
+    function selectLangOverlay(val, text) {
+      // UI Update
+      document.getElementById('custom-lang-text').innerText = text;
+      document.querySelectorAll('#lang-options .pro-dropdown-item').forEach(el => el.classList.remove('custom-active'));
+      event.target.classList.add('custom-active');
+      document.getElementById('custom-lang-wrapper').classList.remove('open');
+
+      // Sync to Hidden Select
+      const nativeSelect = document.getElementById('language-selector');
+      nativeSelect.value = val;
+      nativeSelect.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
+    // 3. Floor Selector Sync
+    // Vì index.ts nhồi data vào floor-selector, ta dùng MutationObserver để "nghiệp vụ hóa" giao diện Custom
+    const nativeFloorSelect = document.getElementById('floor-selector');
+    const floorOptionsContainer = document.getElementById('floor-options');
+
+    function syncFloorSelectToCustom() {
+      floorOptionsContainer.innerHTML = '';
+      const currentVal = nativeFloorSelect.value;
+
+      Array.from(nativeFloorSelect.options).forEach(opt => {
+        if (opt.value === currentVal) {
+          document.getElementById('custom-floor-text').innerText = opt.text;
+        }
+        const item = document.createElement('div');
+        item.className = 'pro-dropdown-item' + (opt.value === currentVal ? ' custom-active' : '');
+        item.innerText = opt.text;
+        item.onclick = function () {
+          // Cập nhật giá trị Select Gốc và Trigger
+          nativeFloorSelect.value = opt.value;
+          nativeFloorSelect.dispatchEvent(new Event('change', { bubbles: true }));
+
+          // Đóng menu
+          document.getElementById('custom-floor-wrapper').classList.remove('open');
+        };
+        floorOptionsContainer.appendChild(item);
+      });
+    }
+
+    // Lắng nghe Select gốc thay đổi cấu trúc Option từ index.ts
+    const observer = new MutationObserver(syncFloorSelectToCustom);
+    observer.observe(nativeFloorSelect, { childList: true, subtree: true });
+
+    // Lắng nghe nếu TS cố tình cập nhật value của floor-selector nhưng không phát Event
+    const originalFloorSetter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set;
+    Object.defineProperty(nativeFloorSelect, 'value', {
+      set: function (val) {
+        originalFloorSetter.call(this, val);
+        setTimeout(syncFloorSelectToCustom, 50); // Đợi DOM
+      },
+      get: function () {
+        return Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').get.call(this);
+      }
+    });
+  </script>
+  <script type="module" src="../main-function/index.ts"></script>
+
+  <!-- PWA Registration & Install Handling -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then(reg => console.log('SW Registered!', reg))
+          .catch(err => console.log('SW Reg error:', err));
+      });
+    }
+
+    const forceMobileCameraControls = () => {
+      const cameraControls = document.getElementById('camera-controls');
+      const cameraActions = document.getElementById('camera-actions');
+      const navCrossContainer = document.getElementById('nav-cross-container');
+      const otherGroups = [
+        document.getElementById('fullscreen-container'),
+        document.getElementById('zoom-in-container'),
+        document.getElementById('zoom-out-container'),
+        document.getElementById('home-container'),
+        document.getElementById('flight-info-container'),
+        document.getElementById('user-guide-container')
+      ];
+      const btnZoomIn = document.getElementById('btn-zoom-in');
+      const btnZoomOut = document.getElementById('btn-zoom-out');
+      const btnReset = document.getElementById('btn-reset');
+      const btnFullscreen = document.getElementById('btn-fullscreen');
+      const btnFlight = document.getElementById('btn-open-flight-info');
+      const btnUserGuide = document.getElementById('btn-user-guide');
+      const btnUp = document.getElementById('btn-up');
+      const btnDown = document.getElementById('btn-down');
+      const btnLeft = document.getElementById('btn-left');
+      const btnRight = document.getElementById('btn-right');
+
+      if (!cameraControls) return;
+
+      cameraControls.hidden = false;
+      cameraControls.removeAttribute('hidden');
+
+      let mobileStack = document.getElementById('mobile-camera-stack');
+      if (!mobileStack) {
+        mobileStack = document.createElement('div');
+        mobileStack.id = 'mobile-camera-stack';
+        mobileStack.className = 'mobile-camera-stack';
+      }
+
+      if (window.innerWidth <= 768) {
+        // Mobile layout overrides
+        if (navCrossContainer) navCrossContainer.style.display = 'none';
+        if (cameraActions) cameraActions.style.display = 'none';
+        otherGroups.forEach(g => { if (g) g.style.display = 'none'; });
+
+        // Ensure strict order on mobile: Flight > Guide > Fullscreen > ZoomIn > Home > ZoomOut
+        const mobileButtons = [btnFlight, btnUserGuide, btnFullscreen, btnZoomIn, btnReset, btnZoomOut];
+        mobileButtons.forEach(btn => {
+          if (btn) mobileStack.appendChild(btn);
+        });
+
+        if (!cameraControls.contains(mobileStack)) {
+          cameraControls.appendChild(mobileStack);
+        }
+        mobileStack.style.display = 'flex';
+      } else {
+        // Desktop layout
+        if (navCrossContainer) navCrossContainer.style.display = 'block';
+        if (cameraActions) cameraActions.style.display = 'flex';
+        otherGroups.forEach(g => { if (g) g.style.display = 'flex'; });
+
+        const flightInfoContainer = document.getElementById('flight-info-container');
+        const userGuideContainer = document.getElementById('user-guide-container');
+        const fullscreenContainer = document.getElementById('fullscreen-container');
+        const zoomInContainer = document.getElementById('zoom-in-container');
+        const zoomOutContainer = document.getElementById('zoom-out-container');
+        const homeContainer = document.getElementById('home-container');
+
+        // Return buttons to their containers
+        if (flightInfoContainer && btnFlight) flightInfoContainer.appendChild(btnFlight);
+        if (userGuideContainer && btnUserGuide) userGuideContainer.appendChild(btnUserGuide);
+        if (fullscreenContainer && btnFullscreen) fullscreenContainer.appendChild(btnFullscreen);
+        if (zoomInContainer && btnZoomIn) zoomInContainer.appendChild(btnZoomIn);
+        if (zoomOutContainer && btnZoomOut) zoomOutContainer.appendChild(btnZoomOut);
+        if (homeContainer && btnReset) homeContainer.appendChild(btnReset);
+
+        // Navigation buttons back to cross container
+        if (navCrossContainer && btnUp && btnDown && btnLeft && btnRight) {
+          const verticalAxis = navCrossContainer.querySelector('.nav-axis.vertical');
+          const horizontalAxis = navCrossContainer.querySelector('.nav-axis.horizontal');
+          if (verticalAxis) {
+            verticalAxis.appendChild(btnUp);
+            verticalAxis.appendChild(btnDown);
+          }
+          if (horizontalAxis) {
+            horizontalAxis.appendChild(btnLeft);
+            horizontalAxis.appendChild(btnRight);
+          }
+        }
+
+        if (mobileStack.parentElement === cameraControls) {
+          mobileStack.remove();
+        }
+      }
+    };
+
+    window.addEventListener('load', forceMobileCameraControls);
+    window.addEventListener('resize', forceMobileCameraControls);
+
+    // Handle Install Prompt
+    let deferredPrompt;
+    const installContainer = document.getElementById('pwa-install-container');
+    const installBtn = document.getElementById('pwa-install-btn');
+    function shouldShowPwaInstallPrompt() {
+      const isMobileViewport = window.innerWidth <= 768;
+      const isMobileAgent = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+      return !isMobileViewport && !isMobileAgent;
+    }
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      console.log('📢 PWA: beforeinstallprompt event fired!');
+      // Prevent the mini-infobar from appearing on mobile
+      e.preventDefault();
+      // Stash the event so it can be triggered later.
+      deferredPrompt = e;
+      // Update UI notify the user they can install the PWA
+      if (installContainer && shouldShowPwaInstallPrompt()) {
+        installContainer.style.display = 'flex';
+        console.log('✅ PWA: Install button shown.');
+      } else if (installContainer) {
+        installContainer.style.display = 'none';
+      }
+    });
+
+    window.addEventListener('resize', () => {
+      if (!shouldShowPwaInstallPrompt() && installContainer) {
+        installContainer.style.display = 'none';
+      }
+    });
+
+    if (installBtn) {
+      installBtn.addEventListener('click', async () => {
+        if (!deferredPrompt) return;
+        // Show the install prompt
+        deferredPrompt.prompt();
+        // Wait for the user to respond to the prompt
+        const { outcome } = await deferredPrompt.userChoice;
+        console.log(`User response to install prompt: ${outcome}`);
+
+        if (outcome === 'accepted') {
+          // Yêu cầu quyền tự động khởi chạy (Chỉ hoạt động trên Chrome/Edge mới nhất)
+          if ('runOnOsLogin' in navigator && navigator.runOnOsLogin.set) {
+            try {
+              await navigator.runOnOsLogin.set({ mode: 'windowed' });
+              console.log('✅ Auto-start requested and approved.');
+            } catch (err) {
+              console.warn('❌ Auto-start request failed:', err);
+            }
+          }
+        }
+
+        // We've used the prompt, and can't use it again, throw it away
+        deferredPrompt = null;
+        // Hide the install button
+        if (installContainer) installContainer.style.display = 'none';
+      });
+    }
+
+    // Kiểm tra và hiển thị lại yêu cầu khởi động nếu chưa được bật (Cho người dùng đã cài đặt)
+    async function checkAutoStart() {
+      if ('runOnOsLogin' in navigator && navigator.runOnOsLogin.get) {
+        const state = await navigator.runOnOsLogin.get();
+        if (state === 'not-allowed') {
+          console.log('💡 Tip: You can enable auto-start in App Settings.');
+        }
+      }
+    }
+    checkAutoStart();
+
+
+    // Hide if already installed
+    window.addEventListener('appinstalled', (evt) => {
+      console.log('App was installed');
+      if (installContainer) installContainer.style.display = 'none';
+    });
+  </script>
+</body>
+
+</html>

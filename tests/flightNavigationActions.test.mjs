@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { shouldRenderFlightNavigationActions } from '../flightNavigationActions.js';
+import { shouldRenderFlightNavigationActions } from '../src/navigation/flightNavigationActions.js';
 
 test('hides departure navigation actions when status blocks navigation', () => {
   assert.equal(shouldRenderFlightNavigationActions({

@@ -10,7 +10,7 @@ import {
   ensureMinimumRouteInstructions,
   shouldRenderNavigationInstruction,
   simplifyNavigationInstructions
-} from '../navigationInstructionRules.js';
+} from '../src/navigation/navigationInstructionRules.js';
 
 const floors = [
   { id: 'floor-1', name: 'Tang 1 [Ga den]', elevation: 0 },
@@ -684,7 +684,7 @@ test('uses route distance when instruction display distance collapses to zero', 
 });
 
 test('index normalizes short-route instructions and clears loading UI on route failure', () => {
-  const source = readFileSync(new URL('../index.ts', import.meta.url), 'utf8');
+  const source = readFileSync(new URL('../main/main-function/index.ts', import.meta.url), 'utf8');
 
   assert.match(source, /ensureMinimumRouteInstructions\(simplifiedInstructions,/);
   assert.match(source, /getRouteDisplayDistanceMeters\(simplifiedInstructions,/);
@@ -698,7 +698,7 @@ test('index normalizes short-route instructions and clears loading UI on route f
 });
 
 test('index uses the same simplified instructions for route state and sidebar rendering', () => {
-  const source = readFileSync(new URL('../index.ts', import.meta.url), 'utf8');
+  const source = readFileSync(new URL('../main/main-function/index.ts', import.meta.url), 'utf8');
 
   assert.match(source, /const\s+displayDirections\s*=\s*\{/);
   assert.match(source, /rawInstructions:\s*directions\.instructions\s*\|\|\s*\[\]/);

@@ -6,7 +6,7 @@ import {
   getCategoryAreaListStyle,
   getCategoryAreaListStyleForRows,
   shouldScrollCategoryAreaList
-} from '../categoryDropdownLayout.js';
+} from '../src/ui/categoryDropdownLayout.js';
 
 test('category area list height grows by 50px per area up to four areas', () => {
   assert.equal(getCategoryAreaListHeight(1), 50);

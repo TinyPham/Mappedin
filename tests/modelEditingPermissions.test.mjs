@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-const source = readFileSync(new URL('../index.ts', import.meta.url), 'utf8');
+const source = readFileSync(new URL('../main/main-function/index.ts', import.meta.url), 'utf8');
 
 test('model edit click shortcuts are ignored in view-only mode', () => {
   const modelSelectionBlockIndex = source.indexOf('if (!isViewOnly && event.models && event.models.length > 0)');

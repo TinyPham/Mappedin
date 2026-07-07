@@ -10,7 +10,7 @@ import {
   shouldAutoOpenUserGuide,
   shouldShowPwaInstallPrompt,
   waitForStartupCameraRotation
-} from '../tutorialAutoOpen.js';
+} from '../src/tutorial/tutorialAutoOpen.js';
 
 test('user guide auto opens on first browser visit and again after 24 hours', () => {
   const now = 1_800_000_000_000;

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { tutorialSteps } from '../tutorialSteps.js';
+import { tutorialSteps } from '../src/tutorial/tutorialSteps.js';
 
 function desktopStep(id) {
   const step = tutorialSteps.desktop.find(item => item.id === id);

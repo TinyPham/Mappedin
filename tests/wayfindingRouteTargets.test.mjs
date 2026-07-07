@@ -6,7 +6,7 @@ import {
   resolveWayfindingRouteTarget,
   resolveWayfindingRouteTargets,
   getObjectRouteReferenceCoordinate
-} from '../wayfindingRouteTargets.js';
+} from '../src/navigation/wayfindingRouteTargets.js';
 
 const coord = (latitude, longitude, floorId = 'floor-1') => ({ latitude, longitude, floorId });
 
@@ -293,7 +293,7 @@ test('resolves route targets for every leg while preserving original UI objects'
 });
 
 test('index routes with resolved door targets while preserving original waypoints', () => {
-  const source = readFileSync(new URL('../index.ts', import.meta.url), 'utf8');
+  const source = readFileSync(new URL('../main/main-function/index.ts', import.meta.url), 'utf8');
 
   assert.match(source, /getObjectRouteReferenceCoordinate,\s*resolveWayfindingRouteTarget,\s*resolveWayfindingRouteTargets/);
   assert.match(source, /const\s+routeTargetOptions\s*=\s*\{/);

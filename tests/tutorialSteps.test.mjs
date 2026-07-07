@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 
-import { tutorialSteps } from '../tutorialSteps.js';
+import { tutorialSteps } from '../src/tutorial/tutorialSteps.js';
 
 function assertValidSteps(device, steps, expectedPrefix, minimumLength) {
   assert.ok(Array.isArray(steps), `${device} steps must be an array`);

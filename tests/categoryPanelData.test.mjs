@@ -7,7 +7,7 @@ import {
   buildVisibleCategoryAreas,
   hasAssignmentsOnVisibleFloor,
   normalizeLocationRecord
-} from './categoryPanelData.js';
+} from '../src/data/categoryPanelData.js';
 
 test('overview includes locations from every floor', () => {
   const entries = buildVisibleCategoryAreas([

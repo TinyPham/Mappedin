@@ -19,6 +19,7 @@ Thumbs.db
 .DS_Store
 
 # IDE
+.agent/
 .vscode/
 .idea/
 .vs/

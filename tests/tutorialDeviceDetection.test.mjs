@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { getTutorialDeviceFromContext } from '../tutorialDevice.js';
+import { getTutorialDeviceFromContext } from '../src/tutorial/tutorialDevice.js';
 
 test('tutorial device detection treats phone widths and phone agents as mobile', () => {
   assert.equal(getTutorialDeviceFromContext({ width: 375, userAgent: 'Mozilla/5.0' }), 'mobile');
