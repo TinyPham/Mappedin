@@ -13,9 +13,26 @@ test('root requests are internally rewritten to the organized main HTML entry', 
   assert.equal(rewriteRootRequestUrl('/?mode=kiosk&kioskId=LT-KIOSK-01'), `${MAIN_HTML_PATH}?mode=kiosk&kioskId=LT-KIOSK-01`);
 });
 
+test('localized map routes are rewritten to the main HTML entry on browser refresh', () => {
+  assert.equal(
+    rewriteRootRequestUrl('/vn/693687f4f176dd000ba13a3b'),
+    MAIN_HTML_PATH
+  );
+  assert.equal(
+    rewriteRootRequestUrl('/vn/693687f4f176dd000ba13a3b/directions?mode=kiosk&kioskId=LT-KIOSK-01'),
+    `${MAIN_HTML_PATH}?mode=kiosk&kioskId=LT-KIOSK-01`
+  );
+  assert.equal(
+    rewriteRootRequestUrl('/en/693687f4f176dd000ba13a3b/directions/?floor=m_1523f7dcde647c40'),
+    `${MAIN_HTML_PATH}?floor=m_1523f7dcde647c40`
+  );
+});
+
 test('non-root requests and invalid request values remain unchanged', () => {
   assert.equal(rewriteRootRequestUrl('/main/html/admin.html'), '/main/html/admin.html');
-  assert.equal(rewriteRootRequestUrl('/vn/map?location=ABC'), '/vn/map?location=ABC');
+  assert.equal(rewriteRootRequestUrl('/assets/main.js'), '/assets/main.js');
+  assert.equal(rewriteRootRequestUrl('/api/init-data'), '/api/init-data');
+  assert.equal(rewriteRootRequestUrl('/vn/map/unknown'), '/vn/map/unknown');
   assert.equal(rewriteRootRequestUrl(undefined), undefined);
 });
 

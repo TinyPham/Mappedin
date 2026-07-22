@@ -1,11 +1,12 @@
 export const MAIN_HTML_PATH = '/main/html/index.html';
+const MAP_ROUTE_PATTERN = /^\/(?:vn|en|zh|ja|ko)\/[^/]+(?:\/directions)?\/?$/i;
 
 export function rewriteRootRequestUrl(requestUrl) {
   if (typeof requestUrl !== 'string') return requestUrl;
 
   const queryIndex = requestUrl.indexOf('?');
   const pathname = queryIndex >= 0 ? requestUrl.slice(0, queryIndex) : requestUrl;
-  if (pathname !== '/') return requestUrl;
+  if (pathname !== '/' && !MAP_ROUTE_PATTERN.test(pathname)) return requestUrl;
 
   const query = queryIndex >= 0 ? requestUrl.slice(queryIndex) : '';
   return `${MAIN_HTML_PATH}${query}`;
