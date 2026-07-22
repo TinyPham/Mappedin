@@ -1,9 +1,11 @@
 
 import { defineConfig } from 'vite';
 import { resolve } from 'path';
+import { createRootEntryRewritePlugin } from './src/config/viteRootEntry.mjs';
 
 export default defineConfig({
     base: './',
+    plugins: [createRootEntryRewritePlugin()],
     build: {
         rollupOptions: {
             input: {
@@ -15,6 +17,6 @@ export default defineConfig({
     server: {
         port: 3000,
         host: true,
-        open: '/main/html/index.html'
+        open: '/'
     }
 });

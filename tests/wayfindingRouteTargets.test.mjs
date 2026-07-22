@@ -3,12 +3,43 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 import {
+  getIntermediateWayfindingRouteTargetCandidates,
+  getWayfindingRouteCalculationPolicy,
   resolveWayfindingRouteTarget,
   resolveWayfindingRouteTargets,
   getObjectRouteReferenceCoordinate
 } from '../src/navigation/wayfindingRouteTargets.js';
 
 const coord = (latitude, longitude, floorId = 'floor-1') => ({ latitude, longitude, floorId });
+
+test('route calculation policy selects the approved smoothing configuration by leg count', () => {
+  assert.deepEqual(getWayfindingRouteCalculationPolicy(1), {
+    refineObjectTargets: true,
+    compareAccessibleRoutes: true,
+    primarySmoothing: {
+      enabled: true,
+      __EXPERIMENTAL_METHOD: 'dp-optimal',
+      radius: 0.75,
+      __EXPERIMENTAL_INCLUDE_DOOR_BUFFER_NODES: true
+    },
+    fallbackSmoothing: null
+  });
+  assert.deepEqual(getWayfindingRouteCalculationPolicy(2), {
+    refineObjectTargets: false,
+    compareAccessibleRoutes: false,
+    primarySmoothing: {
+      enabled: true,
+      __EXPERIMENTAL_METHOD: 'rdp',
+      radius: 0.75,
+      __EXPERIMENTAL_MUST_INCLUDE_DOOR_BUFFER_NODES: true
+    },
+    fallbackSmoothing: {
+      enabled: true,
+      __EXPERIMENTAL_METHOD: 'greedy-los',
+      radius: 0.75
+    }
+  });
+});
 
 test('prefers an explicit entrance coordinate over a deep area anchor', () => {
   const deepAnchor = coord(10, 107);
@@ -292,15 +323,139 @@ test('resolves route targets for every leg while preserving original UI objects'
   assert.deepEqual(legs.map((leg) => leg.routeDestination), [stopDoor, destinationDoor]);
 });
 
+test('reuses one physical route target on both sides of a multi-door stopover', () => {
+  const leftDoor = { id: 'stop-left-door', center: coord(10, 106.99) };
+  const rightDoor = { id: 'stop-right-door', center: coord(10, 107.01) };
+  const origin = { id: 'origin', center: coord(10, 106.98) };
+  const stopover = {
+    id: 'multi-door-stopover',
+    center: coord(10, 107),
+    doors: [leftDoor, rightDoor]
+  };
+  const destination = { id: 'destination', center: coord(10, 107.02) };
+
+  const legs = resolveWayfindingRouteTargets([origin, stopover, destination]);
+
+  assert.equal(legs.length, 2);
+  assert.equal(legs[0].routeDestination, legs[1].routeOrigin);
+  assert.ok([leftDoor, rightDoor].includes(legs[0].routeDestination));
+});
+
+test('exposes unique intermediate targets for geometry-aware route selection', () => {
+  const leftDoor = { id: 'left-door', center: coord(10, 107) };
+  const rightDoor = { id: 'right-door', center: coord(10, 107.01) };
+  const stopover = {
+    id: 'stopover',
+    center: coord(10, 107.005),
+    doors: [leftDoor, rightDoor, leftDoor]
+  };
+
+  const candidates = getIntermediateWayfindingRouteTargetCandidates(
+    stopover,
+    { id: 'origin', center: coord(10, 106.99) },
+    { id: 'destination', center: coord(10, 107.02) }
+  );
+
+  assert.deepEqual(candidates, [leftDoor, rightDoor]);
+});
+
 test('index routes with resolved door targets while preserving original waypoints', () => {
   const source = readFileSync(new URL('../main/main-function/index.ts', import.meta.url), 'utf8');
 
-  assert.match(source, /getObjectRouteReferenceCoordinate,\s*resolveWayfindingRouteTarget,\s*resolveWayfindingRouteTargets/);
+  assert.match(source, /getObjectRouteReferenceCoordinate,\s*getWayfindingRouteCalculationPolicy,\s*resolveWayfindingRouteTarget,\s*resolveWayfindingRouteTargets/);
   assert.match(source, /const\s+routeTargetOptions\s*=\s*\{/);
   assert.match(source, /const\s+routeLegs\s*=\s*resolveWayfindingRouteTargets\(waypoints,\s*routeTargetOptions\)/);
+  assert.match(source, /getWayfindingRouteCalculationPolicy\(routeLegs\.length\)/);
+  assert.match(source, /routeCalculationPolicy\.refineObjectTargets/);
+  assert.match(source, /routeCalculationPolicy\.compareAccessibleRoutes/);
+  assert.match(
+    source,
+    /routeCalculationPolicy\.primarySmoothing\s+as\s+TGetDirectionsOptions\[['"]smoothing['"]\]/
+  );
+  assert.doesNotMatch(source, /routeCalculationPolicy\.smoothingMethod/);
   assert.match(source, /createCoordinate:\s*\(latitude:\s*number,\s*longitude:\s*number,\s*floorId\?:\s*string\)/);
   assert.match(source, /getDistance:\s*\(from:\s*any,\s*to:\s*any\)/);
   assert.match(source, /getObjectRouteReferenceCoordinate\(/);
   assert.match(source, /let\s+\{\s*origin,\s*destination:\s*dest,\s*routeOrigin,\s*routeDestination\s*\}\s*=\s*routeLegs\[i\]/);
-  assert.match(source, /mapData\.getDirections\(routeOrigin,\s*routeDestination,/);
+  assert.match(source, /mapData\.getDirections\(from,\s*to,\s*options\)/);
+});
+
+test('index keeps SDK Directions per leg and aggregates only UI navigation data', () => {
+  const source = readFileSync(new URL('../main/main-function/index.ts', import.meta.url), 'utf8');
+  const drawStart = source.indexOf('const drawNavigation = async () =>');
+  const drawEnd = source.indexOf('(window as any).drawNavigation = drawNavigation;', drawStart);
+  assert.ok(drawStart >= 0 && drawEnd > drawStart);
+  const drawSource = source.slice(drawStart, drawEnd);
+  const runtimeDrawSource = drawSource.replace(/\/\*[\s\S]*?\*\//g, '');
+
+  assert.match(source, /aggregateNavigationLegs/);
+  assert.match(source, /prepareNavigationLeg/);
+  assert.match(source, /from\s+["']\.\.\/\.\.\/src\/navigation\/navigationInstructionRules\.js["']/);
+  assert.match(drawSource, /const\s+legDirections:\s*any\[\]\s*=\s*\[\]/);
+  assert.match(
+    drawSource,
+    /const\s+isUsableDirections\s*=\s*\(value:\s*any\):\s*value\s+is\s+Directions\s*=>\s*Array\.isArray\(value\?\.coordinates\)\s*&&\s*value\.coordinates\.length\s*>=\s*2/
+  );
+  assert.match(drawSource, /smoothing:\s*primarySmoothing/);
+  assert.match(
+    drawSource,
+    /primarySmoothing\?\.__EXPERIMENTAL_METHOD\s*===\s*['"]rdp['"][\s\S]*routeCalculationPolicy\.fallbackSmoothing/
+  );
+  assert.match(drawSource, /legDirections\.push\(dir\)/);
+  assert.match(
+    drawSource,
+    /prepareNavigationLeg\(dir,\s*\{\s*legIndex:\s*i,\s*routeDistance:\s*dir\.distance,\s*pathCoordinates:\s*dir\.coordinates\s*\}\)/
+  );
+  assert.match(
+    drawSource,
+    /const\s*\{\s*uiDirections,\s*legSpans\s*\}\s*=\s*aggregateNavigationLegs\(preparedLegs,\s*\{[\s\S]*waypointLabels/
+  );
+  assert.match(drawSource, /wayfindingDirections\s*=\s*uiDirections/);
+  assert.match(drawSource, /await\s+drawThenCommitNavigation\(\{/);
+  assert.match(
+    drawSource,
+    /draw:\s*\(\)\s*=>\s*mapView\.Navigation\.draw\(legDirections,\s*navigationOptions\)/
+  );
+  assert.match(drawSource, /currentNavigation\s*=\s*mapView\.Navigation/);
+  assert.doesNotMatch(drawSource, /currentNavigation\s*=\s*mapView\.Navigation\.draw/);
+  const drawAwaitIndex = drawSource.indexOf('await drawThenCommitNavigation({');
+  const directionsCommitIndex = drawSource.indexOf('wayfindingDirections = uiDirections');
+  const currentNavigationIndex = drawSource.indexOf('currentNavigation = mapView.Navigation');
+  const urlCommitIndex = drawSource.indexOf('syncURL(false)');
+  const activeStateIndex = drawSource.indexOf('(window as any).isNavigationActive = true');
+  assert.ok(drawAwaitIndex >= 0);
+  assert.ok(directionsCommitIndex > drawAwaitIndex);
+  assert.ok(currentNavigationIndex > drawAwaitIndex);
+  assert.ok(urlCommitIndex > drawAwaitIndex);
+  assert.ok(activeStateIndex > drawAwaitIndex);
+  assert.doesNotMatch(drawSource.slice(0, drawAwaitIndex), /wayfindingDirections\s*=\s*uiDirections/);
+  assert.match(
+    drawSource,
+    /catch\s*\(e\)\s*\{[\s\S]*renderRouteNotFoundState\(['"]error_nav['"][\s\S]*return;[\s\S]*\}/
+  );
+  assert.match(
+    drawSource,
+    /const\s+renderRouteNotFoundState\s*=[\s\S]*isNavigationActive\s*=\s*false;[\s\S]*currentNavigation\s*=\s*null;/
+  );
+  assert.match(
+    drawSource,
+    /const\s+renderRouteNotFoundState\s*=[\s\S]*wayfindingDirections\s*=\s*null;[\s\S]*syncURL\(true\)/
+  );
+  assert.match(
+    source,
+    /const\s+syncURL\s*=\s*\(forceReplace\s*=\s*false\)[\s\S]*hasDirections:\s*Boolean\(wayfindingDirections\)\s*&&\s*shouldUseDirectionsPath/
+  );
+  assert.match(
+    drawSource,
+    /const\s+translateActionType\s*=\s*\(instruction:\s*any,\s*allInstructions:\s*any\[\],\s*currentIndex:\s*number\):\s*string\s*=>\s*instructionFormatter\.format\(instruction,\s*allInstructions,\s*currentIndex\);/
+  );
+  assert.doesNotMatch(drawSource, /const\s+findNearbyLandmark\s*=/);
+  assert.match(drawSource, /previewPrimaryRequest/);
+  assert.match(drawSource, /directionsRequestsMatch\(/);
+  assert.match(drawSource, /reusablePrimaryDirections/);
+  assert.doesNotMatch(runtimeDrawSource, /Navigation\.draw\(combinedDirections/);
+  assert.doesNotMatch(runtimeDrawSource, /Navigation\.draw\(directions,\s*navigationOptions\)/);
+  assert.doesNotMatch(runtimeDrawSource, /simplifyNavigationInstructions\(directions\.instructions/);
+  assert.doesNotMatch(runtimeDrawSource, /Promise\.all\(/);
+  assert.doesNotMatch(drawSource, /if\s*\(false\s*&&\s*simplifiedInstructions/);
 });

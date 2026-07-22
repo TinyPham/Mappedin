@@ -1,4 +1,9 @@
-import { getMapData, show3dMap } from "@mappedin/mappedin-js";
+import {
+  getMapData,
+  show3dMap,
+  type Directions,
+  type TGetDirectionsOptions
+} from "@mappedin/mappedin-js";
 import { BlueDot } from "@mappedin/blue-dot";
 import { car, tree_palm } from "@mappedin/3d-assets";
 
@@ -11,20 +16,38 @@ import {
   normalizeLocationRecord,
   normalizeOptionalNumber
 } from "../../src/data/categoryPanelData.js";
-import { shouldRenderFlightNavigationActions } from "../../src/navigation/flightNavigationActions.js";
 import {
+  buildFlightWayfindingPlan,
+  shouldRenderFlightNavigationActions
+} from "../../src/navigation/flightNavigationActions.js";
+import { buildMapUrl } from "../../src/kiosk/kioskMode.js";
+import {
+  escapeHtmlAttribute,
+  getEffectiveWayfindingOrigin,
+  loadKioskRuntime,
+  shouldUseDirectionsPath
+} from "../../src/kiosk/kioskRuntime.js";
+import {
+  KioskAdminValidationError,
+  createKioskAdminController,
+  resolveKioskPickObject
+} from "../../src/kiosk/kioskAdmin.js";
+import {
+  aggregateNavigationLegs,
   createInstructionFormatter,
-  ensureMinimumRouteInstructions,
   getRouteDisplayDistanceMeters,
   getInstructionDisplayDistance,
+  prepareNavigationLeg,
   shouldRenderNavigationInstruction,
-  simplifyNavigationInstructions
 } from "../../src/navigation/navigationInstructionRules.js";
 import {
+  getIntermediateWayfindingRouteTargetCandidates,
   getObjectRouteReferenceCoordinate,
+  getWayfindingRouteCalculationPolicy,
   resolveWayfindingRouteTarget,
   resolveWayfindingRouteTargets
 } from "../../src/navigation/wayfindingRouteTargets.js";
+import { selectNonIntersectingStopoverRoute } from "../../src/navigation/routeGeometryQuality.js";
 import { rankWayfindingSearchResults } from "../../src/navigation/wayfindingSearchRules.js";
 import { getCategoryAreaListStyle } from "../../src/ui/categoryDropdownLayout.js";
 import { getModelStreamingZoomThresholds } from "../../src/performance/modelStreamingThresholds.js";
@@ -44,6 +67,7 @@ import {
 } from "../../src/tutorial/tutorialAutoOpen.js";
 import { getTutorialDevice } from "../../src/tutorial/tutorialDevice.js";
 import { tutorialSteps } from "../../src/tutorial/tutorialSteps.js";
+import { selectFloorsForDropdown } from "../../src/config/selectableFloors.js";
 
 // Global Declarations to resolve scope issues
 let ApiService: any = null;
@@ -88,6 +112,121 @@ function mapDebugLog(...args: any[]) {
   if (isMapRuntimeDebugEnabled()) console.log(...args);
 }
 
+type DirectionsRequester = (
+  from: any,
+  to: any,
+  options: TGetDirectionsOptions
+) => Promise<Directions | undefined>;
+
+type LegDirectionsRequest = {
+  getDirections: DirectionsRequester;
+  routeOrigin: any;
+  routeDestination: any;
+  primaryOptions: TGetDirectionsOptions;
+  fallbackOptions: TGetDirectionsOptions | null;
+  reusablePrimaryDirections?: Directions | null;
+  isUsableDirections: (value: any) => value is Directions;
+};
+
+type LegDirectionsResult = {
+  directions: Directions;
+  usedFallback: boolean;
+  primaryFailure: Error | null;
+};
+
+type PreviewPrimaryRequest = {
+  directions: Directions;
+  origin: any;
+  destination: any;
+  options: TGetDirectionsOptions;
+};
+
+type NavigationDrawLifecycleRequest = {
+  draw: () => Promise<void>;
+  commit: () => void;
+};
+
+async function drawThenCommitNavigation(
+  request: NavigationDrawLifecycleRequest
+): Promise<void> {
+  await request.draw();
+  request.commit();
+}
+
+async function requestUsableLegDirections(
+  request: LegDirectionsRequest
+): Promise<LegDirectionsResult> {
+  const {
+    getDirections,
+    routeOrigin,
+    routeDestination,
+    primaryOptions,
+    fallbackOptions,
+    reusablePrimaryDirections,
+    isUsableDirections
+  } = request;
+  let primaryFailure: Error | null = null;
+
+  if (isUsableDirections(reusablePrimaryDirections)) {
+    return {
+      directions: reusablePrimaryDirections as Directions,
+      usedFallback: false,
+      primaryFailure: null
+    };
+  }
+
+  try {
+    const directions = await getDirections(routeOrigin, routeDestination, primaryOptions);
+    if (isUsableDirections(directions)) {
+      return { directions, usedFallback: false, primaryFailure: null };
+    }
+    primaryFailure = new Error('Primary route returned unusable Directions.');
+  } catch (error) {
+    primaryFailure = error instanceof Error ? error : new Error(String(error));
+  }
+
+  if (!fallbackOptions) throw primaryFailure;
+
+  const directions = await getDirections(routeOrigin, routeDestination, fallbackOptions);
+  if (!isUsableDirections(directions)) {
+    throw new Error('Fallback route returned unusable Directions.');
+  }
+
+  return { directions, usedFallback: true, primaryFailure };
+}
+
+function directionsRequestsMatch(
+  candidate: PreviewPrimaryRequest | null,
+  routeOrigin: any,
+  routeDestination: any,
+  options: TGetDirectionsOptions
+): boolean {
+  return Boolean(candidate &&
+    candidate.origin === routeOrigin &&
+    candidate.destination === routeDestination &&
+    candidate.options.smoothing === options.smoothing &&
+    candidate.options.accessible === options.accessible);
+}
+
+function shouldKeepAggregatedNavigationInstruction(
+  instruction: any,
+  shouldRenderInstruction: (value: any) => boolean
+): boolean {
+  const actionType = String(instruction?.action?.type || '').toLowerCase();
+  const structuralActionTypes = [
+    'departure',
+    'start',
+    'stopover',
+    'arrival',
+    'arrive',
+    'takeconnection',
+    'enter',
+    'exitconnection',
+    'exit'
+  ];
+  return structuralActionTypes.includes(actionType) || shouldRenderInstruction(instruction);
+}
+
 const isAdminLoginRequested = (() => {
   try {
     return new URLSearchParams(window.location.search).get('admin') === 'true';
@@ -112,7 +251,8 @@ function applyAdminVisibility() {
       style = document.createElement('style');
       style.id = ADMIN_HIDE_STYLE_ID;
       style.textContent = `
-        #btn-add-model, #btn-open-classification, #btn-open-admin-info, #btn-open-area-color, .sidebar-actions, #controls-panel {
+        #btn-add-model, #btn-open-classification, #btn-open-admin-info, #btn-open-area-color,
+        #btn-open-kiosk-admin, #kiosk-admin-modal, #kiosk-pick-bar, #kiosk-preview-bar, .sidebar-actions, #controls-panel {
           display: none !important;
         }
       `;
@@ -124,6 +264,11 @@ function applyAdminVisibility() {
 
   const adminActions = document.getElementById("sidebar-admin-actions");
   if (adminActions) adminActions.style.display = isViewOnly ? "none" : "flex";
+  if (isViewOnly) {
+    document.getElementById("kiosk-admin-modal")?.classList.add("hidden");
+    document.getElementById("kiosk-pick-bar")?.classList.add("hidden");
+    document.getElementById("kiosk-preview-bar")?.classList.add("hidden");
+  }
   renderAdminSessionBar();
 }
 
@@ -3116,20 +3261,9 @@ async function init() {
   // ============================================
   // Populate dropdown với danh sách các tầng
   if (floorSelector) floorSelector.innerHTML = "";
-  mapData
-    .getByType("floor")
+  selectFloorsForDropdown(mapData.getByType("floor"), overviewFloor?.id)
     .sort((b, a) => a.elevation - b.elevation)
     .forEach((floor) => {
-      // User Request: Only show "Overview" and "Detail" floors in the dropdown. 
-      // DO NOT show intermediate (Transit) floors or Roof floors.
-      const name = (floor.name || "").toLowerCase();
-      const isRoof = name.includes("tầng mái") || name.includes("roof");
-      const type = getFloorType(floor);
-
-      if (type === "transit" || isRoof) {
-        return;
-      }
-
       const option = document.createElement("option");
       option.text = floor.name;
       option.value = floor.id;
@@ -6666,12 +6800,7 @@ async function init() {
 
       if (floorSelectorEl) {
         const allFloors = mapData.getByType("floor");
-        const selectableFloors = allFloors.filter(f => {
-          const type = getFloorType(f);
-          const name = (f.name || "").toLowerCase();
-          const isRoof = name.includes("tầng mái") || name.includes("roof");
-          return type !== "transit" && !isRoof;
-        });
+        const selectableFloors = selectFloorsForDropdown(allFloors, overviewFloor?.id);
 
         // Rebuild selector only if necessary (to keep it clean)
         if (floorSelectorEl.options.length !== selectableFloors.length) {
@@ -6826,6 +6955,65 @@ async function init() {
   // Init UI
   setTimeout(updateUIVisibility, 500);
 
+  const kioskRuntime = await loadKioskRuntime(window.location.href, {
+    apiBase: getApiBaseUrl(),
+    fetch,
+    logger: console,
+    findMappedinObject: (mappedinId: string) => {
+      const normalizedId = mappedinId.toLowerCase();
+      return allMapObjects.find((obj: any) =>
+        [obj?.mappedinId, obj?.id].some((value) =>
+          typeof value === 'string' && value.toLowerCase() === normalizedId
+        )
+      ) || null;
+    },
+    createCoordinate: ({ latitude, longitude, floorId }: any) => {
+      const floor = (mapData.getByType('floor') || []).find((item: any) => item.id === floorId);
+      if (!floor) throw new Error(`Kiosk floor not found: ${floorId}`);
+      return mapView.createCoordinate(latitude, longitude, floor);
+    }
+  });
+
+  const showKioskRuntimeError = () => {
+    if (!kioskRuntime.isKioskMode || !kioskRuntime.error) return;
+    let banner = document.getElementById('kiosk-runtime-error');
+    if (!banner) {
+      banner = document.createElement('div');
+      banner.id = 'kiosk-runtime-error';
+      banner.setAttribute('role', 'alert');
+      banner.setAttribute('aria-live', 'assertive');
+      banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:10050;padding:12px 18px;background:#b42318;color:#fff;text-align:center;font:700 14px Arial,sans-serif;box-shadow:0 2px 8px rgba(0,0,0,.2);';
+      banner.textContent = 'Kiosk configuration is unavailable. Please contact support.';
+      document.body.appendChild(banner);
+    }
+  };
+
+  const resetCameraToOverview = async () => {
+    try {
+      const camera = mapView.Camera as any;
+      if (!camera) return;
+      (window as any)._isResettingCamera = true;
+      await Promise.resolve(camera.animateTo({
+        zoomLevel: 16.5,
+        bearing: initialBearing,
+        pitch: initialPitch,
+        center: initialVenueCenter || camera.center
+      }, {
+        duration: 1000,
+        easing: "ease-in-out"
+      }));
+
+      setTimeout(() => {
+        (window as any)._isResettingCamera = false;
+      }, 1200);
+    } catch (error) {
+      (window as any)._isResettingCamera = false;
+      console.warn("Error reset camera:", error);
+    }
+  };
+
+  showKioskRuntimeError();
+
   // ============================================
   // 12. POPUP INFO FUNCTIONS
   // ============================================
@@ -6839,29 +7027,20 @@ async function init() {
     try {
       const lang = (TranslationManager.currentLang || 'vn').toLowerCase();
       const floorId = mapView.currentFloor?.id;
-
-      let path = `/${lang}/${MAP_ID}`;
-      if (wayfindingOrigin || wayfindingDestination) {
-        path += `/directions`;
-      }
-
-      const params = new URLSearchParams();
-      if (floorId) params.set('floor', floorId);
-
       const getLocationId = (obj: any) => obj?.mappedinId || obj?.id || "";
-
-      if (wayfindingDestination) {
-        params.set('location', getLocationId(wayfindingDestination));
-      } else if (selectedSpace) {
-        params.set('location', getLocationId(selectedSpace));
-      }
-
-      if (wayfindingOrigin) {
-        params.set('departure', getLocationId(wayfindingOrigin));
-      }
-
-      const queryString = params.toString();
-      const fullURL = path + (queryString ? `?${queryString}` : '');
+      const locationId = wayfindingDestination
+        ? getLocationId(wayfindingDestination)
+        : getLocationId(selectedSpace);
+      const departureId = getLocationId(wayfindingOrigin);
+      const fullURL = buildMapUrl(window.location.search, {
+        lang,
+        mapId: MAP_ID,
+        hasDirections: Boolean(wayfindingDirections) &&
+          shouldUseDirectionsPath(kioskRuntime, wayfindingOrigin, wayfindingDestination),
+        floorId,
+        locationId,
+        departureId
+      });
 
       if (forceReplace || window.location.pathname + window.location.search === fullURL) {
         window.history.replaceState({ path: fullURL }, '', fullURL);
@@ -6875,7 +7054,7 @@ async function init() {
   (window as any).syncURL = syncURL;
 
   // ============================================
-  let wayfindingOrigin: any = null;
+  let wayfindingOrigin: any = getEffectiveWayfindingOrigin(kioskRuntime, null);
   let wayfindingDestination: any = null;
   let wayfindingStopovers: any[] = [];
   let isSelectingStopoverIndex: number = -1; // -1 means none
@@ -6886,6 +7065,82 @@ async function init() {
   let isSelectingDestination: boolean = false;
   let currentNavigation: any = null;
   let currentSelectedStepIndex: number = -1; // Bước đang được chọn
+
+  let kioskPickMode: 'object' | 'coordinate' | null = null;
+  let kioskPreviewSnapshot: {
+    origin: any;
+    destination: any;
+    stopovers: any[];
+    isSelectingOrigin: boolean;
+    isSelectingDestination: boolean;
+    isSelectingStopoverIndex: number;
+  } | null = null;
+
+  const resolveKioskPreviewOrigin = (payload: any) => {
+    if (payload.originType === 'mappedinObject') {
+      const targetId = payload.originMappedinId.toLowerCase();
+      const object = allMapObjects.find((item: any) =>
+        [item?.mappedinId, item?.id].some((id) => typeof id === 'string' && id.toLowerCase() === targetId)
+      );
+      if (!object) throw new KioskAdminValidationError({ originMappedinId: 'Không tìm thấy đối tượng trên bản đồ hiện tại.' });
+      return object;
+    }
+    const floor = (mapData.getByType('floor') || []).find((item: any) => item.id === payload.floorId);
+    if (!floor) throw new KioskAdminValidationError({ floorId: 'Không tìm thấy tầng trên bản đồ hiện tại.' });
+    return mapView.createCoordinate(payload.latitude, payload.longitude, floor);
+  };
+
+  const kioskAdmin = createKioskAdminController({
+    apiBase: getApiBaseUrl(),
+    fetch,
+    document,
+    isAuthenticated: () => isAdminAuthenticated,
+    onAuthRequired: () => showAdminLoginDialog(),
+    onUnauthorized: () => setAdminAuthenticated(false),
+    onPickModeChange: (mode: 'object' | 'coordinate' | null) => {
+      kioskPickMode = mode;
+    },
+    onPreview: (payload: any) => {
+      const previewOrigin = resolveKioskPreviewOrigin(payload);
+      kioskPreviewSnapshot = {
+        origin: wayfindingOrigin,
+        destination: wayfindingDestination,
+        stopovers: [...wayfindingStopovers],
+        isSelectingOrigin,
+        isSelectingDestination,
+        isSelectingStopoverIndex
+      };
+      wayfindingOrigin = previewOrigin;
+      wayfindingDestination = null;
+      wayfindingStopovers = [];
+      wayfindingDirections = null;
+      clearNavigation();
+      switchTab('directions');
+      updateWayfindingUI();
+      (window as any).startSelectingNode('destination');
+    },
+    onPreviewEnd: () => {
+      const snapshot = kioskPreviewSnapshot;
+      kioskPreviewSnapshot = null;
+      if (!snapshot) return;
+
+      clearNavigation();
+      wayfindingOrigin = snapshot.origin;
+      wayfindingDestination = snapshot.destination;
+      wayfindingStopovers = [...snapshot.stopovers];
+      wayfindingDirections = null;
+      isSelectingOrigin = snapshot.isSelectingOrigin;
+      isSelectingDestination = snapshot.isSelectingDestination;
+      isSelectingStopoverIndex = snapshot.isSelectingStopoverIndex;
+      (window as any).wayfindingOrigin = wayfindingOrigin;
+      (window as any).wayfindingDestination = wayfindingDestination;
+      updateWayfindingUI();
+      syncURL(true);
+      if (wayfindingOrigin && wayfindingDestination) void drawNavigation();
+      else updateHighlights();
+    }
+  });
+  kioskAdmin.init();
 
   // Mảng lưu trữ các vật thể đặc biệt để highlight
   let allLevelConnectors: any[] = [];
@@ -7205,6 +7460,7 @@ async function init() {
    * Draw navigation path
    */
   const drawNavigation = async () => {
+    wayfindingOrigin = getEffectiveWayfindingOrigin(kioskRuntime, wayfindingOrigin);
     if (!wayfindingOrigin || !wayfindingDestination) {
       return;
     }
@@ -7212,6 +7468,7 @@ async function init() {
       (window as any).isNavigationActive = false;
       wayfindingDirections = null;
       currentNavigation = null;
+      syncURL(true);
 
       const message = TranslationManager.t(messageKey, fallback);
       const statusEl = document.getElementById("wayfinding-status");
@@ -7248,6 +7505,8 @@ async function init() {
 
     try {
       clearNavigation();
+      (window as any).isNavigationActive = false;
+      wayfindingDirections = null;
 
       // Lấy directions với smoothing để có đường đi mượt mà nhưng vẫn đảm bảo điểm đến được kết nối
       // Tối ưu tốc độ: Ưu tiên greedy-los (nhanh nhất) cho hầu hết trường hợp, chỉ dùng dp-optimal cho đường rất gần
@@ -7305,13 +7564,6 @@ async function init() {
         distance = (Math.abs(latDiff) + Math.abs(lngDiff)) * 111000;
       }
 
-      const smoothingConfig = {
-        enabled: true,
-        __EXPERIMENTAL_METHOD: 'dp-optimal' as const,
-        radius: 0.5, // Cân bằng: Đủ lớn để xóa zic-zắc, đủ nhỏ để không vát góc quá lượn, bảo toàn ngã tư.
-        __EXPERIMENTAL_INCLUDE_DOOR_BUFFER_NODES: true,
-      };
-
       const waypoints = [wayfindingOrigin, ...wayfindingStopovers, wayfindingDestination].filter(Boolean);
       if (waypoints.length < 2) return;
       const routeTargetFloors = new Map((mapData.getByType("floor") || []).map((floor: any) => [floor.id, floor]));
@@ -7329,19 +7581,88 @@ async function init() {
         }
       };
       const routeLegs = resolveWayfindingRouteTargets(waypoints, routeTargetOptions);
+      const routeCalculationPolicy = getWayfindingRouteCalculationPolicy(routeLegs.length);
+      mapDebugLog('[Wayfinding] Route calculation started', {
+        legCount: routeLegs.length,
+        routeCalculationPolicy
+      });
 
-      let allCoordinates: any[] = [];
-      let allInstructions: any[] = [];
-      let totalDistance = 0;
-      let allPaths: any[] = [];
+      const isUsableDirections = (value: any): value is Directions =>
+        Array.isArray(value?.coordinates) && value.coordinates.length >= 2;
+      const legDirections: any[] = [];
+      const preparedLegs: any[] = [];
+      const preselectedDirections = new Map<number, Directions>();
+      const primarySmoothing =
+        routeCalculationPolicy.primarySmoothing as TGetDirectionsOptions['smoothing'];
+      const fallbackSmoothing =
+        routeCalculationPolicy.primarySmoothing?.__EXPERIMENTAL_METHOD === 'rdp'
+          ? routeCalculationPolicy.fallbackSmoothing as TGetDirectionsOptions['smoothing']
+          : null;
+      const primaryDirectionsOptions: TGetDirectionsOptions = {
+        smoothing: primarySmoothing,
+        accessible: routeCalculationPolicy.compareAccessibleRoutes
+      };
+
+      if (routeLegs.length === 2 && waypoints.length === 3) {
+        const stopoverCandidates = getIntermediateWayfindingRouteTargetCandidates(
+          waypoints[1],
+          routeLegs[0].routeOrigin,
+          routeLegs[1].routeDestination,
+          routeTargetOptions
+        );
+        const selectedRoute = await selectNonIntersectingStopoverRoute({
+          origin: routeLegs[0].routeOrigin,
+          destination: routeLegs[1].routeDestination,
+          candidates: stopoverCandidates,
+          getDirections: (from: any, to: any, options: TGetDirectionsOptions) =>
+            mapData.getDirections(from, to, options),
+          directionsOptions: primaryDirectionsOptions,
+          isUsableDirections,
+          requireNonIntersecting: false
+        });
+
+        if (!selectedRoute) {
+          throw new Error('No continuous, non-intersecting route is available for this stopover.');
+        }
+
+        routeLegs[0].routeDestination = selectedRoute.target;
+        routeLegs[1].routeOrigin = selectedRoute.target;
+        preselectedDirections.set(0, selectedRoute.directions[0] as Directions);
+        preselectedDirections.set(1, selectedRoute.directions[1] as Directions);
+        mapDebugLog('[Wayfinding] Geometry-aware stopover route selected', {
+          targetId: selectedRoute.target?.id || null,
+          candidateCount: stopoverCandidates.length,
+          quality: selectedRoute.quality,
+          totalDistance: selectedRoute.totalDistance
+        });
+      }
 
       for (let i = 0; i < routeLegs.length; i++) {
         let { origin, destination: dest, routeOrigin, routeDestination } = routeLegs[i];
+        const primaryOptions = primaryDirectionsOptions;
+        const fallbackOptions: TGetDirectionsOptions | null = fallbackSmoothing
+          ? {
+            smoothing: fallbackSmoothing,
+            accessible: routeCalculationPolicy.compareAccessibleRoutes
+          }
+          : null;
+        let previewPrimaryRequest: PreviewPrimaryRequest | null = null;
 
-        if (String((origin as any)?.__type || '').toLowerCase() === 'object' ||
-          String((dest as any)?.__type || '').toLowerCase() === 'object') {
+        if (routeCalculationPolicy.refineObjectTargets &&
+          (String((origin as any)?.__type || '').toLowerCase() === 'object' ||
+            String((dest as any)?.__type || '').toLowerCase() === 'object')) {
           try {
-            const previewDirections = await mapData.getDirections(origin, dest, { smoothing: smoothingConfig, accessible: false });
+            mapDebugLog('[Wayfinding] Preview route started', { legIndex: i });
+            const previewDirections = await mapData.getDirections(origin, dest, primaryOptions);
+            mapDebugLog('[Wayfinding] Preview route completed', { legIndex: i });
+            if (isUsableDirections(previewDirections)) {
+              previewPrimaryRequest = {
+                directions: previewDirections as Directions,
+                origin,
+                destination: dest,
+                options: primaryOptions
+              };
+            }
             const previewCoordinates = previewDirections?.coordinates || [];
             const originReference = getObjectRouteReferenceCoordinate(origin, previewCoordinates, 'origin');
             const destinationReference = getObjectRouteReferenceCoordinate(dest, previewCoordinates, 'destination');
@@ -7362,298 +7683,103 @@ async function init() {
           } catch { }
         }
 
-        // SMART ROUTING: Tính cả 2 đường (thang máy + thang cuốn), chọn đường ngắn nhất
-        const [dirEscalator, dirElevator] = await Promise.all([
-          mapData.getDirections(routeOrigin, routeDestination, { smoothing: smoothingConfig, accessible: false }),
-          mapData.getDirections(routeOrigin, routeDestination, { smoothing: smoothingConfig, accessible: true }),
-        ]);
+        const legStartedAt = performance.now();
+        const reusablePrimaryDirections = preselectedDirections.get(i) || (directionsRequestsMatch(
+          previewPrimaryRequest,
+          routeOrigin,
+          routeDestination,
+          primaryOptions
+        )
+          ? previewPrimaryRequest?.directions || null
+          : null);
+        const {
+          directions: dir,
+          usedFallback,
+          primaryFailure
+        } = await requestUsableLegDirections({
+          getDirections: (from: any, to: any, options: any) =>
+            mapData.getDirections(from, to, options),
+          routeOrigin,
+          routeDestination,
+          primaryOptions,
+          fallbackOptions,
+          reusablePrimaryDirections,
+          isUsableDirections
+        });
 
-        // So sánh khoảng cách và chọn đường ngắn hơn
-        const distEsc = (dirEscalator?.distance ?? Infinity);
-        const distElev = (dirElevator?.distance ?? Infinity);
-        const dir = (distElev <= distEsc && (dirElevator?.coordinates?.length ?? 0) > 0) ? dirElevator : dirEscalator;
-
-        if (dir && dir.coordinates && dir.coordinates.length > 0) {
-          if (i > 0 && allCoordinates.length > 0) {
-            allCoordinates.push(...dir.coordinates.slice(1));
-          } else {
-            allCoordinates.push(...dir.coordinates);
-          }
-
-          if (dir.instructions) {
-            let insts = JSON.parse(JSON.stringify(dir.instructions));
-            if (i < waypoints.length - 2) {
-              const lastInst = insts[insts.length - 1];
-              if (lastInst && lastInst.action) {
-                lastInst.action.type = 'stopover';
-                const stopLabel = TranslationManager.t('action_stopover', 'Điểm dừng');
-                lastInst.instruction = `${stopLabel}: ${TranslationManager.getName(dest)}`;
-              }
-            }
-            if (i > 0 && insts.length > 0) {
-              if (insts[0].action?.type === 'departure' || insts[0].action?.type === 'start') {
-                insts.splice(0, 1);
-              }
-            }
-            allInstructions.push(...insts);
-          }
-
-          if ((dir as any).path) {
-            allPaths.push((dir as any).path);
-          } else if ((dir as any).paths) {
-            allPaths.push(...(dir as any).paths);
-          }
-
-          totalDistance += dir.distance || 0;
-        }
+        legDirections.push(dir);
+        const preparedLeg = prepareNavigationLeg(dir, {
+          legIndex: i,
+          routeDistance: dir.distance,
+          pathCoordinates: dir.coordinates
+        });
+        preparedLegs.push(preparedLeg);
+        mapDebugLog('[Wayfinding] Route leg completed', {
+          legIndex: i,
+          durationMs: Math.round(performance.now() - legStartedAt),
+          coordinateCount: dir.coordinates.length,
+          sourceInstructionCount: Array.isArray(dir.instructions) ? dir.instructions.length : 0,
+          uiInstructionCount: preparedLeg.legInstructions.length,
+          instructionSource: preparedLeg.instructionSource,
+          usedSmoothingFallback: usedFallback,
+          primaryFailure: primaryFailure?.message || null
+        });
       }
 
-      const combinedDirections: any = {
-        coordinates: allCoordinates,
-        instructions: allInstructions,
-        distance: totalDistance,
-        path: allPaths.length > 0 ? allPaths[0] : null,
-        paths: allPaths
-      };
+      const waypointLabels = waypoints.map((waypoint: any) =>
+        TranslationManager.getName(waypoint) || waypoint?.name || waypoint?.id || ''
+      );
+      const { uiDirections, legSpans } = aggregateNavigationLegs(preparedLegs, {
+        waypointLabels
+      });
+      const directions = uiDirections;
+      const totalDistance = uiDirections.distance;
+      mapDebugLog('[Wayfinding] Route calculation completed', {
+        legCount: legDirections.length,
+        coordinateCount: uiDirections.coordinates.length,
+        instructionCount: uiDirections.instructions.length,
+        totalDistance,
+        legSpans
+      });
 
-      const directions = combinedDirections;
-      if (directions && directions.coordinates && directions.coordinates.length > 0) {
-        wayfindingDirections = directions;
-        syncURL(false); // Push state for navigation start
-
+      if (isUsableDirections(uiDirections)) {
         // ============================================
         // PRE-PROCESS: Hướng dẫn chi tiết (Granular Instructions Strategy)
         // ============================================
-        let simplifiedInstructions: any[] = directions.instructions ? JSON.parse(JSON.stringify(directions.instructions)) : [];
+        let simplifiedInstructions: any[] = (directions.instructions || [])
+          .filter((instruction: any) =>
+            shouldKeepAggregatedNavigationInstruction(
+              instruction,
+              shouldRenderNavigationInstruction
+            )
+          );
 
-        try {
-          // Legacy inline simplification is kept inert while the tested helper below owns instruction rules.
-          if (false && simplifiedInstructions.length > 0) {
-            // ============================================
-            // INTELLIGENT MERGING STRATEGY (Siết chặt các bước rẽ thừa)
-            // ============================================
-            const merged: any[] = [];
-            let current = simplifiedInstructions[0];
+        directions.instructions = simplifiedInstructions;
 
-            console.log("🛠️ Original steps count:", simplifiedInstructions.length);
-
-            for (let i = 1; i < simplifiedInstructions.length; i++) {
-              const next = simplifiedInstructions[i];
-              const nextType = (next.action?.type || '').toLowerCase();
-              const currentType = (current.action?.type || '').toLowerCase();
-              const nextBearing = (next.action?.bearing || '').toString().toLowerCase();
-              const currentBearing = (current.action?.bearing || '').toString().toLowerCase();
-
-              let shouldMerge = false;
-              let overrideAction = false;
-
-              // Rule Blocker: Luôn giữ thang máy/thang cuốn
-              if (nextType.includes('connection') || currentType.includes('connection')) {
-                merged.push(current);
-                current = next;
-                continue;
-              }
-
-              // 🏷️ Rule 1: Khởi hành + Đoạn đi thẳng ngắn -> Gộp để bước xuất phát có quãng đường
-              const isStart = (currentType === 'departure' || currentType === 'start');
-              const isNextSlight = nextType === 'turn' && nextBearing.includes('slight');
-
-              if (isStart) {
-                // Chỉ gộp nếu bước tiếp theo là đi thẳng HOẶC rẽ cực nhẹ (slight) với khoảng cách ngắn
-                if ((nextType === 'continue' && next.distance < 15) || (isNextSlight && next.distance < 5)) {
-                  shouldMerge = true;
-                  console.log(`  -> Gộp Rule 1: Merging ${nextType} into Start (dist: ${next.distance})`);
-                }
-              }
-
-              // 🏷️ Rule 2: Hai bước Rẽ NGƯỢC HƯỚNG liên tiếp trong phạm vi ngắn (< 12m)
-              // (Ví dụ: Rẽ trái 4m rồi rẽ phải 4m -> Thực tế là đi thẳng hoặc tránh vật cản)
-              if (!shouldMerge && currentType === 'turn' && nextType === 'turn') {
-                const isOpposite = (currentBearing.includes('left') && nextBearing.includes('right')) ||
-                  (currentBearing.includes('right') && nextBearing.includes('left'));
-                if (isOpposite && (current.distance + next.distance) < 12) {
-                  shouldMerge = true;
-                  // Sau khi gộp 2 cái rẽ ngược nhau, ta coi như đi thẳng
-                  // PHẢI xóa bearing + instruction để translateActionType không nhầm thành 'Rẽ trái/phải'
-                  current.action.type = 'continue';
-                  current.action.bearing = '';
-                  current.action.instruction = '';
-                  if (current.instruction) current.instruction = '';
-                  console.log(`  -> Gộp Rule 2: Merging opposite turns into Continue`);
-                }
-              }
-
-              // 🏷️ Rule 3: Hai bước Rẽ CÙNG HƯỚNG liên tiếp rất ngắn (< 8m)
-              if (!shouldMerge && currentType === 'turn' && nextType === 'turn') {
-                const isSame = (currentBearing.includes('left') && nextBearing.includes('left')) ||
-                  (currentBearing.includes('right') && nextBearing.includes('right'));
-                if (isSame && current.distance < 8) {
-                  shouldMerge = true;
-                  overrideAction = true; // Lấy hành động rẽ của bước sau
-                  console.log(`  -> Gộp Rule 3: Merging same direction turns`);
-                }
-              }
-
-              // 🏷️ Rule 4: Gộp các bước Continue liên tiếp (Mặc định)
-              if (!shouldMerge && (currentType === 'continue' && nextType === 'continue')) {
-                shouldMerge = true;
-                console.log(`  -> Gộp Rule 4: Normal continue merging`);
-              }
-
-              // 🏷️ Rule 5: Bước quá ngắn (< 3m) và không phải thang máy/thang cuốn thì gộp luôn
-              if (!shouldMerge && next.distance < 3 && !nextType.includes('connection')) {
-                shouldMerge = true;
-                console.log(`  -> Gộp Rule 5: Micro-step merging (<3m)`);
-              }
-
-              // 🏷️ Rule 6: Gộp bước rẽ thông minh
-              if (!shouldMerge && nextType === 'turn') {
-                if (next.distance < 3) {
-                  shouldMerge = true;
-                  console.log(`  -> Gộp Rule 6a: Micro-turn (<3m)`);
-                } else if (next.distance < 10) {
-                  // Thử tính góc rẽ thực tế từ tọa độ
-                  const nextNext = simplifiedInstructions[i + 1];
-                  const cCoord = current.coordinate;
-                  const nCoord = next.coordinate;
-                  const nnCoord = nextNext?.coordinate;
-
-                  console.log(`  [Rule 6 DEBUG] next.dist=${next.distance.toFixed(1)}, cCoord=${!!cCoord}, nCoord=${!!nCoord}, nnCoord=${!!nnCoord}, nextNext_type=${nextNext?.action?.type || 'N/A'}`);
-
-                  let canComputeAngle = false;
-                  let angleDiff = 999;
-
-                  if (cCoord && nCoord && nnCoord) {
-                    const dLat1 = (nCoord.latitude || 0) - (cCoord.latitude || 0);
-                    const dLng1 = (nCoord.longitude || 0) - (cCoord.longitude || 0);
-                    const dLat2 = (nnCoord.latitude || 0) - (nCoord.latitude || 0);
-                    const dLng2 = (nnCoord.longitude || 0) - (nCoord.longitude || 0);
-
-                    // Chỉ tính nếu cả 2 vector đủ dài (tránh chia cho 0)
-                    if ((Math.abs(dLat1) + Math.abs(dLng1)) > 0.0000001 && (Math.abs(dLat2) + Math.abs(dLng2)) > 0.0000001) {
-                      const h1 = Math.atan2(dLng1, dLat1) * 180 / Math.PI;
-                      const h2 = Math.atan2(dLng2, dLat2) * 180 / Math.PI;
-                      angleDiff = Math.abs(h2 - h1);
-                      if (angleDiff > 180) angleDiff = 360 - angleDiff;
-                      canComputeAngle = true;
-                      console.log(`  [Rule 6 Angle] h1=${h1.toFixed(1)}°, h2=${h2.toFixed(1)}°, diff=${angleDiff.toFixed(1)}°`);
-                    }
-                  }
-
-                  if (canComputeAngle && angleDiff < 30) {
-                    shouldMerge = true;
-                    current.action.type = 'continue';
-                    console.log(`  -> Gộp Rule 6b: Gentle angle (${angleDiff.toFixed(1)}° < 30°)`);
-                  } else if (!canComputeAngle && next.distance < 8) {
-                    // FALLBACK: Không tính được góc → gộp nếu < 8m (ngưỡng an toàn)
-                    shouldMerge = true;
-                    current.action.type = 'continue';
-                    console.log(`  -> Gộp Rule 6c: Fallback merge (no coord, dist=${next.distance.toFixed(1)}m < 8m)`);
-                  }
-                }
-              }
-
-              if (shouldMerge) {
-                current.distance += next.distance;
-                // Cộng dồn thời gian nếu có (Mappedin có thể dùng .time hoặc .duration)
-                if (next.time !== undefined) current.time = (current.time || 0) + next.time;
-                if (next.duration !== undefined) current.duration = (current.duration || 0) + next.duration;
-
-                if (overrideAction) current.action = next.action;
-              } else {
-                merged.push(current);
-                current = next;
-              }
-            }
-            merged.push(current);
-            console.log("✅ Intelligent Simplification complete. New steps count:", merged.length);
-
-            // POST-MERGE: Gộp Departure + Continue liền kề thành 1 bước "Đi thẳng"
-            const postMerged: any[] = [];
-            for (let j = 0; j < merged.length; j++) {
-              const step = merged[j];
-              const stepType = (step.action?.type || '').toLowerCase();
-              const prevStep = postMerged[postMerged.length - 1];
-              const prevType = prevStep ? (prevStep.action?.type || '').toLowerCase() : '';
-
-              if ((prevType === 'departure' || prevType === 'start') && stepType === 'continue') {
-                prevStep.distance += step.distance;
-                console.log(`  -> Post-merge: Merging Continue into Departure (total dist: ${prevStep.distance.toFixed(1)})`);
-              } else {
-                postMerged.push(step);
-              }
-            }
-            merged.length = 0;
-            postMerged.forEach(s => merged.push(s));
-
-            // Lưu originalDistance TRƯỚC KHI dịch
-            merged.forEach(step => {
-              step.originalDistance = step.distance || 0;
-            });
-
-            // DISTANCE SHIFTING cho hiển thị UI:
-            for (let i = 0; i < merged.length - 1; i++) {
-              merged[i].distance = merged[i + 1].distance;
-            }
-            merged[merged.length - 1].distance = 0;
-
-            simplifiedInstructions = merged;
-          }
-        } catch (e) {
-          console.warn("Error simplifying instructions:", e);
-        }
-        const coordinateFromPathEntry = (entry: any) => entry?.coordinate || entry?.anchor || entry;
-        const extractPathCoordinates = (directionsLike: any) => {
-          const sources = Array.isArray(directionsLike?.paths) && directionsLike.paths.length > 0
-            ? directionsLike.paths
-            : [directionsLike?.path].filter(Boolean);
-          const coords: any[] = [];
-          for (const source of sources) {
-            let sourceCoords: any[] = [];
-            if (Array.isArray(source)) {
-              sourceCoords = source.map(coordinateFromPathEntry).filter(Boolean);
-            } else if (Array.isArray(source?.coordinates)) {
-              sourceCoords = source.coordinates.filter(Boolean);
-            } else if (Array.isArray(source?.segments)) {
-              sourceCoords = source.segments.flatMap((segment: any) => segment?.coordinates || []).filter(Boolean);
-            }
-            if (sourceCoords.length === 0) continue;
-            if (coords.length > 0) {
-              coords.push(...sourceCoords.slice(1));
-            } else {
-              coords.push(...sourceCoords);
-            }
-          }
-          return coords.length >= 3 ? coords : (directionsLike.coordinates || []);
+        const navigationPathOptions = {
+          displayArrowsOnPath: true,
+          animateArrowsOnPath: true,
+          color: '#4b90e2',
+          accentColor: '#ffffff',
+          width: 0.7, // Giữ đường dẫn mảnh hơn để giảm lấn tường khi render.
         };
-        simplifiedInstructions = simplifyNavigationInstructions(directions.instructions || [], {
-          pathCoordinates: extractPathCoordinates(directions)
-        })
-          .filter((instruction: any) => shouldRenderNavigationInstruction(instruction));
-        simplifiedInstructions = ensureMinimumRouteInstructions(simplifiedInstructions, {
-          coordinates: directions.coordinates || [],
-          distance: directions.distance || totalDistance
-        });
-        const displayDirections = {
-          ...directions,
-          rawInstructions: directions.instructions || [],
-          instructions: simplifiedInstructions
-        };
-        wayfindingDirections = displayDirections;
-
         const navigationOptions: any = {
-          pathOptions: {
-            displayArrowsOnPath: true,
-            animateArrowsOnPath: true,
-            accentColor: '#214ca6',
-            width: 0.7, // Giữ đường dẫn mảnh hơn để giảm lấn tường khi render.
-          },
+          pathOptions: { ...navigationPathOptions },
+          inactivePathOptions: { ...navigationPathOptions },
           markerOptions: {
             departureColor: '#214ca6',
             destinationColor: '#f59e0b',
           },
         };
-        currentNavigation = mapView.Navigation.draw(directions, navigationOptions);
+        await drawThenCommitNavigation({
+          draw: () => mapView.Navigation.draw(legDirections, navigationOptions),
+          commit: () => {
+            wayfindingDirections = uiDirections;
+            currentNavigation = mapView.Navigation;
+            (window as any).isNavigationActive = true;
+            syncURL(false);
+          }
+        });
 
         // ============================================
         // HELPERS CHO NAVIGATION UI
@@ -7728,30 +7854,6 @@ async function init() {
           return foundHigh || foundNormal;
         };
 
-        // Helper: Tìm landmark gần tọa độ
-        const findNearbyLandmark = (coord: any, currentFloorId?: string, maxDist: number = 30, excludeNames: string[] = []): string | null => {
-          if (!coord) return null;
-          let bestLandmark: string | null = null;
-          let minDist = maxDist;
-
-          for (const obj of allMapObjects) {
-            if (currentFloorId && obj.floor?.id !== currentFloorId) continue;
-            const name = TranslationManager.getName(obj) || obj.name;
-            if (!name || name.length < 3) continue;
-            if (excludeNames.some(ex => name.toLowerCase().includes(ex.toLowerCase()))) continue;
-
-            const anchor = getObjAnchor(obj);
-            if (!anchor) continue;
-
-            const dist = calcDistanceMeters(coord, anchor);
-            if (dist < minDist) {
-              minDist = dist;
-              bestLandmark = name;
-            }
-          }
-          return bestLandmark;
-        };
-
         const instructionFormatter = createInstructionFormatter({
           floors: mapData.getByType('floor') || [],
           mapObjects: allMapObjects,
@@ -7762,80 +7864,8 @@ async function init() {
         });
 
         // Translation logic
-        const translateActionType = (instruction: any, allInstructions: any[], currentIndex: number): string => {
-          return instructionFormatter.format(instruction, allInstructions, currentIndex);
-          const actionType = (instruction.action?.type || 'continue').toLowerCase();
-          const bearing = (instruction.action?.bearing || '').toLowerCase();
-          const connection = instruction.action?.connection;
-          const t = (key: string, def: string) => TranslationManager.t(key, def);
-          const mappedinText = instruction.action?.instruction || instruction.instruction || "";
-
-          let landmarkText = "";
-          const coord = instruction.coordinate;
-          if (coord) {
-            const nearL = findNearbyLandmark(coord, coord.floorId, 15);
-            if (nearL) landmarkText = ` ${t('near', 'gần')} ${nearL}`;
-          }
-
-          if (connection) {
-            const connName = connection.name || TranslationManager.getName(connection);
-            const connType = (connection.type || '').toLowerCase();
-            const isElevator = connType.includes('elevator') || (connName && connName.toLowerCase().includes('thang máy'));
-
-            const fromFloor = instruction.action?.fromFloor;
-            const toFloor = instruction.action?.toFloor;
-            let dirText = '';
-            if (fromFloor?.elevation !== undefined && toFloor?.elevation !== undefined) {
-              dirText = toFloor.elevation > fromFloor.elevation ? t('direction_up', 'đi lên') : t('direction_down', 'đi xuống');
-            }
-
-            const isEnter = actionType === 'takeconnection' || actionType === 'enter';
-            const floorId = isEnter ? allInstructions[currentIndex + 1]?.coordinate?.floorId : instruction.coordinate?.floorId;
-            const floorName = floorId ? TranslationManager.getFloorName(floorId) : '';
-            const floorText = floorName ? ` ${isEnter ? t('to_floor_label', 'đến') : t('at_floor_label', 'tại')} ${floorName}` : '';
-
-            if (isEnter) {
-              const action = isElevator ? t('action_enter', 'Vào') : t('action_take', 'Đi');
-              const name = isElevator ? t('elevator', 'thang máy') : (connName || t('escalator', 'thang cuốn'));
-              return `${action} ${name} ${dirText}${floorText}${landmarkText}`;
-            } else {
-              const name = isElevator ? t('elevator', 'thang máy') : (connName || t('escalator', 'thang cuốn'));
-              return `${t('action_exit_connection', 'Ra khỏi')} ${name}${floorText}`;
-            }
-          }
-
-          // TRƯỜNG HỢP 1: BẮT ĐẦU
-          if (currentIndex === 0 || actionType === 'start' || actionType === 'departure') {
-            return `${t('action_departure', 'Khởi hành')} - ${t('action_go_straight', 'Đi thẳng')}`;
-          }
-
-          // TRƯỜNG HỢP 2: RẼ
-          if (actionType === 'turn' || bearing.includes('turn') || bearing.includes('left') || bearing.includes('right')) {
-            if (mappedinText) {
-              let vText = mappedinText
-                .replace(/Turn\s+left/gi, t('action_turn_left', 'Rẽ trái'))
-                .replace(/Turn\s+right/gi, t('action_turn_right', 'Rẽ phải'))
-                .replace(/Turn\s+around/gi, t('action_turn_around', 'Quay lại'))
-                .replace(/Slight\s+left/gi, t('action_slight_left', 'Rẽ trái nhẹ'))
-                .replace(/Slight\s+right/gi, t('action_slight_right', 'Rẽ phải nhẹ'));
-              return landmarkText ? `${vText}${landmarkText}` : vText;
-            }
-            let turnAction = t('action_turn', 'Rẽ');
-            if (bearing.includes('left')) turnAction = t('action_turn_left', 'Rẽ trái');
-            if (bearing.includes('right')) turnAction = t('action_turn_right', 'Rẽ phải');
-            return landmarkText ? `${turnAction}${landmarkText}` : turnAction;
-          }
-
-          const actionMap: Record<string, string> = {
-            'arrival': t('action_arrival', 'Kết thúc'),
-            'continue': t('action_continue', 'Tiếp tục đi thẳng'),
-            'arrive': t('action_arrive', 'Đến nơi'),
-            'stopover': mappedinText || 'Điểm dừng',
-            'departure': t('action_departure', 'Khởi hành'),
-          };
-
-          return (actionMap[actionType] || mappedinText || actionType) + (actionType === 'continue' ? landmarkText : '');
-        };
+        const translateActionType = (instruction: any, allInstructions: any[], currentIndex: number): string =>
+          instructionFormatter.format(instruction, allInstructions, currentIndex);
 
 
 
@@ -7962,7 +7992,6 @@ async function init() {
             if (dirContent && window.innerWidth <= 768) dirContent.style.paddingBottom = "55px";
           }
 
-          (window as any).isNavigationActive = true;
           if (statusEl) statusEl.textContent = "";
         }
 
@@ -8060,9 +8089,9 @@ async function init() {
 
 
 
-  const resetWayfinding = () => {
+  const resetWayfinding = (_focusOrigin = true) => {
     (window as any).isNavigationActive = false;
-    wayfindingOrigin = null;
+    wayfindingOrigin = getEffectiveWayfindingOrigin(kioskRuntime, null);
     wayfindingDestination = null;
     wayfindingStopovers = [];
     wayfindingDirections = null;
@@ -8108,6 +8137,11 @@ async function init() {
    * Update wayfinding UI
    */
   (window as any).startSelectingNode = (type: 'origin' | 'destination' | 'stopover', index: number = -1) => {
+    if (type === 'origin' && kioskRuntime.isKioskMode) {
+      isSelectingOrigin = false;
+      wayfindingOrigin = getEffectiveWayfindingOrigin(kioskRuntime, wayfindingOrigin);
+      return;
+    }
     // If we're already selecting this node, do not re-render and lose focus
     if (type === 'origin' && isSelectingOrigin) return;
     if (type === 'destination' && isSelectingDestination) return;
@@ -8167,6 +8201,11 @@ async function init() {
   };
 
   (window as any).clearNode = (type: string, index: number = -1) => {
+    if (type === 'origin' && kioskRuntime.isKioskMode) {
+      wayfindingOrigin = getEffectiveWayfindingOrigin(kioskRuntime, wayfindingOrigin);
+      updateWayfindingUI();
+      return;
+    }
     if (type === 'origin') {
       if (wayfindingOrigin) resetObjectHighlight(wayfindingOrigin);
       wayfindingOrigin = null;
@@ -8181,6 +8220,11 @@ async function init() {
     updateWayfindingUI();
     clearNavigation();
 
+    if (type === 'destination' && kioskRuntime.isKioskMode) {
+      void resetCameraToOverview();
+      return;
+    }
+
     if (!wayfindingOrigin && wayfindingDestination) {
       updateInfo(wayfindingDestination);
     } else if (!wayfindingDestination && wayfindingOrigin) {
@@ -8193,6 +8237,7 @@ async function init() {
 
   let draggedNodeIndex = -1;
   (window as any).onWayfindingDragStart = (e: any, index: number) => {
+    if (kioskRuntime.isKioskMode) return;
     draggedNodeIndex = index;
     e.dataTransfer.effectAllowed = "move";
     e.target.style.opacity = "0.5";
@@ -8207,6 +8252,7 @@ async function init() {
   };
   (window as any).onWayfindingDrop = (e: any, targetIndex: number) => {
     e.preventDefault();
+    if (kioskRuntime.isKioskMode) return;
     if (draggedNodeIndex === -1 || draggedNodeIndex === targetIndex) return;
 
     const nodes = [wayfindingOrigin, ...wayfindingStopovers, wayfindingDestination];
@@ -8222,6 +8268,7 @@ async function init() {
   };
 
   (window as any).swapNodes = (index1: number, index2: number) => {
+    if (kioskRuntime.isKioskMode) return;
     const nodes = [wayfindingOrigin, ...wayfindingStopovers, wayfindingDestination];
     const temp = nodes[index1];
     nodes[index1] = nodes[index2];
@@ -8249,6 +8296,7 @@ async function init() {
       const useDragAndDrop = totalNodes >= 3;
 
       const getDragAttributes = (index: number) => {
+        if (kioskRuntime.isKioskMode && index === 0) return '';
         if (!useDragAndDrop) return '';
         return `draggable="true" ondragstart="window.onWayfindingDragStart(event, ${index})" ondragend="window.onWayfindingDragEnd(event)" ondragover="window.onWayfindingDragOver(event)" ondrop="window.onWayfindingDrop(event, ${index})"`;
       };
@@ -8262,7 +8310,14 @@ async function init() {
       // ===================================
       // 1. ORIGIN ROW
       // ===================================
-      const originName = wayfindingOrigin ? TranslationManager.getName(wayfindingOrigin) : '';
+      const originReadonly = kioskRuntime.isKioskMode;
+      const originReadonlyAttribute = originReadonly ? 'readonly aria-readonly="true"' : '';
+      const originInputHandlers = originReadonly
+        ? ''
+        : `oninput="window.performWayfindingSearch(this.value, 'origin')" onfocus="window.startSelectingNode('origin'); window.performWayfindingSearch(this.value, 'origin');"`;
+      const originName = originReadonly
+        ? escapeHtmlAttribute(kioskRuntime.config?.displayName || '')
+        : wayfindingOrigin ? TranslationManager.getName(wayfindingOrigin) : '';
       const originColor = wayfindingOrigin ? '#1a1a2e' : '#999';
       const originBg = 'white';
       const originBorder = 'border:1px solid transparent; border-bottom:1px solid #e0e4ef;';
@@ -8270,10 +8325,10 @@ async function init() {
         display:flex; align-items:center; gap:10px;
         padding:12px 14px; background:${originBg};
         ${originBorder}
-        cursor:pointer; transition: background 0.2s;" 
-        onclick="window.startSelectingNode('origin')"
+        cursor:${originReadonly ? 'default' : 'pointer'}; transition: background 0.2s;"
+        ${originReadonly ? '' : `onclick="window.startSelectingNode('origin')"`}
         onmouseenter="if(!${isSelectingOrigin}) this.style.background='#fafcff'" onmouseleave="if(!${isSelectingOrigin}) this.style.background='${originBg}'">
-        ${dragHandleHtml}
+        ${originReadonly ? '' : dragHandleHtml}
         <div style="width:24px;height:24px;border-radius:50%;background:white; display:flex;align-items:center;justify-content:center;flex-shrink:0;">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#214ca6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
         </div>
@@ -8282,12 +8337,12 @@ async function init() {
           <input type="text" id="wayfinding-input-origin" autocomplete="off"
             placeholder="${TranslationManager.t('search_departure_placeholder', 'Search Departure')}" 
             value="${originName}" 
-            oninput="window.performWayfindingSearch(this.value, 'origin')" 
-            onfocus="window.startSelectingNode('origin'); window.performWayfindingSearch(this.value, 'origin');" 
+            ${originReadonlyAttribute}
+            ${originInputHandlers}
             style="width:100%; border:none; outline:none; background:transparent; font-size:16px; color:${originColor}; padding:0; margin:0; font-weight:500;" 
           />
         </div>
-        ${wayfindingOrigin ? `<button onclick="event.stopPropagation(); window.clearNode('origin')" style="background:none;border:none;cursor:pointer;color:#94a3b8;display:flex;align-items:center;justify-content:center;padding:4px;" title="Xóa">
+        ${!kioskRuntime.isKioskMode && wayfindingOrigin ? `<button onclick="event.stopPropagation(); window.clearNode('origin')" style="background:none;border:none;cursor:pointer;color:#94a3b8;display:flex;align-items:center;justify-content:center;padding:4px;" title="Xóa">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
         </button>` : ''}
       </div>`;
@@ -8386,7 +8441,7 @@ async function init() {
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
       </button>`;
 
-      if (!useDragAndDrop) {
+      if (!useDragAndDrop && !kioskRuntime.isKioskMode) {
         for (let i = 0; i < totalNodes - 1; i++) {
           swapHtml += `<button onclick="window.swapNodes(${i}, ${i + 1})" title="Hoán đổi" style="
             background:none; border:none;
@@ -8462,6 +8517,11 @@ async function init() {
   (window as any).performWayfindingSearch = (query: string, nodeType: 'origin' | 'destination' | 'stopover', index: number = -1) => {
     const resultsContainer = document.getElementById("wayfinding-search-results");
     if (!resultsContainer) return;
+    if (nodeType === 'origin' && kioskRuntime.isKioskMode) {
+      resultsContainer.style.display = "none";
+      wayfindingOrigin = getEffectiveWayfindingOrigin(kioskRuntime, wayfindingOrigin);
+      return;
+    }
 
     const safeQuery = query ? query.trim() : "";
     const isSuggested = !safeQuery;
@@ -8583,6 +8643,7 @@ async function init() {
    * Swap origin and destination
    */
   const swapWayfindingPoints = () => {
+    if (kioskRuntime.isKioskMode) return;
     const temp = wayfindingOrigin;
     wayfindingOrigin = wayfindingDestination;
     wayfindingDestination = temp;
@@ -8935,6 +8996,7 @@ async function init() {
         routingActions.style.display = "none";
       } else {
         routingActions.style.display = "flex";
+        btnStart.style.display = kioskRuntime.isKioskMode ? "none" : "flex";
 
         // Update labels based on current language
         btnStart.textContent = TranslationManager.t('route_start', 'Start');
@@ -8965,7 +9027,11 @@ async function init() {
         };
 
         btnStart.onclick = () => {
-          wayfindingOrigin = space;
+          if (kioskRuntime.isKioskMode) {
+            wayfindingOrigin = getEffectiveWayfindingOrigin(kioskRuntime, wayfindingOrigin);
+          } else {
+            wayfindingOrigin = space;
+          }
           isSelectingOrigin = false;
           // Loại bỏ auto-selection mode để người dùng có thể xem info địa điểm tiếp theo
           // if (!wayfindingDestination) isSelectingDestination = true; 
@@ -9191,6 +9257,25 @@ async function init() {
    * - Highlight object bằng màu xanh lá
    */
   mapView.on("click", async (event: any) => {
+    if (kioskPickMode) {
+      if (!isAdminAuthenticated) {
+        kioskAdmin.cancelPick();
+        showAdminLoginDialog();
+        return;
+      }
+      if (kioskPickMode === 'coordinate') {
+        kioskAdmin.acceptCoordinatePick(event.coordinate, mapView.currentFloor?.id);
+      } else {
+        kioskAdmin.acceptObjectPick(resolveKioskPickObject(event, {
+          resolveMarker: (marker: any) => {
+            const markerId = marker?.id;
+            return (markerId && (markerIdToObject.get(markerId) || markerIdToConnection.get(markerId)))
+              || null;
+          }
+        }));
+      }
+      return;
+    }
     if (Date.now() < suppressMapClickUntil) {
       if (isCategoryDebugEnabled()) console.debug("🧭 [CATEGORY_DEBUG] Suppressed map click after sidebar interaction");
       return;
@@ -9820,6 +9905,10 @@ async function init() {
         // ============================================
         // WAYFINDING: Xử lý chọn điểm đi/đến
         // ============================================
+        if (isSelectingOrigin && kioskRuntime.isKioskMode) {
+          isSelectingOrigin = false;
+          wayfindingOrigin = getEffectiveWayfindingOrigin(kioskRuntime, wayfindingOrigin);
+        }
         if (isSelectingOrigin || isSelectingDestination || isSelectingStopoverIndex >= 0) {
           // Bỏ highlight điểm cũ trước khi set điểm mới
           if (isSelectingOrigin && wayfindingOrigin) {
@@ -10880,7 +10969,9 @@ async function init() {
   // Nút swap positions
   const swapBtn = document.getElementById("wayfinding-swap-btn");
   if (swapBtn) {
+    if (kioskRuntime.isKioskMode) swapBtn.style.display = "none";
     swapBtn.addEventListener("click", () => {
+      if (kioskRuntime.isKioskMode) return;
       if (!wayfindingOrigin && !wayfindingDestination) return;
 
       const temp = wayfindingOrigin;
@@ -11210,28 +11301,10 @@ async function init() {
   const btnReset = document.getElementById("btn-reset");
   if (btnReset) {
     btnReset.addEventListener("click", () => {
-      try {
-        // Chặn auto-floor-switch trong suốt quá trình animation
-        (window as any)._isResettingCamera = true;
-
-        cameraAny.animateTo({
-          zoomLevel: 16.5, // Zoom về 16.5x
-          bearing: initialBearing, // Bearing ban đầu (bearing - 36)
-          pitch: initialPitch, // Pitch ban đầu (góc nhìn dọc)
-          center: initialVenueCenter || mapView.Camera.center, // Trung tâm ban đầu
-        }, {
-          duration: 1000,
-          easing: "ease-in-out",
-        });
-
-        // Nhả cờ sau khi animation hoàn tất + buffer
-        setTimeout(() => {
-          (window as any)._isResettingCamera = false;
-        }, 1200);
-      } catch (e) {
-        (window as any)._isResettingCamera = false;
-        console.warn("Error reset camera:", e);
+      if (kioskRuntime.isKioskMode) {
+        resetWayfinding(false);
       }
+      void resetCameraToOverview();
     });
   }
 
@@ -12353,7 +12426,7 @@ async function init() {
         return;
       }
 
-      if (!_hasSyncedOverviewModelFloor && overviewFloor?.id) {
+      if (isAdminAuthenticated && !_hasSyncedOverviewModelFloor && overviewFloor?.id) {
         await ApiService.syncOverviewFloor(overviewFloor.id);
         _hasSyncedOverviewModelFloor = true;
       }
@@ -14279,24 +14352,46 @@ async function init() {
     };
 
     const routeBetweenObjects = async (originObj: any, destinationObj: any) => {
-      if (!originObj || !destinationObj) return false;
-      wayfindingOrigin = originObj;
-      wayfindingDestination = destinationObj;
-      wayfindingStopovers = [];
+      if (!destinationObj) return false;
+      const plan = buildFlightWayfindingPlan({
+        action: 'route',
+        isKioskMode: kioskRuntime.isKioskMode,
+        kioskOrigin: getEffectiveWayfindingOrigin(kioskRuntime, null),
+        currentOrigin: wayfindingOrigin,
+        checkin: originObj,
+        gate: destinationObj
+      });
+      wayfindingOrigin = plan.origin;
+      if (!wayfindingOrigin) return false;
+      wayfindingDestination = plan.destination;
+      wayfindingStopovers = [...plan.stopovers];
       updateWayfindingUI();
       updateHighlights();
       switchToDirectionsTab();
       await drawNavigation();
 
       // Auto-focus on origin to start the journey
-      await openInfoForObject(originObj);
+      await openInfoForObject(wayfindingOrigin);
       return true;
     };
 
-    const navigateToDestinationFromCurrentContext = async (destinationObj: any) => {
+    const navigateToDestinationFromCurrentContext = async (
+      destinationObj: any,
+      action: 'checkin' | 'gate' | 'belt'
+    ) => {
       if (!destinationObj) return false;
-      wayfindingDestination = destinationObj;
-      wayfindingStopovers = [];
+      const plan = buildFlightWayfindingPlan({
+        action,
+        isKioskMode: kioskRuntime.isKioskMode,
+        kioskOrigin: getEffectiveWayfindingOrigin(kioskRuntime, wayfindingOrigin),
+        currentOrigin: wayfindingOrigin,
+        checkin: action === 'checkin' ? destinationObj : null,
+        gate: action === 'gate' ? destinationObj : null,
+        belt: action === 'belt' ? destinationObj : null
+      });
+      wayfindingOrigin = plan.origin;
+      wayfindingDestination = plan.destination;
+      wayfindingStopovers = [...plan.stopovers];
       updateWayfindingUI();
       updateHighlights();
       switchToDirectionsTab();
@@ -14419,7 +14514,7 @@ async function init() {
                 if (!payload.flight.Gate_MappedinID && !payload.flight.HasGateNavigation) throw new Error(TranslationManager.t('issue_no_gate_mapping', 'Chưa cấu hình mapping gate cho chuyến bay này.'));
                 const gateObject = resolveGateObjectStrict(payload.flight);
                 if (!gateObject) throw new Error(TranslationManager.t('error_gate_not_found', 'Không tìm thấy gate trên bản đồ'));
-                await navigateToDestinationFromCurrentContext(gateObject);
+                await navigateToDestinationFromCurrentContext(gateObject, 'gate');
                 await openInfoForObject(gateObject);
                 closeModal();
                 return;
@@ -14429,7 +14524,7 @@ async function init() {
                 if (!payload.flight.HasCheckInMapping) throw new Error(TranslationManager.t('issue_no_checkin_mapping', 'Chưa cấu hình mapping check-in cho chuyến bay này.'));
                 const checkinObject = resolveCheckInObjectsStrict(payload.counters || [])[0];
                 if (!checkinObject) throw new Error(TranslationManager.t('error_checkin_not_found', 'Không tìm thấy check-in trên bản đồ'));
-                await navigateToDestinationFromCurrentContext(checkinObject);
+                await navigateToDestinationFromCurrentContext(checkinObject, 'checkin');
                 await openInfoForObject(checkinObject);
                 closeModal();
                 return;
@@ -14451,7 +14546,7 @@ async function init() {
                 if (!payload.flight.Belt_MappedinID && !payload.flight.HasBeltNavigation) throw new Error(TranslationManager.t('issue_no_belt_mapping', 'Chưa cấu hình mapping băng chuyền cho chuyến bay này.'));
                 const beltObject = resolveBeltObjectStrict(payload.flight);
                 if (!beltObject) throw new Error(TranslationManager.t('error_belt_not_found', 'Không tìm thấy băng chuyền trên bản đồ'));
-                await navigateToDestinationFromCurrentContext(beltObject);
+                await navigateToDestinationFromCurrentContext(beltObject, 'belt');
                 await openInfoForObject(beltObject);
                 closeModal();
               }
@@ -14480,18 +14575,23 @@ async function init() {
         if (state.search.trim()) params.set('search', state.search.trim());
         const response = await fetch(`${flightApiBaseUrl}/flights?${params.toString()}`);
         if (!response.ok) {
-          const payload = await response.json().catch(() => ({}));
-          throw new Error(payload?.error || TranslationManager.t('error_load_flights', 'Không tải được danh sách chuyến bay'));
+          throw new Error('FLIGHT_DATA_UNAVAILABLE');
         }
         state.flights = await response.json();
         renderStatusOptions();
         renderFlights();
       } catch (err: any) {
+        console.error('[FlightInfo] Failed to load flights:', err);
+        state.flights = [];
+        updateSummary(0);
         container.innerHTML = '';
         loading.classList.add('hidden');
         empty.classList.add('hidden');
         container.classList.add('hidden');
-        error.textContent = err?.message || TranslationManager.t('error_load_flights', 'Không tải được dữ liệu chuyến bay');
+        error.textContent = TranslationManager.t(
+          'flight_data_unavailable',
+          'Hiện chưa có dữ liệu chuyến bay. Vui lòng thử lại sau.'
+        );
         error.classList.remove('hidden');
       }
     };

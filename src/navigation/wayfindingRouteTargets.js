@@ -350,6 +350,77 @@ function chooseCandidate(candidates, original, opposite) {
     .sort((a, b) => a.score - b.score)[0];
 }
 
+function chooseIntermediateCandidate(candidates, original, previous, next, options) {
+  if (candidates.length === 0) return null;
+
+  const originalCoord = coordinateOf(original);
+  const originalFloorId = floorIdOf(original, originalCoord);
+  const floorMismatchPenalty = 1000000000;
+  const seenTargets = new Set();
+  const uniqueCandidates = candidates.filter((candidate) => {
+    if (seenTargets.has(candidate.target)) return false;
+    seenTargets.add(candidate.target);
+    return true;
+  });
+
+  const distanceToNeighbor = (candidate, neighbor) => {
+    const routeDistance = getRouteDistance(candidate.target, neighbor, options);
+    return routeDistance ?? distanceMeters(candidate.coordinate, neighbor);
+  };
+
+  return uniqueCandidates
+    .map((candidate, index) => {
+      const originalFloorPenalty = originalFloorId && candidate.floorId && candidate.floorId !== originalFloorId
+        ? floorMismatchPenalty
+        : 0;
+      const originalDistance = originalCoord ? distanceMeters(candidate.coordinate, originalCoord) : 0;
+      const adjacentDistance = distanceToNeighbor(candidate, previous) + distanceToNeighbor(candidate, next);
+      return {
+        ...candidate,
+        score: originalFloorPenalty + candidate.priority * 10000000 + adjacentDistance + originalDistance * 0.05 + index * 0.001
+      };
+    })
+    .sort((a, b) => a.score - b.score)[0];
+}
+
+function resolveIntermediateRouteTarget(obj, previous, next, options) {
+  if (!obj || shouldKeepOriginalTarget(obj)) return obj;
+
+  const candidates = [
+    ...collectRouteTargetCandidates(obj, previous, options),
+    ...collectRouteTargetCandidates(obj, next, options)
+  ];
+  return chooseIntermediateCandidate(candidates, obj, previous, next, options)?.target || obj;
+}
+
+export function getIntermediateWayfindingRouteTargetCandidates(obj, previous, next, options) {
+  if (!obj) return [];
+  if (shouldKeepOriginalTarget(obj)) return [obj];
+
+  const candidates = [
+    ...collectRouteTargetCandidates(obj, previous, options),
+    ...collectRouteTargetCandidates(obj, next, options)
+  ];
+  const seenTargets = new Set();
+  const seenKeys = new Set();
+  const result = [];
+
+  for (const candidate of candidates) {
+    if (seenTargets.has(candidate.target)) continue;
+    const coordinate = candidate.coordinate;
+    const latitude = coordinate?.latitude ?? coordinate?.lat;
+    const longitude = coordinate?.longitude ?? coordinate?.lng;
+    const key = candidate.target?.id ||
+      `${candidate.floorId || ''}:${Number(latitude).toFixed(10)}:${Number(longitude).toFixed(10)}`;
+    if (seenKeys.has(key)) continue;
+    seenTargets.add(candidate.target);
+    seenKeys.add(key);
+    result.push(candidate.target);
+  }
+
+  return result;
+}
+
 function shouldKeepOriginalTarget(obj) {
   const type = String(obj?.__type || obj?.type || '').toLowerCase();
   return type === 'door' ||
@@ -398,8 +469,45 @@ export function resolveWayfindingRouteTarget(obj, opposite, options) {
   return chosen?.target || obj;
 }
 
+export function getWayfindingRouteCalculationPolicy(routeLegCount) {
+  const isMultiLegRoute = Number(routeLegCount) > 1;
+  return {
+    refineObjectTargets: !isMultiLegRoute,
+    compareAccessibleRoutes: !isMultiLegRoute,
+    primarySmoothing: isMultiLegRoute
+      ? {
+          enabled: true,
+          __EXPERIMENTAL_METHOD: 'rdp',
+          radius: 0.75,
+          __EXPERIMENTAL_MUST_INCLUDE_DOOR_BUFFER_NODES: true
+        }
+      : {
+          enabled: true,
+          __EXPERIMENTAL_METHOD: 'dp-optimal',
+          radius: 0.75,
+          __EXPERIMENTAL_INCLUDE_DOOR_BUFFER_NODES: true
+        },
+    fallbackSmoothing: isMultiLegRoute
+      ? {
+          enabled: true,
+          __EXPERIMENTAL_METHOD: 'greedy-los',
+          radius: 0.75
+        }
+      : null
+  };
+}
+
 export function resolveWayfindingRouteTargets(waypoints, options) {
   const points = (waypoints || []).filter(Boolean);
+  const routeTargets = points.map((point, index) => {
+    if (index === 0) {
+      return resolveWayfindingRouteTarget(point, points[1], options);
+    }
+    if (index === points.length - 1) {
+      return resolveWayfindingRouteTarget(point, points[index - 1], options);
+    }
+    return resolveIntermediateRouteTarget(point, points[index - 1], points[index + 1], options);
+  });
   const legs = [];
   for (let i = 0; i < points.length - 1; i++) {
     const origin = points[i];
@@ -407,8 +515,8 @@ export function resolveWayfindingRouteTargets(waypoints, options) {
     legs.push({
       origin,
       destination,
-      routeOrigin: resolveWayfindingRouteTarget(origin, destination, options),
-      routeDestination: resolveWayfindingRouteTarget(destination, origin, options)
+      routeOrigin: routeTargets[i],
+      routeDestination: routeTargets[i + 1]
     });
   }
   return legs;

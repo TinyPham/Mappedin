@@ -1271,7 +1271,7 @@
       padding: 4px 0 16px 0;
     }
   </style>
-  <link rel="stylesheet" href="../css/responsive.css">
+  <link rel="stylesheet" href="/main/css/responsive.css">
 </head>
 
 <body>
@@ -1676,6 +1676,7 @@
             vực</button>
           <button id="btn-open-area-color" class="modern-btn-outline" data-i18n="area_color_btn">Màu nền khu
             vực</button>
+          <button id="btn-open-kiosk-admin" class="modern-btn-outline" type="button">Quản lý kiosk</button>
         </div>
 
       </div>
@@ -2156,6 +2157,169 @@
         </div>
       </div>
 
+
+      <div id="kiosk-pick-bar" class="kiosk-pick-bar hidden" role="status" aria-live="polite">
+        <span id="kiosk-pick-instruction">Chọn một vị trí trên bản đồ.</span>
+        <button id="kiosk-pick-cancel" type="button">Hủy chọn</button>
+      </div>
+
+      <div id="kiosk-preview-bar" class="kiosk-preview-bar hidden" role="status" aria-live="polite">
+        <span>Đang xem thử điểm xuất phát kiosk. Chọn một điểm đến để kiểm tra đường đi.</span>
+        <button id="kiosk-preview-return" type="button">Quay lại quản lý kiosk</button>
+      </div>
+
+      <div id="kiosk-admin-modal" class="modal-overlay hidden" role="dialog" aria-modal="true"
+        aria-labelledby="kiosk-admin-title">
+        <div class="kiosk-admin-shell">
+          <header class="kiosk-admin-header">
+            <div>
+              <h2 id="kiosk-admin-title">Quản lý kiosk</h2>
+              <p>Cấu hình điểm xuất phát mặc định trên bản đồ.</p>
+            </div>
+            <button id="kiosk-admin-close" class="kiosk-icon-button" type="button" title="Đóng"
+              aria-label="Đóng">&times;</button>
+          </header>
+
+          <div class="kiosk-admin-layout">
+            <aside class="kiosk-admin-list-pane" aria-label="Danh sách kiosk">
+              <div class="kiosk-admin-toolbar">
+                <label class="kiosk-search-field" for="kiosk-admin-search">
+                  <span>Tìm kiếm</span>
+                  <input id="kiosk-admin-search" type="search" placeholder="Mã hoặc tên kiosk" autocomplete="off">
+                </label>
+                <label for="kiosk-admin-active-filter">
+                  <span>Trạng thái</span>
+                  <select id="kiosk-admin-active-filter">
+                    <option value="all">Tất cả</option>
+                    <option value="active">Đang hoạt động</option>
+                  </select>
+                </label>
+                <button id="kiosk-admin-refresh" class="kiosk-icon-button" type="button" title="Làm mới"
+                  aria-label="Làm mới">&#8635;</button>
+                <button id="kiosk-admin-create" class="kiosk-button kiosk-button-primary" type="button">Tạo kiosk</button>
+              </div>
+
+              <div class="kiosk-table-wrap">
+                <table class="kiosk-admin-table">
+                  <thead>
+                    <tr>
+                      <th>Kiosk</th>
+                      <th>Loại điểm</th>
+                      <th>Trạng thái</th>
+                      <th>Thao tác</th>
+                    </tr>
+                  </thead>
+                  <tbody id="kiosk-admin-list"></tbody>
+                </table>
+              </div>
+              <div id="kiosk-admin-loading" class="kiosk-list-state hidden" role="status">Đang tải danh sách kiosk...</div>
+              <div id="kiosk-admin-empty" class="kiosk-list-state hidden">Không có kiosk phù hợp.</div>
+              <div id="kiosk-admin-error" class="kiosk-list-state kiosk-state-error hidden" role="alert"></div>
+            </aside>
+
+            <section id="kiosk-admin-form-pane" class="kiosk-admin-form-pane" aria-labelledby="kiosk-form-title">
+              <div class="kiosk-form-heading">
+                <h3 id="kiosk-form-title">Thông tin kiosk</h3>
+                <span id="kiosk-admin-status" role="status" aria-live="polite"></span>
+              </div>
+              <form id="kiosk-admin-form" novalidate>
+                <div id="kiosk-admin-form-error" class="kiosk-form-alert hidden" role="alert"></div>
+                <div class="kiosk-form-grid">
+                  <label class="kiosk-field">
+                    <span>Mã kiosk <b aria-hidden="true">*</b></span>
+                    <input id="kiosk-id" name="kioskId" maxlength="100" autocomplete="off" required>
+                    <small class="kiosk-field-error" data-field="kioskId"></small>
+                  </label>
+                  <label class="kiosk-field">
+                    <span>Tên hiển thị <b aria-hidden="true">*</b></span>
+                    <input id="kiosk-display-name" name="displayName" maxlength="200" required>
+                    <small class="kiosk-field-error" data-field="displayName"></small>
+                  </label>
+                  <label class="kiosk-field kiosk-field-wide">
+                    <span>Mô tả</span>
+                    <textarea id="kiosk-description" name="description" maxlength="500" rows="3"></textarea>
+                    <small class="kiosk-field-error" data-field="description"></small>
+                  </label>
+                </div>
+
+                <fieldset class="kiosk-origin-fieldset">
+                  <legend>Loại điểm xuất phát</legend>
+                  <div class="kiosk-origin-segmented">
+                    <label>
+                      <input id="kiosk-origin-mappedin" type="radio" name="originType" value="mappedinObject" checked>
+                      <span>Đối tượng</span>
+                    </label>
+                    <label>
+                      <input id="kiosk-origin-coordinate" type="radio" name="originType" value="coordinate">
+                      <span>Tọa độ</span>
+                    </label>
+                  </div>
+                  <small class="kiosk-field-error" data-field="originType"></small>
+                </fieldset>
+
+                <div id="kiosk-origin-object-fields" class="kiosk-origin-fields">
+                  <label class="kiosk-field kiosk-field-grow">
+                    <span>Mã đối tượng Mappedin</span>
+                    <input id="kiosk-origin-mappedin-id" name="originMappedinId" maxlength="100">
+                    <small class="kiosk-field-error" data-field="originMappedinId"></small>
+                  </label>
+                  <button id="kiosk-pick-object" class="kiosk-button kiosk-button-secondary" type="button">Chọn đối tượng trên bản đồ</button>
+                </div>
+
+                <div id="kiosk-origin-coordinate-fields" class="kiosk-origin-coordinate-fields hidden">
+                  <div class="kiosk-form-grid kiosk-coordinate-grid">
+                    <label class="kiosk-field kiosk-field-wide">
+                      <span>Mã tầng</span>
+                      <input id="kiosk-floor-id" name="floorId" maxlength="100">
+                      <small class="kiosk-field-error" data-field="floorId"></small>
+                    </label>
+                    <label class="kiosk-field">
+                      <span>Vĩ độ</span>
+                      <input id="kiosk-latitude" name="latitude" type="number" min="-90" max="90" step="any">
+                      <small class="kiosk-field-error" data-field="latitude"></small>
+                    </label>
+                    <label class="kiosk-field">
+                      <span>Kinh độ</span>
+                      <input id="kiosk-longitude" name="longitude" type="number" min="-180" max="180" step="any">
+                      <small class="kiosk-field-error" data-field="longitude"></small>
+                    </label>
+                  </div>
+                  <button id="kiosk-pick-coordinate" class="kiosk-button kiosk-button-secondary" type="button">Chọn tọa độ trên bản đồ</button>
+                </div>
+
+                <div class="kiosk-form-grid kiosk-options-grid">
+                  <label class="kiosk-field">
+                    <span>Hướng nhìn (độ)</span>
+                    <input id="kiosk-heading" name="heading" type="number" min="0" max="359.9999" step="any">
+                    <small class="kiosk-field-error" data-field="heading"></small>
+                  </label>
+                  <label class="kiosk-field">
+                    <span>Mức thu phóng mặc định</span>
+                    <input id="kiosk-default-zoom" name="defaultZoom" type="number" min="1" max="30" step="any">
+                    <small class="kiosk-field-error" data-field="defaultZoom"></small>
+                  </label>
+                </div>
+
+                <label class="kiosk-toggle-row" for="kiosk-is-active">
+                  <span>
+                    <strong>Đang hoạt động</strong>
+                    <small>Cho phép kiosk dùng cấu hình này.</small>
+                  </span>
+                  <input id="kiosk-is-active" name="isActive" type="checkbox" checked>
+                </label>
+                <small class="kiosk-field-error" data-field="isActive"></small>
+
+                <footer class="kiosk-form-actions">
+                  <button id="kiosk-admin-preview" class="kiosk-button kiosk-button-secondary" type="button">Xem thử đường đi</button>
+                  <span class="kiosk-form-action-spacer"></span>
+                  <button id="kiosk-admin-reset" class="kiosk-button kiosk-button-secondary" type="button">Hủy / đặt lại</button>
+                  <button id="kiosk-admin-save" class="kiosk-button kiosk-button-primary" type="submit">Lưu</button>
+                </footer>
+              </form>
+            </section>
+          </div>
+        </div>
+      </div>
 
       <!-- NEW: Admin Information Modal -->
       <div id="admin-info-modal" class="modal-overlay hidden" style="padding: 40px 0;">
@@ -2704,7 +2868,7 @@
       }
     });
   </script>
-  <script type="module" src="../main-function/index.ts"></script>
+  <script type="module" src="/main/main-function/index.ts"></script>
 
   <!-- PWA Registration & Install Handling -->
   <script>

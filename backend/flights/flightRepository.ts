@@ -73,6 +73,30 @@ function flightProc(name: string) {
   return buildFlightProcName(name);
 }
 
+type FlightStageEvent = {
+  stage: string;
+  durationMs: number;
+  outcome: 'success' | 'error';
+};
+
+async function measureFlightStage<T>(
+  stage: string,
+  operation: () => Promise<T>,
+  report: (event: FlightStageEvent) => void = (event) => console.info('[FlightData] Stage timing:', event),
+  now: () => number = Date.now
+): Promise<T> {
+  const startedAt = now();
+
+  try {
+    const result = await operation();
+    report({ stage, durationMs: Math.max(0, now() - startedAt), outcome: 'success' });
+    return result;
+  } catch (error) {
+    report({ stage, durationMs: Math.max(0, now() - startedAt), outcome: 'error' });
+    throw error;
+  }
+}
+
 function uniqueNumbers(values: Array<number | null | undefined>) {
   return Array.from(new Set(values.filter((value): value is number => Number.isInteger(value) && Number(value) > 0)));
 }
@@ -211,18 +235,24 @@ export async function getFlights(params: {
     throw new Error('Database connection currently unavailable');
   }
 
-  const result = await db.request()
+  const result = await measureFlightStage('stored-procedure', () => db.request()
     .input('FlightDate', sql.Date, params.date || null)
     .input('ArrDep', sql.Char(1), params.arrDep || null)
     .input('Search', sql.NVarChar(100), params.search || null)
-    .execute(flightProc('SP_GetFlights'));
+    .execute(flightProc('SP_GetFlights')));
 
   const flights = (result.recordset || []) as FlightRecord[];
   if (flights.length === 0) return flights;
 
-  const gateMap = await queryNumberToMappedinIdMap(db, GATE_MAPPING_TABLE, 'GateNo', uniqueNumbers(flights.map((flight) => flight.Gate)));
-  const beltMap = await queryNumberToMappedinIdMap(db, BELT_MAPPING_TABLE, 'BeltNo', uniqueNumbers(flights.map((flight) => flight.Belt)));
-  const checkInMap = await queryCheckInMappings(db, uniqueCounterPairs(flights));
+  const gateMap = await measureFlightStage('gate-mapping', () =>
+    queryNumberToMappedinIdMap(db, GATE_MAPPING_TABLE, 'GateNo', uniqueNumbers(flights.map((flight) => flight.Gate)))
+  );
+  const beltMap = await measureFlightStage('belt-mapping', () =>
+    queryNumberToMappedinIdMap(db, BELT_MAPPING_TABLE, 'BeltNo', uniqueNumbers(flights.map((flight) => flight.Belt)))
+  );
+  const checkInMap = await measureFlightStage('checkin-mapping', () =>
+    queryCheckInMappings(db, uniqueCounterPairs(flights))
+  );
 
   return enrichFlightsWithNavigationMappings(flights, gateMap, beltMap, checkInMap);
 }
@@ -273,5 +303,6 @@ export async function getFlightNavigationTargets(flightId: number): Promise<Flig
 
 export const __testables = {
   buildFlightProcName,
-  flightProc
+  flightProc,
+  measureFlightStage
 };

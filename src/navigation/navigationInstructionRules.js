@@ -10,8 +10,38 @@ function actionTypeOf(instruction) {
   return (instruction?.action?.type || '').toLowerCase();
 }
 
+function copyDefinedProperty(target, key, value) {
+  if (value !== undefined) target[key] = value;
+}
+
+function cloneActionShell(action) {
+  if (!action) return action;
+  const clone = { ...action };
+  copyDefinedProperty(clone, 'type', action.type);
+  copyDefinedProperty(clone, 'bearing', action.bearing);
+  copyDefinedProperty(clone, 'instruction', action.instruction);
+  copyDefinedProperty(clone, 'connection', action.connection);
+  return clone;
+}
+
+function cloneInstructionShell(instruction) {
+  if (!instruction) return instruction;
+  const clone = { ...instruction };
+  copyDefinedProperty(clone, 'action', cloneActionShell(instruction.action));
+  copyDefinedProperty(clone, 'coordinate', instruction.coordinate);
+  copyDefinedProperty(clone, 'distance', instruction.distance);
+  copyDefinedProperty(clone, 'time', instruction.time);
+  copyDefinedProperty(clone, 'duration', instruction.duration);
+  copyDefinedProperty(clone, 'instruction', instruction.instruction);
+  copyDefinedProperty(clone, 'originalDistance', instruction.originalDistance);
+  copyDefinedProperty(clone, '_displayDistance', instruction._displayDistance);
+  copyDefinedProperty(clone, '_mergedNextAction', cloneActionShell(instruction._mergedNextAction));
+  copyDefinedProperty(clone, '_mergedNextInstruction', instruction._mergedNextInstruction);
+  return clone;
+}
+
 function cloneInstructions(instructions) {
-  return JSON.parse(JSON.stringify(instructions || []));
+  return Array.from(instructions || [], cloneInstructionShell);
 }
 
 function isEnterAction(type) {
@@ -152,7 +182,7 @@ function splitExitAtStrongTurn(exitStep, turnStep, followingStep, pathCoordinate
   exitStep.originalDistance = beforeDistance;
   exitStep._displayDistance = beforeDistance;
 
-  const splitTurn = JSON.parse(JSON.stringify(turnStep));
+  const splitTurn = cloneInstructionShell(turnStep);
   splitTurn.coordinate = pathCoordinates[turnIndex];
   splitTurn.distance = afterDistance;
   splitTurn.originalDistance = afterDistance;
@@ -479,17 +509,28 @@ export function simplifyNavigationInstructions(instructions, options = {}) {
     cleaned.push(step);
   }
 
-  cleaned.forEach((step) => {
+  return mergeConsecutiveCorridorTurns(
+    normalizeInstructionDisplayDistances(cleaned),
+    pathCoordinates
+  );
+}
+
+function normalizeInstructionDisplayDistances(instructions) {
+  const normalized = cloneInstructions(instructions);
+  normalized.forEach((step) => {
     step.originalDistance = step.distance || 0;
   });
 
-  for (let i = 0; i < cleaned.length - 1; i++) {
-    const curr = cleaned[i];
-    const next = cleaned[i + 1];
+  for (let i = 0; i < normalized.length - 1; i++) {
+    const curr = normalized[i];
+    const next = normalized[i + 1];
     const currType = actionTypeOf(curr);
     const nextType = actionTypeOf(next);
     if (isExitAction(currType)) {
-      curr.distance = curr._mergedNextAction ? (curr.originalDistance || curr.distance || 0) : 0;
+      curr.distance = curr._mergedNextAction
+        ? (curr.originalDistance || curr.distance || 0)
+        : (next.originalDistance || next.distance || 0);
+      curr._displayDistance = curr.distance;
     } else if (isEnterAction(currType) && isExitAction(nextType)) {
       curr.distance = isElevatorConnection(curr.action?.connection) ? 3 : 6;
     } else {
@@ -497,8 +538,8 @@ export function simplifyNavigationInstructions(instructions, options = {}) {
     }
   }
 
-  if (cleaned.length > 0) cleaned[cleaned.length - 1].distance = 0;
-  return mergeConsecutiveCorridorTurns(cleaned, pathCoordinates);
+  if (normalized.length > 0) normalized[normalized.length - 1].distance = 0;
+  return normalized;
 }
 
 function parseFloorNumber(name) {
@@ -780,4 +821,385 @@ export function shouldRenderNavigationInstruction(instruction) {
   const type = actionTypeOf(instruction);
   if (type === 'arrival' || type === 'arrive') return true;
   return getInstructionDisplayDistance(instruction) > 0;
+}
+
+function findAdjacentWalkingFloorId(instructions, instructionIndex, direction) {
+  for (
+    let i = instructionIndex + direction;
+    i >= 0 && i < instructions.length;
+    i += direction
+  ) {
+    if (isConnectionAction(actionTypeOf(instructions[i]))) continue;
+    const floorId = getCoordinateFloorId(instructions[i]?.coordinate);
+    if (floorId) return floorId;
+  }
+  return null;
+}
+
+function getInstructionPathFloorId(instructions, instructionIndex) {
+  const instruction = instructions[instructionIndex];
+  const type = actionTypeOf(instruction);
+  if (isEnterAction(type)) {
+    return findAdjacentWalkingFloorId(instructions, instructionIndex, -1) ||
+      getCoordinateFloorId(instruction?.coordinate);
+  }
+  if (isExitAction(type)) {
+    return findAdjacentWalkingFloorId(instructions, instructionIndex, 1) ||
+      getCoordinateFloorId(instruction?.coordinate);
+  }
+  return getCoordinateFloorId(instruction?.coordinate);
+}
+
+function nearestStrictFloorPathIndex(coord, floorId, pathCoordinates, maxDistanceMeters) {
+  if (!coord || !floorId) return { index: -1, distance: Infinity };
+
+  let bestIndex = -1;
+  let bestDistance = Infinity;
+  for (let i = 0; i < pathCoordinates.length; i++) {
+    if (getCoordinateFloorId(pathCoordinates[i]) !== floorId) continue;
+    const distance = calcDistanceMeters(coord, pathCoordinates[i]);
+    if (distance < bestDistance) {
+      bestIndex = i;
+      bestDistance = distance;
+    }
+  }
+
+  if (bestDistance > maxDistanceMeters) return { index: -1, distance: bestDistance };
+  return { index: bestIndex, distance: bestDistance };
+}
+
+function instructionDisplayDistanceValue(instruction) {
+  if (isArrivalInstruction(instruction)) return 0;
+  if (Number.isFinite(instruction?._displayDistance)) return instruction._displayDistance;
+  if (isInstructionEnter(instruction)) {
+    return isElevatorConnection(instruction?.action?.connection) ? 3 : 6;
+  }
+  if (isInstructionExit(instruction)) {
+    return instruction?._mergedNextAction ? Number(instruction.distance || 0) : 0;
+  }
+  return Number(instruction?.distance || 0);
+}
+
+function instructionWalkingDistanceValue(instruction) {
+  if (isInstructionEnter(instruction)) return 0;
+  return instructionDisplayDistanceValue(instruction);
+}
+
+function invalidValidation(reason, metadata) {
+  return {
+    valid: false,
+    reason,
+    ...metadata
+  };
+}
+
+export function validateNavigationInstructionsAgainstPath(instructions, options = {}) {
+  const source = Array.isArray(instructions) ? instructions : [];
+  const sourceInstructions = Array.isArray(options.sourceInstructions)
+    ? options.sourceInstructions
+    : source;
+  const pathCoordinates = Array.isArray(options.pathCoordinates) ? options.pathCoordinates : [];
+  const maxCoordinateDistanceMeters = options.maxCoordinateDistanceMeters ??
+    options.maxDistanceMeters ??
+    1.5;
+  const strongTurnThresholdDegrees = options.strongTurnThresholdDegrees ?? 45;
+  const routeDistance = Number.isFinite(options.routeDistance)
+    ? options.routeDistance
+    : roundRouteDistance(options.distance, pathCoordinates);
+  const displayDistance = source.reduce(
+    (sum, instruction) => sum + instructionDisplayDistanceValue(instruction),
+    0
+  );
+  const walkingDisplayDistance = source.reduce(
+    (sum, instruction) => sum + instructionWalkingDistanceValue(instruction),
+    0
+  );
+  const distanceTolerance = Math.max(routeDistance * 0.15, 5);
+  const distanceDeviation = Math.abs(walkingDisplayDistance - routeDistance);
+  const coordinateFloorIds = source.map((_, index) =>
+    getInstructionPathFloorId(source, index)
+  );
+  const coordinateMatches = source.map((instruction, index) =>
+    nearestStrictFloorPathIndex(
+      instruction?.coordinate,
+      coordinateFloorIds[index],
+      pathCoordinates,
+      maxCoordinateDistanceMeters
+    )
+  );
+  const coordinateIndices = coordinateMatches.map((match) => match.index);
+  const metadata = {
+    coordinateIndices,
+    coordinateFloorIds,
+    displayDistance,
+    walkingDisplayDistance,
+    routeDistance,
+    distanceDeviation,
+    distanceTolerance,
+    maxCoordinateDistanceMeters
+  };
+
+  if (pathCoordinates.length === 0 && source.length > 0) {
+    return invalidValidation('Current leg path has no coordinates.', metadata);
+  }
+
+  const unmatchedIndex = coordinateIndices.findIndex((index) => index < 0);
+  if (unmatchedIndex >= 0) {
+    const matchDistance = coordinateMatches[unmatchedIndex].distance;
+    const distanceText = Number.isFinite(matchDistance)
+      ? `${matchDistance.toFixed(2)}m`
+      : 'an unknown distance';
+    return invalidValidation(
+      `Instruction ${unmatchedIndex} is ${distanceText} from the current leg path, beyond ${maxCoordinateDistanceMeters}m on the same floor.`,
+      metadata
+    );
+  }
+
+  for (let i = 1; i < coordinateIndices.length; i++) {
+    if (coordinateIndices[i] < coordinateIndices[i - 1]) {
+      return invalidValidation(
+        `Instruction coordinate indices must be nondecreasing within one leg (${coordinateIndices[i - 1]} to ${coordinateIndices[i]}).`,
+        metadata
+      );
+    }
+  }
+
+  const candidateStrongTurnIndices = new Set(source
+    .map((instruction, index) => {
+      const bearing = String(instruction?.action?.bearing || '').toLowerCase();
+      return actionTypeOf(instruction) === 'turn' && !bearing.includes('slight')
+        ? coordinateIndices[index]
+        : -1;
+    })
+    .filter((index) => index >= 0));
+  for (let i = 0; i < sourceInstructions.length; i++) {
+    const sourceInstruction = sourceInstructions[i];
+    if (actionTypeOf(sourceInstruction) !== 'turn') continue;
+    const bearing = String(sourceInstruction?.action?.bearing || '').toLowerCase();
+    if (bearing.includes('slight')) continue;
+
+    const currentFloorId = getInstructionPathFloorId(sourceInstructions, i);
+    const sourceMatch = nearestStrictFloorPathIndex(
+      sourceInstruction?.coordinate,
+      currentFloorId,
+      pathCoordinates,
+      maxCoordinateDistanceMeters
+    );
+    const coordinateIndex = sourceMatch.index;
+    if (coordinateIndex < 0) {
+      return invalidValidation(
+        `Original SDK strong turn ${i} is not present on the displayed path within ${maxCoordinateDistanceMeters}m on the same floor.`,
+        metadata
+      );
+    }
+
+    const previousCoordinate = pathCoordinates[coordinateIndex - 1];
+    const currentCoordinate = pathCoordinates[coordinateIndex];
+    const nextCoordinate = pathCoordinates[coordinateIndex + 1];
+    const staysOnFloor = previousCoordinate &&
+      nextCoordinate &&
+      getCoordinateFloorId(previousCoordinate) === currentFloorId &&
+      getCoordinateFloorId(currentCoordinate) === currentFloorId &&
+      getCoordinateFloorId(nextCoordinate) === currentFloorId;
+    const turnAngle = staysOnFloor
+      ? pathTurnAngle(previousCoordinate, currentCoordinate, nextCoordinate)
+      : 0;
+    if (turnAngle + Number.EPSILON < strongTurnThresholdDegrees) {
+      return invalidValidation(
+        `Original SDK strong turn ${i} is mapped to geometry below ${strongTurnThresholdDegrees} degrees on the displayed path.`,
+        metadata
+      );
+    }
+    if (!candidateStrongTurnIndices.has(coordinateIndex)) {
+      return invalidValidation(
+        `Source strong turn ${i} is missing from the simplified instruction candidate.`,
+        metadata
+      );
+    }
+  }
+
+  if (distanceDeviation > distanceTolerance + Number.EPSILON) {
+    return invalidValidation(
+      `Instruction walking distance deviates from the leg distance by ${distanceDeviation.toFixed(2)}m, beyond the ${distanceTolerance.toFixed(2)}m tolerance.`,
+      metadata
+    );
+  }
+
+  return {
+    valid: true,
+    reason: null,
+    ...metadata
+  };
+}
+
+export function prepareNavigationLeg(legDirections, options = {}) {
+  const legCoordinates = Array.isArray(legDirections?.coordinates)
+    ? legDirections.coordinates
+    : [];
+  const rawInstructions = Array.isArray(legDirections?.instructions)
+    ? legDirections.instructions
+    : [];
+  const legDistance = Number.isFinite(options.routeDistance)
+    ? options.routeDistance
+    : roundRouteDistance(legDirections?.distance, legCoordinates);
+  const simplifiedInstructions = simplifyNavigationInstructions(rawInstructions, {
+    ...options,
+    pathCoordinates: legCoordinates
+  });
+  const preparedInstructions = ensureMinimumRouteInstructions(simplifiedInstructions, {
+    ...options,
+    coordinates: legCoordinates,
+    distance: legDistance
+  });
+  const validation = validateNavigationInstructionsAgainstPath(preparedInstructions, {
+    ...options,
+    pathCoordinates: legCoordinates,
+    routeDistance: legDistance,
+    sourceInstructions: rawInstructions
+  });
+  const usedFallback = !validation.valid;
+
+  return {
+    legDirections,
+    legInstructions: usedFallback
+      ? normalizeInstructionDisplayDistances(rawInstructions)
+      : preparedInstructions,
+    legCoordinates,
+    legDistance,
+    legIndex: options.legIndex ?? 0,
+    validation,
+    usedFallback,
+    instructionSource: usedFallback ? 'sdk-raw' : 'simplified',
+    fallbackReason: usedFallback ? validation.reason : null
+  };
+}
+
+function coordinatesAreSameActualPoint(first, second) {
+  if (!first || !second) return false;
+  const firstFloorId = getCoordinateFloorId(first);
+  const secondFloorId = getCoordinateFloorId(second);
+  const firstLatitude = first.latitude ?? first.lat;
+  const firstLongitude = first.longitude ?? first.lng;
+  const secondLatitude = second.latitude ?? second.lat;
+  const secondLongitude = second.longitude ?? second.lng;
+  return Boolean(firstFloorId) &&
+    firstFloorId === secondFloorId &&
+    firstLatitude !== undefined &&
+    firstLongitude !== undefined &&
+    secondLatitude !== undefined &&
+    secondLongitude !== undefined &&
+    firstLatitude === secondLatitude &&
+    firstLongitude === secondLongitude;
+}
+
+function stopoverLabelFor(options, legIndex, arrivalInstruction) {
+  return options.waypointLabels?.[legIndex + 1] ??
+    options.boundaryWaypointLabels?.[legIndex] ??
+    arrivalInstruction?.action?.instruction ??
+    arrivalInstruction?.instruction ??
+    'Stopover';
+}
+
+function adaptLegBoundaryInstructions(instructions, legIndex, legCount, options, boundaryCoordinate) {
+  const adapted = [];
+  let stopoverAdded = false;
+  let firstArrival = null;
+
+  for (const instruction of cloneInstructions(instructions)) {
+    const type = actionTypeOf(instruction);
+    if (legIndex > 0 && (type === 'departure' || type === 'start')) continue;
+
+    if (legIndex < legCount - 1 && isArrivalInstruction(instruction)) {
+      firstArrival ||= instruction;
+      if (stopoverAdded) continue;
+      const label = stopoverLabelFor(options, legIndex, instruction);
+      adapted.push({
+        ...instruction,
+        action: {
+          ...(instruction.action || {}),
+          type: 'stopover',
+          instruction: label
+        },
+        instruction: label,
+        coordinate: boundaryCoordinate || instruction.coordinate,
+        distance: 0,
+        originalDistance: 0
+      });
+      stopoverAdded = true;
+      continue;
+    }
+
+    adapted.push(instruction);
+  }
+
+  if (legIndex < legCount - 1 && !stopoverAdded) {
+    const label = stopoverLabelFor(options, legIndex, firstArrival);
+    adapted.push({
+      action: { type: 'stopover', instruction: label },
+      instruction: label,
+      coordinate: boundaryCoordinate,
+      distance: 0,
+      originalDistance: 0
+    });
+  }
+
+  return adapted;
+}
+
+export function aggregateNavigationLegs(preparedLegs, options = {}) {
+  const legs = Array.isArray(preparedLegs) ? preparedLegs : [];
+  const combinedCoordinates = [];
+  const combinedInstructions = [];
+  const legSpans = [];
+
+  for (let i = 0; i < legs.length; i++) {
+    const leg = legs[i];
+    const legCoordinates = Array.isArray(leg?.legCoordinates) ? leg.legCoordinates : [];
+    const duplicateBoundary = combinedCoordinates.length > 0 &&
+      legCoordinates.length > 0 &&
+      coordinatesAreSameActualPoint(
+        combinedCoordinates[combinedCoordinates.length - 1],
+        legCoordinates[0]
+      );
+    const coordinateStartIndex = legCoordinates.length === 0
+      ? combinedCoordinates.length
+      : duplicateBoundary
+        ? combinedCoordinates.length - 1
+        : combinedCoordinates.length;
+    const coordinatesToAppend = duplicateBoundary ? legCoordinates.slice(1) : legCoordinates;
+    combinedCoordinates.push(...coordinatesToAppend);
+    const coordinateEndIndex = legCoordinates.length === 0
+      ? coordinateStartIndex - 1
+      : combinedCoordinates.length - 1;
+
+    const instructionStartIndex = combinedInstructions.length;
+    const boundaryCoordinate = legCoordinates[legCoordinates.length - 1];
+    const adaptedInstructions = adaptLegBoundaryInstructions(
+      leg?.legInstructions || [],
+      i,
+      legs.length,
+      options,
+      boundaryCoordinate
+    );
+    combinedInstructions.push(...adaptedInstructions);
+    const instructionEndIndex = combinedInstructions.length - 1;
+
+    legSpans.push({
+      legIndex: leg?.legIndex ?? i,
+      coordinateStartIndex,
+      coordinateEndIndex,
+      instructionStartIndex,
+      instructionEndIndex
+    });
+  }
+
+  return {
+    legDirections: legs.map((leg) => leg?.legDirections),
+    uiDirections: {
+      coordinates: combinedCoordinates,
+      instructions: combinedInstructions,
+      distance: legs.reduce((sum, leg) => sum + Number(leg?.legDistance || 0), 0)
+    },
+    legSpans
+  };
 }

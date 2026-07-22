@@ -1,0 +1,151 @@
+<style>
+  .route-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 18px;
+    margin-top: 22px;
+  }
+  .route-card {
+    cursor: pointer;
+    border: 2px solid #dbe3ee;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #fff;
+    transition: border-color .15s ease, box-shadow .15s ease;
+  }
+  .route-card:hover {
+    border-color: #6f91bd;
+    box-shadow: 0 8px 22px rgba(28, 57, 90, .12);
+  }
+  .route-card.selected {
+    border-color: #174f9e;
+    box-shadow: 0 0 0 3px rgba(23, 79, 158, .14);
+  }
+  .map-preview {
+    height: 270px;
+    background: #f3f6f9;
+    border-bottom: 1px solid #dbe3ee;
+  }
+  .route-copy {
+    padding: 16px;
+  }
+  .route-copy h3 {
+    margin: 0 0 7px;
+    font-size: 18px;
+  }
+  .route-copy p {
+    min-height: 66px;
+    margin: 0 0 12px;
+    color: #536273;
+    line-height: 1.45;
+  }
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    min-height: 25px;
+    padding: 0 9px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 700;
+    background: #e9eef5;
+    color: #445568;
+  }
+  .tag.bad { background: #fde8e7; color: #a42e29; }
+  .tag.warn { background: #fff1cf; color: #855a00; }
+  .tag.good { background: #dff3e5; color: #17643a; }
+  .recommendation {
+    margin-top: 20px;
+    padding: 15px 17px;
+    border-left: 4px solid #16734a;
+    background: #edf8f2;
+    color: #244c39;
+  }
+  @media (max-width: 920px) {
+    .route-grid { grid-template-columns: 1fr; }
+    .route-copy p { min-height: 0; }
+  }
+</style>
+
+<h2>Đường dẫn trong nhà ga nên được xử lý thế nào?</h2>
+<p class="subtitle">Cùng một điểm đi và điểm đến, nhưng ba cách tạo hình học cho kết quả và mức an toàn rất khác nhau.</p>
+
+<div class="route-grid">
+  <div class="route-card" data-choice="a-current" onclick="toggleSelect(this)">
+    <div class="map-preview">
+      <svg viewBox="0 0 420 270" width="100%" height="100%" role="img" aria-label="Đường hiện tại ngoằn ngoèo">
+        <rect width="420" height="270" fill="#f3f6f9"/>
+        <rect x="18" y="20" width="384" height="46" fill="#fff" stroke="#aeb9c5" stroke-width="2"/>
+        <rect x="18" y="202" width="384" height="48" fill="#fff" stroke="#aeb9c5" stroke-width="2"/>
+        <rect x="92" y="94" width="70" height="76" fill="#fff" stroke="#aeb9c5" stroke-width="2"/>
+        <rect x="188" y="92" width="72" height="80" fill="#fff" stroke="#aeb9c5" stroke-width="2"/>
+        <rect x="286" y="94" width="70" height="76" fill="#fff" stroke="#aeb9c5" stroke-width="2"/>
+        <path d="M42 225 L104 218 L174 214 L268 211 L344 201 L362 176 L355 150 L370 124 L355 98 L369 74 L339 55"
+              fill="none" stroke="#2088ee" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="42" cy="225" r="10" fill="#174f9e"/>
+        <circle cx="339" cy="55" r="10" fill="#e27b00"/>
+        <text x="22" y="189" font-size="12" fill="#647386">Kiosk</text>
+        <text x="315" y="42" font-size="12" fill="#647386">Gate</text>
+      </svg>
+    </div>
+    <div class="route-copy">
+      <h3>A. Giữ nguyên hiện tại</h3>
+      <p>Đường bám mạng wayfinding nhưng có nhiều node thừa, góc xiên và đổi hướng liên tục.</p>
+      <span class="tag bad">Không đạt chuẩn hiển thị</span>
+    </div>
+  </div>
+
+  <div class="route-card" data-choice="b-force-orthogonal" onclick="toggleSelect(this)">
+    <div class="map-preview">
+      <svg viewBox="0 0 420 270" width="100%" height="100%" role="img" aria-label="Đường ép vuông góc">
+        <rect width="420" height="270" fill="#f3f6f9"/>
+        <rect x="18" y="20" width="384" height="46" fill="#fff" stroke="#aeb9c5" stroke-width="2"/>
+        <rect x="18" y="202" width="384" height="48" fill="#fff" stroke="#aeb9c5" stroke-width="2"/>
+        <rect x="92" y="94" width="70" height="76" fill="#fff" stroke="#aeb9c5" stroke-width="2"/>
+        <rect x="188" y="92" width="72" height="80" fill="#ffe4e1" stroke="#d6534d" stroke-width="2"/>
+        <rect x="286" y="94" width="70" height="76" fill="#fff" stroke="#aeb9c5" stroke-width="2"/>
+        <path d="M42 225 L224 225 L224 55 L339 55"
+              fill="none" stroke="#2088ee" stroke-width="7" stroke-linecap="square" stroke-linejoin="miter"/>
+        <circle cx="42" cy="225" r="10" fill="#174f9e"/>
+        <circle cx="339" cy="55" r="10" fill="#e27b00"/>
+        <text x="190" y="131" font-size="12" font-weight="700" fill="#b13530">Cắt qua quầy</text>
+        <text x="22" y="189" font-size="12" fill="#647386">Kiosk</text>
+        <text x="315" y="42" font-size="12" fill="#647386">Gate</text>
+      </svg>
+    </div>
+    <div class="route-copy">
+      <h3>B. Ép mọi góc thành 90°</h3>
+      <p>Nhìn gọn, nhưng đường vẽ có thể cắt qua quầy, tường hoặc vùng cấm và lệch hướng dẫn thực tế.</p>
+      <span class="tag warn">Đẹp nhưng không an toàn</span>
+    </div>
+  </div>
+
+  <div class="route-card selected" data-choice="c-corridor-centerline" onclick="toggleSelect(this)">
+    <div class="map-preview">
+      <svg viewBox="0 0 420 270" width="100%" height="100%" role="img" aria-label="Đường bám tim hành lang">
+        <rect width="420" height="270" fill="#f3f6f9"/>
+        <rect x="18" y="20" width="384" height="46" fill="#fff" stroke="#aeb9c5" stroke-width="2"/>
+        <rect x="18" y="202" width="384" height="48" fill="#fff" stroke="#aeb9c5" stroke-width="2"/>
+        <rect x="92" y="94" width="70" height="76" fill="#fff" stroke="#aeb9c5" stroke-width="2"/>
+        <rect x="188" y="92" width="72" height="80" fill="#fff" stroke="#aeb9c5" stroke-width="2"/>
+        <rect x="286" y="94" width="70" height="76" fill="#fff" stroke="#aeb9c5" stroke-width="2"/>
+        <path d="M42 225 L374 225 L374 82 L339 55"
+              fill="none" stroke="#2088ee" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="42" cy="225" r="10" fill="#174f9e"/>
+        <circle cx="339" cy="55" r="10" fill="#e27b00"/>
+        <path d="M42 190 L374 190" stroke="#79b4e8" stroke-width="2" stroke-dasharray="7 6"/>
+        <text x="145" y="184" font-size="12" fill="#4877a1">Tim hành lang kiểm chứng được</text>
+        <text x="22" y="254" font-size="12" fill="#647386">Kiosk</text>
+        <text x="315" y="42" font-size="12" fill="#647386">Gate</text>
+      </svg>
+    </div>
+    <div class="route-copy">
+      <h3>C. Bám tim hành lang</h3>
+      <p>Loại node thừa, gom các đoạn gần thẳng hàng và chỉ giữ các góc rẽ cần thiết theo lối đi thật.</p>
+      <span class="tag good">Khuyến nghị cho sân bay</span>
+    </div>
+  </div>
+</div>
+
+<div class="recommendation">
+  <strong>Đề xuất:</strong> chọn C. Mục tiêu không phải ép mọi đường thành hình vuông, mà là tạo tuyến ngắn, thẳng, dễ đọc và tuyệt đối không xuyên vật cản.
+</div>

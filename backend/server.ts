@@ -47,6 +47,7 @@ import {
 } from './modelRepository';
 import { registerAuthRoutes, requireAdmin } from './auth';
 import { buildUniqueUploadName, parseImageDataUrl } from './uploads';
+import { registerKioskRoutes } from './kiosks/kioskRoutes';
 
 const app = express();
 
@@ -60,7 +61,7 @@ if (fs.existsSync(appSettingsPath)) {
     } catch (e) { }
 }
 
-const PORT = appSettings.AppSettings?.Port || process.env.PORT || 3002;
+const PORT = process.env.PORT || appSettings.AppSettings?.Port || 3002;
 
 // Determine root and dist directories
 const ROOT_DIR = __filename.endsWith('.js')
@@ -83,7 +84,7 @@ app.use(cors({
         return callback(null, allowedOrigins.includes(origin));
     },
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use('/icon-category', express.static(path.join(ROOT_DIR, 'icon-category')));
@@ -101,6 +102,7 @@ if (fs.existsSync(FRONTEND_DIST)) {
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 registerAuthRoutes(app);
+registerKioskRoutes(app, { requireAdmin });
 
 
 
@@ -259,6 +261,8 @@ app.post('/api/models/sync-overview-floor', requireAdmin, async (req, res) => {
 });
 
 app.get('/api/flights', async (req, res) => {
+    const startedAt = Date.now();
+
     try {
         const date = typeof req.query.date === 'string' ? req.query.date : null;
         const arrDep = typeof req.query.arrDep === 'string' ? req.query.arrDep.trim().toUpperCase() : null;
@@ -274,10 +278,22 @@ app.get('/api/flights', async (req, res) => {
             search
         });
 
+        console.info('[FlightData] List request completed:', {
+            durationMs: Date.now() - startedAt,
+            flightCount: flights.length,
+            date,
+            arrDep
+        });
         res.json(flights);
     } catch (err: any) {
-        console.error('Flight list error:', err);
-        res.status(500).json({ error: err.message || 'Failed to fetch flights' });
+        console.error('[FlightData] List request failed:', {
+            durationMs: Date.now() - startedAt,
+            error: err
+        });
+        res.status(503).json({
+            code: 'FLIGHT_DATA_UNAVAILABLE',
+            error: 'Flight data is currently unavailable'
+        });
     }
 });
 
