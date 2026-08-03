@@ -178,9 +178,9 @@ Mỗi quy trình có cùng mẫu trình bày:
 
 ## 9. Phương pháp tạo Word
 
-- Dùng script tạo DOCX bằng Microsoft Word COM để tận dụng style, field TOC, caption, cross-reference, header/footer và đánh số trang chuẩn.
+- Dùng `python-docx` để dựng nội dung và style DOCX có tính tái tạo; chèn field Word gốc cho TOC, danh mục hình, caption `SEQ`, cross-reference `REF`, header/footer và đánh số trang.
+- Dùng Microsoft Word COM để mở lại tài liệu, cập nhật toàn bộ field/cross-reference, repaginate, lưu DOCX và xuất PDF. Word COM là bước bắt buộc để bảo đảm các field động hiển thị đúng.
 - Script có tính tái tạo: nội dung, thứ tự hình và metadata được khai báo rõ; không phụ thuộc thao tác thủ công không ghi lại.
-- Sau khi tạo DOCX, mở lại bằng Word, cập nhật toàn bộ field và xuất PDF.
 - Dùng LibreOffice/PDF renderer làm kiểm tra bổ sung khi cần.
 
 ## 10. Tiêu chí nghiệm thu
@@ -188,7 +188,7 @@ Mỗi quy trình có cùng mẫu trình bày:
 Tài liệu chỉ được coi là hoàn tất khi:
 
 1. Có đủ bốn nhóm độc giả và mọi nhóm tính năng trong mục 3.
-2. Các quy trình chính gồm: tìm kiếm; duyệt danh mục; xem chi tiết địa điểm; tạo tuyến; đọc và mô phỏng tuyến; tra cứu chuyến bay; đổi tầng/ngôn ngữ/theme/độ sáng; camera; mobile/tablet; sử dụng kiosk; đăng nhập/logout; thông tin khu vực; phân loại; màu khu vực; model 3D; cấu hình kiosk; khởi chạy dịch vụ và xử lý sự cố. Mỗi quy trình có ảnh thực tế, bước thao tác, kết quả mong đợi và lưu ý cần thiết.
+2. Các quy trình UI chính gồm: tìm kiếm; duyệt danh mục; xem chi tiết địa điểm; tạo tuyến; đọc và mô phỏng tuyến; tra cứu chuyến bay; đổi tầng/ngôn ngữ/theme/độ sáng; camera; mobile/tablet; sử dụng kiosk; đăng nhập/logout; thông tin khu vực; phân loại; màu khu vực; model 3D và cấu hình kiosk. Mỗi quy trình UI có ảnh thực tế, bước thao tác, kết quả mong đợi và lưu ý cần thiết. Quy trình kỹ thuật khởi chạy dịch vụ và xử lý sự cố được phép dùng code block, bảng quyết định và đầu ra lệnh đã xác minh thay cho ảnh nếu cách đó rõ hơn.
 3. Mỗi vùng được chú thích trên ảnh có cả khung chữ nhật đỏ và huy hiệu số; phần giải thích dưới hình có mục số tương ứng.
 4. Mục lục, danh mục hình, caption, header, footer và số trang hiển thị đúng sau khi cập nhật field.
 5. DOCX mở được bằng Microsoft Word mà không báo sửa chữa file.
