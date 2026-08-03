@@ -20,6 +20,7 @@ Thumbs.db
 
 # IDE
 .agent/
+.worktrees/
 .vscode/
 .idea/
 .vs/
