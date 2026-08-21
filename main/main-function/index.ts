@@ -50,6 +50,7 @@ import {
 import { selectNonIntersectingStopoverRoute } from "../../src/navigation/routeGeometryQuality.js";
 import { rankWayfindingSearchResults } from "../../src/navigation/wayfindingSearchRules.js";
 import { getCategoryAreaListStyle } from "../../src/ui/categoryDropdownLayout.js";
+import { bindMobileFlightFilterAccordion } from "../../src/ui/mobileFlightFilterAccordion.mjs";
 import { getModelStreamingZoomThresholds } from "../../src/performance/modelStreamingThresholds.js";
 import {
   STARTUP_LOADING_MAX_MS,
@@ -14597,15 +14598,14 @@ async function init() {
       }
     };
 
-    const setFlightFiltersExpanded = (expanded: boolean) => {
-      modalBody.classList.toggle('flight-filters-collapsed', !expanded);
-      filterToggle.setAttribute('aria-expanded', String(expanded));
-      filterToggle.classList.toggle('expanded', expanded);
-      filterChevron.classList.toggle('open', expanded);
-    };
+    const flightFilterAccordion = bindMobileFlightFilterAccordion({
+      toggle: filterToggle,
+      body: modalBody,
+      chevron: filterChevron
+    });
 
     const openModal = () => {
-      setFlightFiltersExpanded(false);
+      flightFilterAccordion.setExpanded(false);
       modal.classList.remove('hidden');
       updateTabState();
       updateDateText();
@@ -14631,9 +14631,6 @@ async function init() {
     renderStatusOptions();
 
     flightBtn.addEventListener('click', openModal);
-    filterToggle.addEventListener('click', () => {
-      setFlightFiltersExpanded(filterToggle.getAttribute('aria-expanded') !== 'true');
-    });
     closeBtn.addEventListener('click', closeModal);
     closeFooterBtn.addEventListener('click', closeModal);
     modal.addEventListener('click', (event) => {
