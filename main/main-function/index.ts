@@ -3496,6 +3496,14 @@ async function init() {
   const searchInput = document.getElementById("location-search") as HTMLInputElement;
   const searchResults = document.getElementById("search-results") as HTMLDivElement;
   const searchClearBtn = document.getElementById("search-clear-btn") as HTMLButtonElement;
+  const setAreaInfoPanelVisible = (isVisible: boolean) => {
+    const popup = document.getElementById("sidebar-info-panel") as HTMLDivElement | null;
+    if (popup) {
+      popup.style.display = isVisible ? "flex" : "none";
+      if (isVisible) popup.style.flexDirection = "column";
+    }
+    document.getElementById("main-sidebar-left")?.classList.toggle("area-info-open", isVisible);
+  };
 
   if (searchInput && searchResults && searchClearBtn) {
     // Show/hide clear button based on input
@@ -3582,7 +3590,6 @@ async function init() {
 
     const performSearch = async (query: string) => {
       const categorySection = document.getElementById("category-section");
-      const sidebarInfo = document.getElementById("sidebar-info-panel");
 
       if (!query.trim()) {
         searchResults.style.display = "none";
@@ -3593,7 +3600,7 @@ async function init() {
 
       // Hide categories while searching
       if (categorySection) categorySection.style.display = "none";
-      if (sidebarInfo) sidebarInfo.style.display = "none";
+      setAreaInfoPanelVisible(false);
 
       const lowerQuery = query.toLowerCase();
 
@@ -7477,10 +7484,9 @@ async function init() {
         statusEl.style.display = "none";
       }
 
-      const popup = document.getElementById("sidebar-info-panel");
       const categorySection = document.getElementById("category-section");
       const sidebarActions = document.querySelector(".sidebar-actions") as HTMLElement;
-      if (popup) popup.style.display = "none";
+      setAreaInfoPanelVisible(false);
       if (categorySection) categorySection.style.display = "none";
       if (sidebarActions) sidebarActions.style.display = "none";
 
@@ -7956,10 +7962,9 @@ async function init() {
             distance: directions.distance || totalDistance
           });
 
-          const popup = document.getElementById("sidebar-info-panel");
           const categorySection = document.getElementById("category-section");
           const sidebarActions = document.querySelector(".sidebar-actions") as HTMLElement;
-          if (popup) popup.style.display = "none";
+          setAreaInfoPanelVisible(false);
           if (categorySection) categorySection.style.display = "none";
           if (sidebarActions) sidebarActions.style.display = "none";
 
@@ -8230,8 +8235,7 @@ async function init() {
     } else if (!wayfindingDestination && wayfindingOrigin) {
       updateInfo(wayfindingOrigin);
     } else if (!wayfindingOrigin && !wayfindingDestination) {
-      const popupInfo = document.getElementById("sidebar-info-panel");
-      if (popupInfo) popupInfo.style.display = "none";
+      setAreaInfoPanelVisible(false);
     }
   };
 
@@ -8493,10 +8497,7 @@ async function init() {
           instructionsContainer.style.display = "none";
 
           // NẾU HIỂN THỊ EMPTY STATE THÌ ẨN PANEL INFORMATION ĐI
-          const popupInfo = document.getElementById("sidebar-info-panel");
-          if (popupInfo) {
-            popupInfo.style.display = "none";
-          }
+          setAreaInfoPanelVisible(false);
         }
       }
     }
@@ -8745,7 +8746,6 @@ async function init() {
     }
 
     if (!space) return;
-    document.getElementById("main-sidebar-left")?.classList.add("area-info-open");
     syncURL(false); // Update URL when info opens
 
     // Ẩn panel danh mục và search actions
@@ -8756,24 +8756,18 @@ async function init() {
     if (categorySection) categorySection.style.display = "none";
     if (sidebarActions) sidebarActions.style.display = "none";
 
-    const popup = document.getElementById("sidebar-info-panel") as HTMLDivElement;
     const titleElement = document.getElementById("area-title") as HTMLHeadingElement;
     const descriptionElement = document.getElementById("area-description") as HTMLParagraphElement;
     const imgElement = document.getElementById("area-image") as HTMLImageElement;
     const directionsBtn = document.getElementById("directions-btn") as HTMLButtonElement;
 
     // Show Info Panel
-    if (popup) {
-      // Hiện bảng thông tin ở bất kể tab nào (Search hay Directions)
-      popup.style.display = "flex";
-      // Ensure vertical layout as per fix
-      popup.style.flexDirection = "column";
+    setAreaInfoPanelVisible(true);
 
-      // ĐẢM BẢO KHÔNG HIỂN THỊ CÙNG LÚC VỚI EMPTY STATE CỦA ĐIỀU HƯỚNG (Hoa sen)
-      // Khi đã có thông tin cụ thể thì ẩn "Bạn cần chỉ đường?" đi
-      const emptyStateEl = document.getElementById("directions-empty-state");
-      if (emptyStateEl) emptyStateEl.style.display = "none";
-    }
+    // ĐẢM BẢO KHÔNG HIỂN THỊ CÙNG LÚC VỚI EMPTY STATE CỦA ĐIỀU HƯỚNG (Hoa sen)
+    // Khi đã có thông tin cụ thể thì ẩn "Bạn cần chỉ đường?" đi
+    const emptyStateEl = document.getElementById("directions-empty-state");
+    if (emptyStateEl) emptyStateEl.style.display = "none";
 
     // Build display name
     let displayName = TranslationManager.getName(space);
@@ -9063,14 +9057,9 @@ async function init() {
    * Hide Information Panel
    */
   hideInfo = () => {
-    const popup = document.getElementById("sidebar-info-panel") as HTMLDivElement;
     const categorySection = document.getElementById("category-section") as HTMLDivElement;
     const sidebarActions = document.querySelector(".sidebar-actions") as HTMLElement;
-    document.getElementById("main-sidebar-left")?.classList.remove("area-info-open");
-
-    if (popup) {
-      popup.style.display = "none";
-    }
+    setAreaInfoPanelVisible(false);
     // Restore Categories
     if (categorySection) {
       categorySection.style.display = "block";

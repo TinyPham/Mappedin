@@ -22,35 +22,57 @@ function getBalancedBlock(text, marker, startIndex = 0) {
   assert.fail(`Missing block end for: ${marker}`);
 }
 
-test('updateInfo marks the sidebar stacking context while area info is open', () => {
+test('area info visibility is centralized with its stacking state', () => {
+  const helperBlock = getBalancedBlock(
+    source,
+    'const setAreaInfoPanelVisible = (isVisible: boolean) =>'
+  );
   const updateInfoBlock = getBalancedBlock(source, 'updateInfo = function (space: any)');
-
-  assert.match(
-    updateInfoBlock,
-    /document\.getElementById\(["']main-sidebar-left["']\)[\s\S]*?classList\.add\(["']area-info-open["']\)/
-  );
-});
-
-test('hideInfo clears the area info stacking state', () => {
   const hideInfoBlock = getBalancedBlock(source, 'hideInfo = () =>');
+  const performSearchBlock = getBalancedBlock(source, 'const performSearch = async (query: string) =>');
+  const drawNavigationBlock = getBalancedBlock(source, 'const drawNavigation = async () =>');
+  const clearNodeBlock = getBalancedBlock(source, '(window as any).clearNode =');
+  const updateWayfindingUiBlock = getBalancedBlock(source, 'const updateWayfindingUI = () =>');
+  const executableSource = source
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^\s*\/\/.*$/gm, '');
 
   assert.match(
-    hideInfoBlock,
-    /document\.getElementById\(["']main-sidebar-left["']\)[\s\S]*?classList\.remove\(["']area-info-open["']\)/
+    helperBlock,
+    /document\.getElementById\(["']sidebar-info-panel["']\)[\s\S]*?style\.display\s*=\s*isVisible\s*\?\s*["']flex["']\s*:\s*["']none["']/
+  );
+  assert.match(
+    helperBlock,
+    /document\.getElementById\(["']main-sidebar-left["']\)[\s\S]*?classList\.toggle\(["']area-info-open["'],\s*isVisible\)/
+  );
+  assert.match(updateInfoBlock, /setAreaInfoPanelVisible\(true\)/);
+  assert.match(hideInfoBlock, /setAreaInfoPanelVisible\(false\)/);
+  assert.match(performSearchBlock, /setAreaInfoPanelVisible\(false\)/);
+  assert.equal(
+    [...drawNavigationBlock.matchAll(/setAreaInfoPanelVisible\(false\)/g)].length,
+    2,
+    'Both successful and unsuccessful route transitions must clear the area info layer'
+  );
+  assert.match(clearNodeBlock, /setAreaInfoPanelVisible\(false\)/);
+  assert.match(updateWayfindingUiBlock, /setAreaInfoPanelVisible\(false\)/);
+  assert.equal(
+    [...executableSource.matchAll(/document\.getElementById\(["']sidebar-info-panel["']\)/g)].length,
+    1,
+    'Every area info show/hide transition must go through the visibility helper'
   );
 });
 
-test('mobile area info state only raises the sidebar above bottom controls', () => {
+test('mobile area info state only raises the sidebar above every bottom control layer', () => {
   const mobileBlock = getBalancedBlock(responsiveCss, '@media (max-width: 768px)');
   const areaInfoRule = getBalancedBlock(mobileBlock, '#main-sidebar-left.area-info-open');
   const declarations = areaInfoRule.replace(/\/\*[\s\S]*?\*\//g, '').trim();
   const zIndexMatch = declarations.match(/^z-index:\s*(\d+)\s*!important;?$/);
 
   assert.ok(zIndexMatch, 'The mobile open-state rule must contain only a z-index declaration');
-  assert.ok(Number(zIndexMatch[1]) > 2000, 'Open area info must stack above the bottom controls');
+  assert.ok(Number(zIndexMatch[1]) > 6500, 'Open area info must stack above open control menus');
   assert.equal(
-    responsiveCss.slice(0, responsiveCss.indexOf('@media (max-width: 768px)')).includes('#main-sidebar-left.area-info-open'),
-    false,
-    'The area info stacking override must remain mobile-only'
+    [...responsiveCss.matchAll(/#main-sidebar-left\.area-info-open/g)].length,
+    1,
+    'The area info stacking selector must occur only in its mobile media block'
   );
 });
