@@ -14,3 +14,7 @@ export function createWayfindingRequestGeneration() {
     }
   };
 }
+
+export function shouldShowDirectionsInfoPanel(isSummaryVisible, isDirectionsTabActive) {
+  return isSummaryVisible && isDirectionsTabActive;
+}

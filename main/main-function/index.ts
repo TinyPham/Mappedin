@@ -49,7 +49,10 @@ import {
 } from "../../src/navigation/wayfindingRouteTargets.js";
 import { selectNonIntersectingStopoverRoute } from "../../src/navigation/routeGeometryQuality.js";
 import { rankWayfindingSearchResults } from "../../src/navigation/wayfindingSearchRules.js";
-import { createWayfindingRequestGeneration } from "../../src/navigation/wayfindingRequestGeneration.mjs";
+import {
+  createWayfindingRequestGeneration,
+  shouldShowDirectionsInfoPanel
+} from "../../src/navigation/wayfindingRequestGeneration.mjs";
 import { getCategoryAreaListStyle } from "../../src/ui/categoryDropdownLayout.js";
 import { bindMobileFlightFilterAccordion } from "../../src/ui/mobileFlightFilterAccordion.mjs";
 import { getModelStreamingZoomThresholds } from "../../src/performance/modelStreamingThresholds.js";
@@ -8000,7 +8003,10 @@ async function init() {
 
           if (summaryContainer) {
             summaryContainer.style.display = "block";
-            setDirectionsInfoPanelVisible(true);
+            setDirectionsInfoPanelVisible(shouldShowDirectionsInfoPanel(
+              summaryContainer.style.display === "block",
+              document.getElementById("tab-directions")?.classList.contains("active") === true
+            ));
             const mLabelShort = TranslationManager.t('minute_label_short', 'm');
             const largeTime = routeTotalSeconds < 60 ? `${routeTotalSeconds}s` : `${Math.floor(routeTotalSeconds / 60)}${mLabelShort}`;
             summaryContainer.innerHTML = `
@@ -10158,7 +10164,10 @@ async function init() {
       // Call updateWayfindingUI instead of hideInfo to let it decide whether to show lotus or info
       if (typeof updateWayfindingUI === 'function') updateWayfindingUI();
       const summaryContainer = document.getElementById("wayfinding-summary-container");
-      setDirectionsInfoPanelVisible(summaryContainer?.style.display === "block");
+      setDirectionsInfoPanelVisible(shouldShowDirectionsInfoPanel(
+        summaryContainer?.style.display === "block",
+        tabDirections?.classList.contains("active") === true
+      ));
     }
   };
 
