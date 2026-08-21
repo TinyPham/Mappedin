@@ -741,6 +741,14 @@ test('index post-aggregation filtering preserves zero-distance structural action
 
 test('index prepares each leg and clears loading UI on route failure', () => {
   const source = readFileSync(new URL('../main/main-function/index.ts', import.meta.url), 'utf8');
+  const executableSource = source
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^\s*\/\/.*$/gm, '');
+  const routeFailureStart = executableSource.indexOf('const renderRouteNotFoundState =');
+  const routeFailureEnd = executableSource.indexOf('\n    try {', routeFailureStart);
+  assert.notEqual(routeFailureStart, -1, 'Missing route failure renderer');
+  assert.notEqual(routeFailureEnd, -1, 'Missing end of route failure renderer');
+  const routeFailureBlock = executableSource.slice(routeFailureStart, routeFailureEnd);
 
   assert.match(
     source,
@@ -750,8 +758,8 @@ test('index prepares each leg and clears loading UI on route failure', () => {
   assert.match(source, /getRouteDisplayDistanceMeters\(simplifiedInstructions,/);
   assert.match(source, /const\s+renderRouteNotFoundState\s*=/);
   assert.match(source, /instructionsListEl\.innerHTML\s*=/);
-  assert.match(source, /const\s+popup\s*=\s*document\.getElementById\("sidebar-info-panel"\)/);
-  assert.match(source, /popup\.style\.display\s*=\s*"none"/);
+  assert.match(routeFailureBlock, /setAreaInfoPanelVisible\(false\)/);
+  assert.doesNotMatch(routeFailureBlock, /document\.getElementById\("sidebar-info-panel"\)/);
   assert.match(source, /min-height:\s*260px/);
   assert.match(source, /justify-content:\s*center/);
   assert.match(source, /previewBar\.style\.display\s*=\s*"none"/);
