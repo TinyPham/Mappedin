@@ -131,6 +131,10 @@
         z-index: 2000 !important;
     }
 
+    #main-sidebar-left.area-info-open {
+        z-index: 6001 !important;
+    }
+
     /* Vùng chứa nội dung Header nổi (Sử dụng Safe Area để không bị Notch che) */
     #sidebar-header {
         pointer-events: auto !important;

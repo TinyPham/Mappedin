@@ -8745,6 +8745,7 @@ async function init() {
     }
 
     if (!space) return;
+    document.getElementById("main-sidebar-left")?.classList.add("area-info-open");
     syncURL(false); // Update URL when info opens
 
     // Ẩn panel danh mục và search actions
@@ -9065,6 +9066,7 @@ async function init() {
     const popup = document.getElementById("sidebar-info-panel") as HTMLDivElement;
     const categorySection = document.getElementById("category-section") as HTMLDivElement;
     const sidebarActions = document.querySelector(".sidebar-actions") as HTMLElement;
+    document.getElementById("main-sidebar-left")?.classList.remove("area-info-open");
 
     if (popup) {
       popup.style.display = "none";
