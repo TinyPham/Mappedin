@@ -76,6 +76,11 @@ test('flight modal exposes one localized accessible toggle for both stable filte
     /<button[^>]*id="flight-filter-toggle"[^>]*type="button"[^>]*aria-expanded="false"[^>]*aria-controls="flight-primary-filters flight-status-filters"[^>]*>/
   );
   assert.match(html, /id="flight-filter-toggle"[\s\S]*?data-i18n="flight_filter_toggle"/);
+  assert.match(
+    html,
+    /<span data-i18n="flight_filter_toggle">Bộ lọc chuyến bay<\/span>/,
+    'Vietnamese default markup must remain useful when translations cannot load'
+  );
   assert.match(html, /class="flight-filter-chevron"[^>]*aria-hidden="true"/);
   assert.match(html, /<aside[^>]*id="flight-primary-filters"[^>]*class="flight-modal-sidebar"/);
   assert.match(html, /<div[^>]*id="flight-status-filters"[^>]*class="flight-results-toolbar"/);
