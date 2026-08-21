@@ -49,10 +49,6 @@ import {
 } from "../../src/navigation/wayfindingRouteTargets.js";
 import { selectNonIntersectingStopoverRoute } from "../../src/navigation/routeGeometryQuality.js";
 import { rankWayfindingSearchResults } from "../../src/navigation/wayfindingSearchRules.js";
-import {
-  createWayfindingRequestGeneration,
-  shouldShowDirectionsInfoPanel
-} from "../../src/navigation/wayfindingRequestGeneration.mjs";
 import { getCategoryAreaListStyle } from "../../src/ui/categoryDropdownLayout.js";
 import { bindMobileFlightFilterAccordion } from "../../src/ui/mobileFlightFilterAccordion.mjs";
 import { getModelStreamingZoomThresholds } from "../../src/performance/modelStreamingThresholds.js";
@@ -3518,6 +3514,14 @@ async function init() {
   };
   const setDirectionsInfoPanelVisible = (isVisible: boolean) => {
     document.getElementById("main-sidebar-left")?.classList.toggle("directions-info-open", isVisible);
+  };
+  const syncDirectionsInfoPanelVisibility = () => {
+    const summaryContainer = document.getElementById("wayfinding-summary-container");
+    const directionsTab = document.getElementById("tab-directions");
+    setDirectionsInfoPanelVisible(
+      summaryContainer?.style.display === "block" &&
+      directionsTab?.classList.contains("active") === true
+    );
   };
 
   if (searchInput && searchResults && searchClearBtn) {
@@ -7087,7 +7091,6 @@ async function init() {
   let isSelectingDestination: boolean = false;
   let currentNavigation: any = null;
   let currentSelectedStepIndex: number = -1; // Bước đang được chọn
-  const wayfindingRequestGeneration = createWayfindingRequestGeneration();
 
   let kioskPickMode: 'object' | 'coordinate' | null = null;
   let kioskPreviewSnapshot: {
@@ -7332,8 +7335,6 @@ async function init() {
    * Clear navigation path và markers
    */
   const clearNavigation = () => {
-    setDirectionsInfoPanelVisible(false);
-    wayfindingRequestGeneration.invalidate();
     try {
       // Xóa highlighted path section
       if (mapView.Navigation && typeof (mapView.Navigation as any).clearAllHighlightedPathSections === 'function') {
@@ -7360,6 +7361,7 @@ async function init() {
       if (summaryContainer) {
         summaryContainer.style.display = "none";
       }
+      syncDirectionsInfoPanelVisibility();
       const previewBar = document.getElementById("route-preview-bar");
       if (previewBar) {
         previewBar.style.display = "none";
@@ -7489,12 +7491,7 @@ async function init() {
     if (!wayfindingOrigin || !wayfindingDestination) {
       return;
     }
-    clearNavigation();
-    const requestGeneration = wayfindingRequestGeneration.capture();
-    const isCurrentWayfindingRequest = () => wayfindingRequestGeneration.isCurrent(requestGeneration);
     const renderRouteNotFoundState = (messageKey: string = 'not_found', fallback: string = "KhÃ´ng tÃ¬m tháº¥y Ä‘Æ°á»ng Ä‘i") => {
-      if (!isCurrentWayfindingRequest()) return;
-      setDirectionsInfoPanelVisible(false);
       (window as any).isNavigationActive = false;
       wayfindingDirections = null;
       currentNavigation = null;
@@ -7523,6 +7520,7 @@ async function init() {
 
       const summaryContainer = document.getElementById("wayfinding-summary-container");
       if (summaryContainer) summaryContainer.style.display = "none";
+      syncDirectionsInfoPanelVisibility();
 
       const previewBar = document.getElementById("route-preview-bar");
       if (previewBar) {
@@ -7533,6 +7531,7 @@ async function init() {
     };
 
     try {
+      clearNavigation();
       (window as any).isNavigationActive = false;
       wayfindingDirections = null;
 
@@ -7562,7 +7561,6 @@ async function init() {
 
       // ⏱️ Đợi 50ms để trình duyệt kịp vẽ giao diện Loading trước khi bắt đầu tính toán
       await new Promise(r => setTimeout(r, 50));
-      if (!isCurrentWayfindingRequest()) return;
 
       // Helper: Lấy tọa độ anchor của một object (Internal to drawNavigation)
       const getObjAnchor = (obj: any): any => {
@@ -7649,7 +7647,6 @@ async function init() {
           isUsableDirections,
           requireNonIntersecting: false
         });
-        if (!isCurrentWayfindingRequest()) return;
 
         if (!selectedRoute) {
           throw new Error('No continuous, non-intersecting route is available for this stopover.');
@@ -7684,7 +7681,6 @@ async function init() {
           try {
             mapDebugLog('[Wayfinding] Preview route started', { legIndex: i });
             const previewDirections = await mapData.getDirections(origin, dest, primaryOptions);
-            if (!isCurrentWayfindingRequest()) return;
             mapDebugLog('[Wayfinding] Preview route completed', { legIndex: i });
             if (isUsableDirections(previewDirections)) {
               previewPrimaryRequest = {
@@ -7712,7 +7708,6 @@ async function init() {
               });
             }
           } catch { }
-          if (!isCurrentWayfindingRequest()) return;
         }
 
         const legStartedAt = performance.now();
@@ -7738,7 +7733,6 @@ async function init() {
           reusablePrimaryDirections,
           isUsableDirections
         });
-        if (!isCurrentWayfindingRequest()) return;
 
         legDirections.push(dir);
         const preparedLeg = prepareNavigationLeg(dir, {
@@ -7804,18 +7798,15 @@ async function init() {
             destinationColor: '#f59e0b',
           },
         };
-        if (!isCurrentWayfindingRequest()) return;
         await drawThenCommitNavigation({
           draw: () => mapView.Navigation.draw(legDirections, navigationOptions),
           commit: () => {
-            if (!isCurrentWayfindingRequest()) return;
             wayfindingDirections = uiDirections;
             currentNavigation = mapView.Navigation;
             (window as any).isNavigationActive = true;
             syncURL(false);
           }
         });
-        if (!isCurrentWayfindingRequest()) return;
 
         // ============================================
         // HELPERS CHO NAVIGATION UI
@@ -8003,10 +7994,7 @@ async function init() {
 
           if (summaryContainer) {
             summaryContainer.style.display = "block";
-            setDirectionsInfoPanelVisible(shouldShowDirectionsInfoPanel(
-              summaryContainer.style.display === "block",
-              document.getElementById("tab-directions")?.classList.contains("active") === true
-            ));
+            syncDirectionsInfoPanelVisibility();
             const mLabelShort = TranslationManager.t('minute_label_short', 'm');
             const largeTime = routeTotalSeconds < 60 ? `${routeTotalSeconds}s` : `${Math.floor(routeTotalSeconds / 60)}${mLabelShort}`;
             summaryContainer.innerHTML = `
@@ -8064,17 +8052,14 @@ async function init() {
           const originCoord = wayfindingOrigin.coordinate || wayfindingOrigin.anchor;
 
           setTimeout(async () => {
-            if (!isCurrentWayfindingRequest()) return;
             let isFloorSwitched = false;
             if (originFloorId && originFloorId !== mapView.currentFloor.id) {
               await mapView.setFloor(originFloorId);
-              if (!isCurrentWayfindingRequest()) return;
               const fSelector = document.getElementById('floor-selector') as HTMLSelectElement;
               if (fSelector) fSelector.value = originFloorId;
 
               // KHÔNG CẦN CHỜ LÂU NỮA - await setFloor đã tải xong mặt bằng cơ bản
               await new Promise(r => setTimeout(r, 50));
-              if (!isCurrentWayfindingRequest()) return;
               isFloorSwitched = true;
             }
 
@@ -8535,7 +8520,9 @@ async function init() {
 
           // NẾU HIỂN THỊ EMPTY STATE THÌ ẨN PANEL INFORMATION ĐI
           setAreaInfoPanelVisible(false);
-          setDirectionsInfoPanelVisible(false);
+          const summaryContainer = document.getElementById("wayfinding-summary-container");
+          if (summaryContainer) summaryContainer.style.display = "none";
+          syncDirectionsInfoPanelVisibility();
         }
       }
     }
@@ -10110,7 +10097,6 @@ async function init() {
 
   const switchTab = (tab: 'search' | 'directions') => {
     if (tab === 'search') {
-      setDirectionsInfoPanelVisible(false);
       // Active styles
       tabSearch?.classList.add("active");
       tabSearch!.style.background = "#214ca6";
@@ -10124,6 +10110,7 @@ async function init() {
       if (directionsTabHeader) directionsTabHeader.style.display = "none";
       if (searchTabContent) searchTabContent.style.display = "block";
       if (directionsTabContent) directionsTabContent.style.display = "none";
+      syncDirectionsInfoPanelVisibility();
 
       const adminActions = document.getElementById("sidebar-admin-actions");
       if (adminActions) adminActions.style.display = "flex";
@@ -10163,11 +10150,7 @@ async function init() {
 
       // Call updateWayfindingUI instead of hideInfo to let it decide whether to show lotus or info
       if (typeof updateWayfindingUI === 'function') updateWayfindingUI();
-      const summaryContainer = document.getElementById("wayfinding-summary-container");
-      setDirectionsInfoPanelVisible(shouldShowDirectionsInfoPanel(
-        summaryContainer?.style.display === "block",
-        tabDirections?.classList.contains("active") === true
-      ));
+      syncDirectionsInfoPanelVisibility();
     }
   };
 

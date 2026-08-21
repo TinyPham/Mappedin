@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 
 const source = readFileSync(new URL('../main/main-function/index.ts', import.meta.url), 'utf8');
 const responsiveCss = readFileSync(new URL('../main/css/responsive.css', import.meta.url), 'utf8');
@@ -8,10 +8,6 @@ const executableSource = source
   .replace(/\/\*[\s\S]*?\*\//g, '')
   .replace(/(^|[^:\\])\/\/.*$/gm, '$1');
 const uncommentedResponsiveCss = responsiveCss.replace(/\/\*[\s\S]*?\*\//g, '');
-const requestGenerationModuleUrl = new URL(
-  '../src/navigation/wayfindingRequestGeneration.mjs',
-  import.meta.url
-);
 
 function getBalancedBlock(text, marker, startIndex = 0) {
   const markerIndex = text.indexOf(marker, startIndex);
@@ -31,9 +27,13 @@ function getBalancedBlock(text, marker, startIndex = 0) {
 }
 
 test('directions info visibility is centralized with its stacking state', () => {
-  const helperBlock = getBalancedBlock(
+  const setterBlock = getBalancedBlock(
     executableSource,
     'const setDirectionsInfoPanelVisible = (isVisible: boolean) =>'
+  );
+  const syncBlock = getBalancedBlock(
+    executableSource,
+    'const syncDirectionsInfoPanelVisibility = () =>'
   );
   const clearNavigationBlock = getBalancedBlock(executableSource, 'const clearNavigation = () =>');
   const drawNavigationBlock = getBalancedBlock(executableSource, 'const drawNavigation = async () =>');
@@ -85,21 +85,42 @@ test('directions info visibility is centralized with its stacking state', () => 
   );
 
   assert.match(
-    helperBlock,
+    setterBlock,
     /document\.getElementById\(["']main-sidebar-left["']\)[\s\S]*?classList\.toggle\(["']directions-info-open["'],\s*isVisible\)/
   );
   assert.match(
-    clearNavigationBlock,
-    /^\s*(?:try\s*\{\s*)?setDirectionsInfoPanelVisible\(false\)/
+    syncBlock,
+    /document\.getElementById\(["']wayfinding-summary-container["']\)/
   );
-  assert.match(renderRouteNotFoundBlock, /setDirectionsInfoPanelVisible\(false\)/);
+  assert.match(syncBlock, /document\.getElementById\(["']tab-directions["']\)/);
+  assert.match(
+    syncBlock,
+    /setDirectionsInfoPanelVisible\([\s\S]*?summaryContainer\?\.style\.display === ["']block["'][\s\S]*?&&[\s\S]*?directionsTab\?\.classList\.contains\(["']active["']\) === true[\s\S]*?\)/,
+    'The sync helper must reflect both actual summary visibility and active Directions tab state'
+  );
+  assert.equal(
+    [...executableSource.matchAll(/setDirectionsInfoPanelVisible\(/g)].length,
+    1,
+    'Only the centralized DOM sync helper may set directions stacking state'
+  );
+  assert.match(
+    clearNavigationBlock,
+    /summaryContainer\.style\.display\s*=\s*["']none["'];[\s}]*syncDirectionsInfoPanelVisibility\(\)/
+  );
+  assert.match(
+    renderRouteNotFoundBlock,
+    /summaryContainer\) summaryContainer\.style\.display\s*=\s*["']none["'];[\s\S]*?syncDirectionsInfoPanelVisibility\(\)/
+  );
   assert.match(finalEmptyStateBranch, /emptyStateEl\.style\.display\s*=\s*["']flex["']/);
   assert.match(finalEmptyStateBranch, /instructionsContainer\.style\.display\s*=\s*["']none["']/);
-  assert.match(finalEmptyStateBranch, /setDirectionsInfoPanelVisible\(false\)/);
+  assert.match(
+    finalEmptyStateBranch,
+    /summaryContainer\.style\.display\s*=\s*["']none["'][\s;]*syncDirectionsInfoPanelVisibility\(\)/
+  );
   assert.match(
     successfulSummaryBlock,
-    /summaryContainer\.style\.display\s*=\s*["']block["'][\s;]*setDirectionsInfoPanelVisible\(shouldShowDirectionsInfoPanel\([\s\S]*?\)\)/,
-    'Route success must account for the active tab before elevating the visible summary'
+    /summaryContainer\.style\.display\s*=\s*["']block["'][\s;]*syncDirectionsInfoPanelVisibility\(\)/,
+    'Route success must sync actual DOM visibility immediately after showing the summary'
   );
 });
 
@@ -121,85 +142,6 @@ test('mobile directions info state only raises the sidebar above every bottom co
   );
 });
 
-test('wayfinding request generations invalidate older route continuations', async () => {
-  assert.ok(
-    existsSync(requestGenerationModuleUrl),
-    'Wayfinding needs a small independently testable request-generation guard'
-  );
-  const { createWayfindingRequestGeneration } = await import(requestGenerationModuleUrl.href);
-  const requests = createWayfindingRequestGeneration();
-
-  const firstGeneration = requests.invalidate();
-  const firstRequest = requests.capture();
-  const secondGeneration = requests.invalidate();
-  const secondRequest = requests.capture();
-
-  assert.ok(secondGeneration > firstGeneration, 'Generations must increase monotonically');
-  assert.equal(requests.isCurrent(firstRequest), false, 'A newer request must stale the older request');
-  assert.equal(requests.isCurrent(secondRequest), true, 'The newest request must remain current');
-
-  requests.invalidate();
-  assert.equal(requests.isCurrent(secondRequest), false, 'Clear/reset must stale the pending request');
-});
-
-test('directions info visibility requires both a visible summary and the active Directions tab', async () => {
-  const lifecycle = await import(requestGenerationModuleUrl.href);
-  assert.equal(
-    typeof lifecycle.shouldShowDirectionsInfoPanel,
-    'function',
-    'The lifecycle helper must export the shared directions visibility decision'
-  );
-
-  assert.equal(
-    lifecycle.shouldShowDirectionsInfoPanel(true, false),
-    false,
-    'A pending route completion must not elevate the sidebar while Search is active'
-  );
-  assert.equal(lifecycle.shouldShowDirectionsInfoPanel(false, true), false);
-  assert.equal(lifecycle.shouldShowDirectionsInfoPanel(false, false), false);
-  assert.equal(lifecycle.shouldShowDirectionsInfoPanel(true, true), true);
-});
-
-test('drawNavigation guards asynchronous route results with the current generation', () => {
-  const clearNavigationBlock = getBalancedBlock(executableSource, 'const clearNavigation = () =>');
-  const drawNavigationBlock = getBalancedBlock(executableSource, 'const drawNavigation = async () =>');
-  const renderRouteNotFoundBlock = getBalancedBlock(
-    drawNavigationBlock,
-    'const renderRouteNotFoundState ='
-  );
-  const drawThenCommitBlock = getBalancedBlock(drawNavigationBlock, 'commit: () =>');
-  const delayedCameraBlock = getBalancedBlock(drawNavigationBlock, 'setTimeout(async () =>');
-  const previewRequestIndex = drawNavigationBlock.indexOf(
-    'const previewDirections = await mapData.getDirections'
-  );
-  const previewCatchIndex = drawNavigationBlock.indexOf('catch { }', previewRequestIndex);
-
-  assert.match(clearNavigationBlock, /wayfindingRequestGeneration\.invalidate\(\)/);
-  assert.match(
-    drawNavigationBlock,
-    /clearNavigation\(\);\s*const requestGeneration = wayfindingRequestGeneration\.capture\(\);\s*const isCurrentWayfindingRequest = \(\) => wayfindingRequestGeneration\.isCurrent\(requestGeneration\)/,
-    'drawNavigation must capture its generation after its initial clear'
-  );
-  assert.match(
-    renderRouteNotFoundBlock,
-    /^\s*if \(!isCurrentWayfindingRequest\(\)\) return;/,
-    'A stale failure must not clear newer route state'
-  );
-  assert.match(drawThenCommitBlock, /if \(!isCurrentWayfindingRequest\(\)\) return;/);
-  assert.match(delayedCameraBlock, /if \(!isCurrentWayfindingRequest\(\)\) return;/);
-  assert.notEqual(previewRequestIndex, -1, 'The optional preview request must be located');
-  assert.notEqual(previewCatchIndex, -1, 'The optional preview rejection handler must be located');
-  assert.match(
-    drawNavigationBlock.slice(previewCatchIndex + 'catch { }'.length),
-    /^\s*if \(!isCurrentWayfindingRequest\(\)\) return;/,
-    'A rejected stale preview must stop before starting another route request'
-  );
-  assert.ok(
-    [...drawNavigationBlock.matchAll(/if \(!isCurrentWayfindingRequest\(\)\) return;/g)].length >= 6,
-    'Every async route-calculation stage and delayed result mutation must reject stale work'
-  );
-});
-
 test('tab switches synchronize directions stacking with the visible route summary', () => {
   const switchTabBlock = getBalancedBlock(executableSource, "const switchTab = (tab: 'search' | 'directions') =>");
   const searchBranch = getBalancedBlock(switchTabBlock, "if (tab === 'search')");
@@ -209,10 +151,14 @@ test('tab switches synchronize directions stacking with the visible route summar
     switchTabBlock.indexOf(searchBranch) + searchBranch.length
   );
 
-  assert.match(searchBranch, /setDirectionsInfoPanelVisible\(false\)/);
+  assert.match(
+    searchBranch,
+    /tabDirections\?\.classList\.remove\(["']active["']\)[\s\S]*?directionsTabContent\) directionsTabContent\.style\.display = ["']none["'][\s\S]*?syncDirectionsInfoPanelVisibility\(\)/,
+    'Search must sync after deactivating and hiding Directions'
+  );
   assert.match(
     directionsBranch,
-    /updateWayfindingUI\(\)[\s\S]*?wayfinding-summary-container[\s\S]*?setDirectionsInfoPanelVisible\(shouldShowDirectionsInfoPanel\([\s\S]*?\)\)/,
-    'Directions may regain elevated stacking only when its route summary is displayed'
+    /tabDirections\?\.classList\.add\(["']active["']\)[\s\S]*?directionsTabContent\) directionsTabContent\.style\.display = ["']block["'][\s\S]*?updateWayfindingUI\(\)[\s;]*syncDirectionsInfoPanelVisibility\(\)/,
+    'Directions must sync after activating the tab and updating summary visibility'
   );
 });
