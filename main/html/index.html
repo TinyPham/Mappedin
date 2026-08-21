@@ -2659,7 +2659,15 @@
             <button id="btn-close-flight-info" class="close-btn" type="button" aria-label="Close">✕</button>
           </div>
           <div class="flight-modal-body">
-            <aside class="flight-modal-sidebar">
+            <button id="flight-filter-toggle" class="flight-filter-toggle" type="button" aria-expanded="false"
+              aria-controls="flight-primary-filters flight-status-filters">
+              <span data-i18n="flight_filter_toggle">Flight filters</span>
+              <svg class="flight-filter-chevron" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24"
+                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </button>
+            <aside id="flight-primary-filters" class="flight-modal-sidebar">
               <div class="flight-mode-toggle">
                 <button id="flight-tab-departure" class="flight-mode-btn active" type="button" data-mode="D"
                   data-i18n="flight_departure">Chuyến bay đi</button>
@@ -2701,7 +2709,7 @@
             </aside>
 
             <section class="flight-modal-results">
-              <div class="flight-results-toolbar">
+              <div id="flight-status-filters" class="flight-results-toolbar">
                 <div class="flight-status-filter">
                   <label for="flight-status-filter" data-i18n="flight_status_filter_label">Trạng thái</label>
                   <select id="flight-status-filter">

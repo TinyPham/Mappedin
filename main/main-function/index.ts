@@ -618,6 +618,13 @@ class TranslationManager {
 
   // Hardcoded fallbacks for critical UI keys missing from DB
   static STATIC_UI_FALLBACKS: any = {
+    'flight_filter_toggle': {
+      'vn': 'Bộ lọc chuyến bay',
+      'en': 'Flight filters',
+      'zh': '航班筛选',
+      'ja': 'フライトフィルター',
+      'ko': '항공편 필터'
+    },
     'pwa_install_title': {
       'vn': 'Trải nghiệm tốt hơn với ứng dụng',
       'en': 'Get a better experience with our app',
@@ -13991,6 +13998,9 @@ async function init() {
 
     const closeBtn = modal.querySelector('#btn-close-flight-info') as HTMLButtonElement | null;
     const closeFooterBtn = modal.querySelector('#btn-close-flight-info-footer') as HTMLButtonElement | null;
+    const filterToggle = modal.querySelector('#flight-filter-toggle') as HTMLButtonElement | null;
+    const filterChevron = modal.querySelector('.flight-filter-chevron') as SVGElement | null;
+    const modalBody = modal.querySelector('.flight-modal-body') as HTMLDivElement | null;
     const departureTab = modal.querySelector('#flight-tab-departure') as HTMLButtonElement | null;
     const arrivalTab = modal.querySelector('#flight-tab-arrival') as HTMLButtonElement | null;
     const dateInput = modal.querySelector('#flight-date-input') as HTMLInputElement | null;
@@ -14004,7 +14014,7 @@ async function init() {
     const error = modal.querySelector('#flight-list-error') as HTMLDivElement | null;
     const container = modal.querySelector('#flight-list-container') as HTMLDivElement | null;
 
-    if (!closeBtn || !closeFooterBtn || !departureTab || !arrivalTab || !dateInput || !dateText || !dateDisplay || !searchInput || !statusFilter || !summary || !loading || !empty || !error || !container) {
+    if (!closeBtn || !closeFooterBtn || !filterToggle || !filterChevron || !modalBody || !departureTab || !arrivalTab || !dateInput || !dateText || !dateDisplay || !searchInput || !statusFilter || !summary || !loading || !empty || !error || !container) {
       return;
     }
 
@@ -14587,7 +14597,15 @@ async function init() {
       }
     };
 
+    const setFlightFiltersExpanded = (expanded: boolean) => {
+      modalBody.classList.toggle('flight-filters-collapsed', !expanded);
+      filterToggle.setAttribute('aria-expanded', String(expanded));
+      filterToggle.classList.toggle('expanded', expanded);
+      filterChevron.classList.toggle('open', expanded);
+    };
+
     const openModal = () => {
+      setFlightFiltersExpanded(false);
       modal.classList.remove('hidden');
       updateTabState();
       updateDateText();
@@ -14613,6 +14631,9 @@ async function init() {
     renderStatusOptions();
 
     flightBtn.addEventListener('click', openModal);
+    filterToggle.addEventListener('click', () => {
+      setFlightFiltersExpanded(filterToggle.getAttribute('aria-expanded') !== 'true');
+    });
     closeBtn.addEventListener('click', closeModal);
     closeFooterBtn.addEventListener('click', closeModal);
     modal.addEventListener('click', (event) => {
