@@ -12121,7 +12121,7 @@ async function init() {
       loadRadius: LOAD_RADIUS,
       unloadRadius: UNLOAD_RADIUS
     } = getModelStreamingZoomThresholds(isMobile);
-    const MAX_CONCURRENT_MODELS = 200;
+    const MAX_CONCURRENT_MODELS = 300;
 
     console.log(`📡 [STREAMING] Current Zoom: ${currentZoom.toFixed(2)} (Target > ${ZOOM_LOAD_THRESHOLD})`);
 
