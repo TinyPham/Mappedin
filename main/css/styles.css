@@ -3167,6 +3167,22 @@ body.user-guide-open {
 }
 
 @media (max-width: 768px) {
+  body.user-guide-open #custom-floor-wrapper,
+  body.user-guide-open #custom-lang-wrapper {
+    pointer-events: none !important;
+  }
+
+  body.user-guide-open:not(.user-guide-controls-step) #custom-floor-wrapper,
+  body.user-guide-open:not(.user-guide-controls-step) #custom-lang-wrapper {
+    visibility: hidden !important;
+  }
+
+  body.user-guide-open.user-guide-controls-step #custom-floor-wrapper,
+  body.user-guide-open.user-guide-controls-step #custom-lang-wrapper {
+    visibility: visible !important;
+    z-index: 0 !important;
+  }
+
   .user-guide-modal {
     align-items: flex-end;
     padding: 12px;

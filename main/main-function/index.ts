@@ -2470,9 +2470,6 @@ async function init() {
   }
   const userGuideButton = document.getElementById('btn-user-guide') as HTMLButtonElement | null;
   const userGuideModal = document.getElementById('user-guide-modal') as HTMLDivElement | null;
-  if (userGuideModal && userGuideModal.parentElement !== document.body) {
-    document.body.appendChild(userGuideModal);
-  }
   const userGuidePanel = userGuideModal?.querySelector('.user-guide-panel') as HTMLDivElement | null;
   const userGuideImage = document.getElementById('user-guide-image') as HTMLImageElement | null;
   const userGuideTitle = document.getElementById('user-guide-title');
@@ -2738,6 +2735,10 @@ async function init() {
 
   const renderUserGuideStep = () => {
     const step = getActiveGuideStep();
+    document.body.classList.toggle(
+      'user-guide-controls-step',
+      Boolean(step && window.innerWidth <= 768 && step.id === 'mobile-floor-language')
+    );
     if (!step) return;
     const isMobileGuide = window.innerWidth <= 768;
 
@@ -2847,6 +2848,7 @@ async function init() {
     clearUserGuideArrowPaths();
     userGuideArrowLayer?.classList.add('hidden');
     document.body.classList.remove('user-guide-open');
+    document.body.classList.remove('user-guide-controls-step');
     guideReturnFocus?.focus?.();
     guideReturnFocus = null;
   };
