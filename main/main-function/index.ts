@@ -68,8 +68,8 @@ import {
 } from "../../src/tutorial/tutorialAutoOpen.js";
 import { getTutorialDevice } from "../../src/tutorial/tutorialDevice.js";
 import {
-  captureActiveTutorialTab,
-  restoreTutorialTabBeforeGuideRelease
+  beginTutorialTabSession,
+  closeTutorialTabSession
 } from "../../src/tutorial/tutorialTabState.js";
 import { tutorialSteps } from "../../src/tutorial/tutorialSteps.js";
 import { selectFloorsForDropdown } from "../../src/config/selectableFloors.js";
@@ -2489,8 +2489,10 @@ async function init() {
   let activeGuideSteps: TutorialStep[] = [];
   let currentGuideStepIndex = 0;
   let guideReturnFocus: HTMLElement | null = null;
-  let guideOpenedAtMobileWidth = false;
-  let guideEntryTab: 'search' | 'directions' | null = null;
+  let guideTabSession: {
+    openedAtMobileWidth: boolean;
+    entryTab: 'search' | 'directions' | null;
+  } | null = null;
 
   const getActiveGuideStep = () => activeGuideSteps[currentGuideStepIndex] || null;
 
@@ -2840,10 +2842,16 @@ async function init() {
     }
 
     const releaseGuideState = () => {
-      guideOpenedAtMobileWidth = false;
-      guideEntryTab = null;
+      guideTabSession = null;
       document.body.classList.remove('user-guide-open');
       document.body.classList.remove('user-guide-controls-step');
+    };
+    const restoreDesktopSearch = () => {
+      try {
+        const searchTabEl = document.getElementById('tab-search') as HTMLElement | null;
+        const isDirectionsActive = document.getElementById('tab-directions')?.classList.contains('active');
+        if (isDirectionsActive && searchTabEl) searchTabEl.click();
+      } catch (e) { }
     };
 
     userGuideModal?.classList.add('hidden');
@@ -2852,33 +2860,20 @@ async function init() {
     clearUserGuideArrowPaths();
     userGuideArrowLayer?.classList.add('hidden');
 
-    if (guideOpenedAtMobileWidth) {
-      restoreTutorialTabBeforeGuideRelease(document, guideEntryTab, releaseGuideState);
-    } else if (window.innerWidth > 768) {
-      // Restore search tab if directions tab was activated during the guide
-      try {
-        const searchTabEl = document.getElementById('tab-search') as HTMLElement | null;
-        const isDirectionsActive = document.getElementById('tab-directions')?.classList.contains('active');
-        if (isDirectionsActive && searchTabEl) searchTabEl.click();
-      } catch (e) { }
-      releaseGuideState();
-    } else {
-      releaseGuideState();
-    }
+    closeTutorialTabSession(document, guideTabSession, releaseGuideState, restoreDesktopSearch);
     guideReturnFocus?.focus?.();
     guideReturnFocus = null;
   };
 
   const openUserGuide = () => {
-    if (!userGuideModal) return;
+    if (!userGuideModal || !userGuideModal.classList.contains('hidden')) return;
 
     const device = getTutorialDevice();
     const stepKey = device === 'mobile' ? 'mobile' : 'desktop';
     activeGuideSteps = ((tutorialSteps as any)[stepKey] || []) as TutorialStep[];
     if (activeGuideSteps.length === 0) return;
 
-    guideOpenedAtMobileWidth = window.innerWidth <= 768;
-    guideEntryTab = guideOpenedAtMobileWidth ? captureActiveTutorialTab(document) : null;
+    guideTabSession = beginTutorialTabSession(document, window.innerWidth <= 768, guideTabSession);
     currentGuideStepIndex = 0;
     guideReturnFocus = document.activeElement as HTMLElement | null;
     userGuideModal.classList.remove('hidden');

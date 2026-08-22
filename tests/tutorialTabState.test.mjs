@@ -1,7 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  beginTutorialTabSession,
   captureActiveTutorialTab,
+  closeTutorialTabSession,
   restoreTutorialTabBeforeGuideRelease
 } from '../src/tutorial/tutorialTabState.js';
 
@@ -119,5 +121,110 @@ test('captures null and releases guide state without clicking a tab', () => {
   assert.equal(captured, null);
   assert.equal(fixture.search.clickCount, 0);
   assert.equal(fixture.directions.clickCount, 0);
+  assert.equal(releaseCount, 1);
+});
+
+test('duplicate begin retains the original mobile Directions entry session', () => {
+  const fixture = createTabFixture({ activeTab: 'directions' });
+  const originalSession = beginTutorialTabSession(fixture.document, true);
+
+  fixture.search.click();
+  const duplicateSession = beginTutorialTabSession(fixture.document, true, originalSession);
+
+  assert.strictEqual(duplicateSession, originalSession);
+  assert.deepEqual(duplicateSession, { openedAtMobileWidth: true, entryTab: 'directions' });
+});
+
+test('desktop session keeps desktop close behavior after a resize to mobile', () => {
+  const fixture = createTabFixture({ activeTab: 'directions' });
+  const session = beginTutorialTabSession(fixture.document, false);
+  let desktopRestoreCount = 0;
+  let releaseCount = 0;
+
+  const restored = closeTutorialTabSession(
+    fixture.document,
+    session,
+    () => { releaseCount += 1; },
+    () => {
+      desktopRestoreCount += 1;
+      fixture.search.click();
+    }
+  );
+
+  assert.equal(session.openedAtMobileWidth, false);
+  assert.equal(desktopRestoreCount, 1);
+  assert.equal(fixture.search.classList.contains('active'), true);
+  assert.equal(releaseCount, 1);
+  assert.equal(restored, true);
+});
+
+test('mobile session restores its entry tab after a resize to desktop', () => {
+  const fixture = createTabFixture({ activeTab: 'directions', routeSummaryVisible: true });
+  const session = beginTutorialTabSession(fixture.document, true);
+  let desktopRestoreCount = 0;
+  let releaseCount = 0;
+
+  fixture.search.click();
+  const restored = closeTutorialTabSession(
+    fixture.document,
+    session,
+    () => { releaseCount += 1; },
+    () => { desktopRestoreCount += 1; }
+  );
+
+  assert.equal(session.openedAtMobileWidth, true);
+  assert.equal(desktopRestoreCount, 0);
+  assert.equal(fixture.directions.classList.contains('active'), true);
+  assert.equal(fixture.directionsClickObservedGuideOpen, true);
+  assert.equal(releaseCount, 1);
+  assert.equal(restored, true);
+});
+
+test('closing without a session releases exactly once without restoring a tab', () => {
+  const fixture = createTabFixture({ activeTab: 'directions' });
+  let desktopRestoreCount = 0;
+  let releaseCount = 0;
+
+  const restored = closeTutorialTabSession(
+    fixture.document,
+    null,
+    () => { releaseCount += 1; },
+    () => { desktopRestoreCount += 1; }
+  );
+
+  assert.equal(restored, false);
+  assert.equal(desktopRestoreCount, 0);
+  assert.equal(fixture.directions.clickCount, 0);
+  assert.equal(releaseCount, 1);
+});
+
+test('a later mobile session captures fresh tab state after the prior session closes', () => {
+  const fixture = createTabFixture({ activeTab: 'directions' });
+  const firstSession = beginTutorialTabSession(fixture.document, true);
+  closeTutorialTabSession(fixture.document, firstSession, () => {}, () => {});
+
+  fixture.search.click();
+  const secondSession = beginTutorialTabSession(fixture.document, true);
+
+  assert.notStrictEqual(secondSession, firstSession);
+  assert.equal(firstSession.entryTab, 'directions');
+  assert.equal(secondSession.entryTab, 'search');
+});
+
+test('mobile tab click failure returns false and still releases exactly once', () => {
+  const fixture = createTabFixture({ activeTab: 'directions' });
+  const session = beginTutorialTabSession(fixture.document, true);
+  let releaseCount = 0;
+  fixture.search.click();
+  fixture.directions.click = () => { throw new Error('tab click failed'); };
+
+  const restored = closeTutorialTabSession(
+    fixture.document,
+    session,
+    () => { releaseCount += 1; },
+    () => assert.fail('Mobile session must not use desktop restoration')
+  );
+
+  assert.equal(restored, false);
   assert.equal(releaseCount, 1);
 });
