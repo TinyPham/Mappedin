@@ -2,33 +2,44 @@
 
 ## Goal
 
-On mobile screens, the user-guide modal must always render above the fixed floor and language controls, including when a directions result is active. The controls remain available underneath the guide so the tutorial step that introduces them can still highlight their positions.
+On mobile screens, the floor and language controls must never appear over the user-guide panel. The guide must remain visible after it opens, including when a directions result was active immediately before opening it.
 
-## Root Cause
+## Confirmed Failure
 
-The user-guide modal currently lives inside `#main-content`, alongside several fixed map controls. Mobile floor and language controls use their own high stacking layers, and other active panels can raise neighboring stacking contexts. This makes the guide's effective stacking dependent on its ancestor context instead of its own `z-index` alone.
+Moving `#user-guide-modal` from `#main-content` to `document.body` made the first tutorial step switch the app back to Search, but the guide modal itself disappeared in the real mobile layout. The root-level portal is therefore removed.
+
+The controls also remain visually exposed at the bottom because the mobile guide uses a transparent overlay and a panel with bottom spacing. A z-index-only assertion is insufficient to prevent that visual leak.
 
 ## Design
 
-During initialization, move `#user-guide-modal` to be a direct child of `document.body` when it is not already there. This creates one stable root-level overlay layer and lets the modal's existing `z-index: 9000` consistently outrank the floor/language controls and active sidebar layers.
+Keep `#user-guide-modal` in its original `#main-content` DOM position.
 
-The move is idempotent and does not recreate the modal, replace event targets, or change its visual layout. Existing element references, event listeners, focus behavior, tutorial step navigation, and highlight target selectors continue to work because the same DOM node is retained.
+Use the existing `body.user-guide-open` lifecycle plus one step-specific body class:
+
+- While the guide is open on ordinary steps, hide the fixed floor and language controls and disable their pointer events.
+- On the `mobile-floor-language` step, restore both controls so the tutorial can highlight them. The guide panel already uses top placement for this step, while the controls stay at the bottom beneath the modal layer.
+- Remove the step-specific class when the guide closes so no tutorial state leaks into normal map use.
+
+The controls are not recreated or moved. Directions, area-information, map control positioning, and desktop tutorial behavior remain unchanged.
 
 ## Lifecycle Contract
 
-- Opening the guide displays the root-level modal and adds `body.user-guide-open` as today.
-- Closing the guide hides the same modal and restores focus as today.
-- Floor and language controls remain in their existing DOM positions below the modal.
-- The floor/language tutorial step can still measure and highlight both controls.
-- Directions and area-information stacking states remain unchanged.
+- Opening the guide shows the existing modal inside `#main-content`.
+- Rendering a tutorial step synchronizes whether the floor/language controls are the active tutorial targets.
+- Ordinary tutorial steps conceal both controls.
+- The `mobile-floor-language` step reveals both controls underneath the guide for highlighting.
+- Closing the guide removes both `user-guide-open` and the step-specific body class.
+- A failed or empty guide open does not leave control visibility state behind.
 
 ## Testing
 
-Add a regression test that verifies:
+Add regression coverage that verifies:
 
-- Initialization appends the existing guide modal to `document.body` only when necessary.
-- The modal remains the same element rather than being cloned or recreated.
-- The root-level guide layer has a higher `z-index` than the maximum floor/language control layer and the active directions/area-information sidebar layers.
-- Existing mobile tutorial targets for floor and language remain present.
+- No code reparents `userGuideModal` to `document.body`.
+- Opening/closing the guide continues to toggle `body.user-guide-open`.
+- Step rendering toggles a dedicated floor/language-step class only for `mobile-floor-language`.
+- Mobile CSS hides and disables both controls during ordinary guide steps.
+- Mobile CSS restores both controls during the floor/language step without raising them above the modal.
+- The real tutorial data retains both floor/language target selectors.
 
-Run the targeted guide-layering test, related tutorial and mobile-layering tests, and the production build. Preserve the existing unstaged `MAX_CONCURRENT_MODELS = 300` change.
+Run the targeted regression test, related tutorial/directions/area layering tests, and the production build. Preserve the existing unstaged `MAX_CONCURRENT_MODELS = 300` change.
