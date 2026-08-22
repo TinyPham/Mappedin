@@ -2470,6 +2470,9 @@ async function init() {
   }
   const userGuideButton = document.getElementById('btn-user-guide') as HTMLButtonElement | null;
   const userGuideModal = document.getElementById('user-guide-modal') as HTMLDivElement | null;
+  if (userGuideModal && userGuideModal.parentElement !== document.body) {
+    document.body.appendChild(userGuideModal);
+  }
   const userGuidePanel = userGuideModal?.querySelector('.user-guide-panel') as HTMLDivElement | null;
   const userGuideImage = document.getElementById('user-guide-image') as HTMLImageElement | null;
   const userGuideTitle = document.getElementById('user-guide-title');
