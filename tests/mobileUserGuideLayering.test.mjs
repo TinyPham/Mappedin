@@ -194,6 +194,14 @@ test('user guide setup does not portal the modal to document.body', () => {
   );
 });
 
+test('user guide lifecycle imports the tutorial tab capture and ordered restoration helpers', () => {
+  assert.match(
+    executableSource,
+    /import\s*\{[\s\S]*?\bcaptureActiveTutorialTab\b[\s\S]*?\brestoreTutorialTabBeforeGuideRelease\b[\s\S]*?\}\s*from\s*["']\.\.\/\.\.\/src\/tutorial\/tutorialTabState\.js["']/,
+    'The guide lifecycle must use the shared tutorial tab-state helpers'
+  );
+});
+
 test('renderUserGuideStep synchronizes the mobile floor-language control state before an empty-step return', () => {
   const renderStep = getBalancedBlock(executableSource, 'const renderUserGuideStep =');
   const stepLookupIndex = renderStep.indexOf('const step = getActiveGuideStep()');
@@ -210,31 +218,60 @@ test('renderUserGuideStep synchronizes the mobile floor-language control state b
   );
 });
 
-test('closeUserGuide clears both guide body states', () => {
+test('closeUserGuide restores a mobile entry tab before releasing and clearing guide session state', () => {
   const closeGuide = getBalancedBlock(executableSource, 'const closeUserGuide =');
+  const releaseGuideState = getBalancedBlock(closeGuide, 'const releaseGuideState =');
+  assert.match(
+    closeGuide,
+    /if\s*\(\s*guideOpenedAtMobileWidth\s*\)\s*\{[\s\S]*?restoreTutorialTabBeforeGuideRelease\(\s*document\s*,\s*guideEntryTab\s*,\s*releaseGuideState\s*\)/,
+    'A guide opened on mobile must restore its entry tab through the ordered helper'
+  );
+  assert.match(releaseGuideState, /guideOpenedAtMobileWidth\s*=\s*false/);
+  assert.match(releaseGuideState, /guideEntryTab\s*=\s*null/);
   for (const className of ['user-guide-open', 'user-guide-controls-step']) {
     assert.match(
-      closeGuide,
+      releaseGuideState,
       new RegExp(`document\\.body\\.classList\\.remove\\(\\s*['"]${className}['"]\\s*\\)`),
-      `closeUserGuide must remove ${className}`
+      `The guide release callback must remove ${className}`
     );
   }
 });
 
-test('openUserGuide guards empty steps before revealing either guide state and initializes non-empty guides in order', () => {
+test('closeUserGuide retains desktop Search cleanup before releasing guide state', () => {
+  const closeGuide = getBalancedBlock(executableSource, 'const closeUserGuide =');
+  assert.match(
+    closeGuide,
+    /else\s+if\s*\(\s*window\.innerWidth\s*>\s*768\s*\)\s*\{[\s\S]*?getElementById\(\s*['"]tab-search['"]\s*\)[\s\S]*?getElementById\(\s*['"]tab-directions['"]\s*\)[\s\S]*?searchTabEl\.click\(\)[\s\S]*?releaseGuideState\(\s*\)/,
+    'Desktop close must continue returning an active Directions tab to Search before release'
+  );
+});
+
+test('openUserGuide guards empty steps then captures mobile entry state before rendering', () => {
   const openGuide = getBalancedBlock(executableSource, 'const openUserGuide =');
   const emptyStepsGuardIndex = openGuide.search(/if\s*\(\s*activeGuideSteps\.length\s*===\s*0\s*\)\s*return/);
+  const mobileSessionIndex = openGuide.search(/guideOpenedAtMobileWidth\s*=\s*window\.innerWidth\s*<=\s*768/);
+  const captureIndex = openGuide.search(/guideEntryTab\s*=\s*guideOpenedAtMobileWidth\s*\?\s*captureActiveTutorialTab\(\s*document\s*\)\s*:\s*null/);
   const revealIndex = openGuide.search(/userGuideModal\.classList\.remove\(\s*['"]hidden['"]\s*\)/);
   const openStateIndex = openGuide.search(/document\.body\.classList\.add\(\s*['"]user-guide-open['"]\s*\)/);
   const renderIndex = openGuide.search(/renderUserGuideStep\(\s*\)/);
   assert.notEqual(emptyStepsGuardIndex, -1, 'openUserGuide must guard an empty step list');
+  assert.notEqual(mobileSessionIndex, -1, 'openUserGuide must remember whether the session opened at mobile width');
+  assert.notEqual(captureIndex, -1, 'openUserGuide must capture the entry tab only for a mobile-opened session');
   assert.notEqual(revealIndex, -1, 'openUserGuide must reveal the modal for non-empty guides');
   assert.notEqual(openStateIndex, -1, 'openUserGuide must add the open body state');
   assert.notEqual(renderIndex, -1, 'openUserGuide must render the first step');
   assert.ok(
-    emptyStepsGuardIndex < revealIndex && revealIndex < openStateIndex && openStateIndex < renderIndex,
-    'The empty-step guard must precede modal/body state changes; non-empty setup must reveal, open, then render'
+    emptyStepsGuardIndex < mobileSessionIndex && mobileSessionIndex < captureIndex && captureIndex < revealIndex &&
+      revealIndex < openStateIndex && openStateIndex < renderIndex,
+    'The empty-step guard must precede mobile capture and modal state; capture must happen before the first render can switch tabs'
   );
+});
+
+test('every guide completion or dismissal path delegates to closeUserGuide', () => {
+  assert.match(executableSource, /userGuideClose\?\.addEventListener\(\s*['"]click['"]\s*,\s*\(\)\s*=>\s*closeUserGuide\(\s*false\s*\)\s*\)/);
+  assert.match(executableSource, /userGuideDone\?\.addEventListener\(\s*['"]click['"]\s*,\s*\(\)\s*=>\s*closeUserGuide\(\s*true\s*\)\s*\)/);
+  assert.match(executableSource, /if\s*\(\s*event\.target\s*===\s*userGuideModal\s*\)\s*closeUserGuide\(\s*false\s*\)/);
+  assert.match(executableSource, /if\s*\(\s*event\.key\s*===\s*['"]Escape['"]\s*\)\s*closeUserGuide\(\s*false\s*\)/);
 });
 
 test('mobile guide state disables both controls and reveals them below the modal only for the controls step', () => {

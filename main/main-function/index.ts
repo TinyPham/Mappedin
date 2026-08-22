@@ -67,6 +67,10 @@ import {
   waitForStartupCameraRotation
 } from "../../src/tutorial/tutorialAutoOpen.js";
 import { getTutorialDevice } from "../../src/tutorial/tutorialDevice.js";
+import {
+  captureActiveTutorialTab,
+  restoreTutorialTabBeforeGuideRelease
+} from "../../src/tutorial/tutorialTabState.js";
 import { tutorialSteps } from "../../src/tutorial/tutorialSteps.js";
 import { selectFloorsForDropdown } from "../../src/config/selectableFloors.js";
 
@@ -2485,6 +2489,8 @@ async function init() {
   let activeGuideSteps: TutorialStep[] = [];
   let currentGuideStepIndex = 0;
   let guideReturnFocus: HTMLElement | null = null;
+  let guideOpenedAtMobileWidth = false;
+  let guideEntryTab: 'search' | 'directions' | null = null;
 
   const getActiveGuideStep = () => activeGuideSteps[currentGuideStepIndex] || null;
 
@@ -2833,22 +2839,32 @@ async function init() {
       try { localStorage.setItem(USER_GUIDE_COMPLETED_KEY, "true"); } catch (e) { }
     }
 
-    // Restore search tab if directions tab was activated during the guide
-    if (window.innerWidth > 768) {
-      try {
-        const searchTabEl = document.getElementById('tab-search') as HTMLElement | null;
-        const isDirectionsActive = document.getElementById('tab-directions')?.classList.contains('active');
-        if (isDirectionsActive && searchTabEl) searchTabEl.click();
-      } catch (e) { }
-    }
+    const releaseGuideState = () => {
+      guideOpenedAtMobileWidth = false;
+      guideEntryTab = null;
+      document.body.classList.remove('user-guide-open');
+      document.body.classList.remove('user-guide-controls-step');
+    };
 
     userGuideModal?.classList.add('hidden');
     userGuideHighlight?.classList.add('hidden');
     if (userGuideHighlight) userGuideHighlight.innerHTML = '';
     clearUserGuideArrowPaths();
     userGuideArrowLayer?.classList.add('hidden');
-    document.body.classList.remove('user-guide-open');
-    document.body.classList.remove('user-guide-controls-step');
+
+    if (guideOpenedAtMobileWidth) {
+      restoreTutorialTabBeforeGuideRelease(document, guideEntryTab, releaseGuideState);
+    } else if (window.innerWidth > 768) {
+      // Restore search tab if directions tab was activated during the guide
+      try {
+        const searchTabEl = document.getElementById('tab-search') as HTMLElement | null;
+        const isDirectionsActive = document.getElementById('tab-directions')?.classList.contains('active');
+        if (isDirectionsActive && searchTabEl) searchTabEl.click();
+      } catch (e) { }
+      releaseGuideState();
+    } else {
+      releaseGuideState();
+    }
     guideReturnFocus?.focus?.();
     guideReturnFocus = null;
   };
@@ -2861,6 +2877,8 @@ async function init() {
     activeGuideSteps = ((tutorialSteps as any)[stepKey] || []) as TutorialStep[];
     if (activeGuideSteps.length === 0) return;
 
+    guideOpenedAtMobileWidth = window.innerWidth <= 768;
+    guideEntryTab = guideOpenedAtMobileWidth ? captureActiveTutorialTab(document) : null;
     currentGuideStepIndex = 0;
     guideReturnFocus = document.activeElement as HTMLElement | null;
     userGuideModal.classList.remove('hidden');
