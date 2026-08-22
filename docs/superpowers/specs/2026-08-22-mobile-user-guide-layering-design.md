@@ -22,25 +22,27 @@ Use the existing `body.user-guide-open` lifecycle plus one step-specific body cl
 - On the `mobile-floor-language` step, restore both controls so the tutorial can highlight them. The guide panel already uses top placement for this step, while the controls stay at the bottom beneath the modal layer.
 - Remove the step-specific class when the guide closes so no tutorial state leaks into normal map use.
 
-Treat tutorial tab switching as temporary UI state:
+Treat mobile tutorial tab switching as temporary UI state:
 
-- When a non-empty guide opens, record whether Search or Directions is active before rendering the first tutorial step.
+- When a non-empty mobile guide opens, record whether Search or Directions is active before rendering the first tutorial step.
 - Tutorial steps may continue switching tabs as required for their highlights.
-- When the guide closes through the close button, backdrop, Escape key, or Done button, restore the recorded tab before removing the guide body classes.
+- When the mobile guide closes through the close button, backdrop, Escape key, or Done button, restore the recorded tab before removing the guide body classes.
 - Clear the recorded tab after restoration so a later guide session captures fresh state.
 - If neither tab was active at open time, do not force a tab on close.
+- Preserve the existing desktop close behavior, which returns a tutorial-activated Directions tab to Search.
 
 The controls are not recreated or moved. Directions, area-information, map control positioning, and desktop tutorial behavior remain unchanged.
 
 ## Lifecycle Contract
 
 - Opening the guide shows the existing modal inside `#main-content`.
-- Opening a non-empty guide captures the active sidebar tab before the first tutorial step can switch it.
+- Opening a non-empty mobile guide captures the active sidebar tab before the first tutorial step can switch it.
 - Rendering a tutorial step synchronizes whether the floor/language controls are the active tutorial targets.
 - Ordinary tutorial steps conceal both controls.
 - The `mobile-floor-language` step reveals both controls underneath the guide for highlighting.
-- Closing the guide restores the captured sidebar tab first, then removes both `user-guide-open` and the step-specific body class.
+- Closing the mobile guide restores the captured sidebar tab first, then removes both `user-guide-open` and the step-specific body class.
 - Closing a guide opened from an active route restores Directions, which in turn resynchronizes `directions-info-open` before the floor/language controls become visible again.
+- Desktop closing retains its current Search restoration behavior.
 - An empty guide open returns before adding either guide body class and leaves the modal hidden.
 
 ## Testing
@@ -53,6 +55,8 @@ Add regression coverage that verifies:
 - Opening from Directions captures Directions before the first mobile step switches to Search.
 - Closing restores the captured tab before removing `user-guide-open`, and clears the captured value afterward.
 - Opening from Search restores Search; opening with neither tab active does not synthesize a tab selection.
+- The close button, backdrop click, Escape key, and Done button all delegate to the same restoration-aware close lifecycle.
+- A behavioral regression models a visible route summary with Directions initially active, lets the first guide step switch to Search, then closes the guide and verifies that Directions and `directions-info-open` are restored while `user-guide-open` is still present. This proves the existing Directions click handler has resynchronized route-information stacking before the floor/language controls are released.
 - The empty-step guard runs before either guide body class can be added.
 - Step rendering toggles a dedicated floor/language-step class only for `mobile-floor-language`.
 - Mobile CSS hides and disables both controls during ordinary guide steps.
