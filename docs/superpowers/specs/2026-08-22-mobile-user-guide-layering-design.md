@@ -28,7 +28,7 @@ Add a regression test that verifies:
 
 - Initialization appends the existing guide modal to `document.body` only when necessary.
 - The modal remains the same element rather than being cloned or recreated.
-- The root-level guide layer has a higher `z-index` than the maximum floor/language control layer.
+- The root-level guide layer has a higher `z-index` than the maximum floor/language control layer and the active directions/area-information sidebar layers.
 - Existing mobile tutorial targets for floor and language remain present.
 
 Run the targeted guide-layering test, related tutorial and mobile-layering tests, and the production build. Preserve the existing unstaged `MAX_CONCURRENT_MODELS = 300` change.
