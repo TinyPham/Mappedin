@@ -5,6 +5,7 @@ import ts from 'typescript';
 
 import {
   aggregateNavigationLegs,
+  collapseInitialWalkingInstructionForDisplay,
   createInstructionFormatter,
   findNearbyLandmark,
   getRouteDisplayDistanceMeters,
@@ -685,6 +686,211 @@ test('uses route distance when instruction display distance collapses to zero', 
   });
 
   assert.equal(displayDistance, 7);
+});
+
+test('collapses the initial walking instruction into departure display distance', () => {
+  const departureCoordinate = { id: 'departure-coordinate' };
+  const turnACoordinate = { id: 'turn-a-coordinate' };
+  const turnBCoordinate = { id: 'turn-b-coordinate' };
+  const turnCCoordinate = { id: 'turn-c-coordinate' };
+  const arrivalCoordinate = { id: 'arrival-coordinate' };
+  const instructions = [
+    { action: { type: 'departure' }, coordinate: departureCoordinate, distance: 5 },
+    { action: { type: 'turn', bearing: 'left' }, coordinate: turnACoordinate, distance: 7 },
+    { action: { type: 'turn', bearing: 'right' }, coordinate: turnBCoordinate, distance: 11 },
+    { action: { type: 'continue' }, coordinate: turnCCoordinate, distance: 13 },
+    { action: { type: 'arrival' }, coordinate: arrivalCoordinate, distance: 0 }
+  ];
+
+  const collapsed = collapseInitialWalkingInstructionForDisplay(instructions);
+
+  assert.deepEqual(collapsed.map((instruction) => instruction.action.type), [
+    'departure',
+    'turn',
+    'continue',
+    'arrival'
+  ]);
+  assert.equal(getInstructionDisplayDistance(collapsed[0]), 12);
+  assert.equal(collapsed[0].distance, 12);
+  assert.equal(collapsed[0]._displayDistance, 12);
+  assert.equal(collapsed[1].coordinate, turnBCoordinate);
+});
+
+test('conserves initial display, original, and timing values without mutating source instructions', () => {
+  const metadata = { source: 'sdk', tags: ['initial'] };
+  const departure = {
+    action: { type: 'departure', instruction: 'Start', extra: 'keep' },
+    coordinate: { id: 'departure' },
+    distance: 2,
+    _displayDistance: 10,
+    originalDistance: 3,
+    time: 4,
+    metadata
+  };
+  const firstTurn = {
+    action: { type: 'turn', bearing: 'left', extra: 'keep' },
+    coordinate: { id: 'first-turn' },
+    distance: 100,
+    _displayDistance: 5,
+    originalDistance: Infinity,
+    time: Number.NaN,
+    duration: 7,
+    metadata: { source: 'sdk' }
+  };
+  const laterTurn = {
+    action: { type: 'turn', bearing: 'right', extra: 'later' },
+    coordinate: { id: 'later-turn' },
+    distance: 8,
+    _displayDistance: 8,
+    originalDistance: 8,
+    time: 2,
+    duration: 2,
+    metadata: { source: 'sdk' }
+  };
+  const arrival = {
+    action: { type: 'arrival' },
+    coordinate: { id: 'arrival' },
+    distance: 0,
+    originalDistance: 0
+  };
+  const instructions = [departure, firstTurn, laterTurn, arrival];
+  const sourceSnapshot = structuredClone(instructions);
+  const effectiveTotalBefore = instructions.reduce(
+    (sum, instruction) => sum + getInstructionDisplayDistance(instruction),
+    0
+  );
+  const originalTotalBefore = instructions.reduce(
+    (sum, instruction) => sum + (Number.isFinite(instruction.originalDistance) ? instruction.originalDistance : 0),
+    0
+  );
+
+  const collapsed = collapseInitialWalkingInstructionForDisplay(instructions);
+
+  assert.equal(getInstructionDisplayDistance(collapsed[0]), 15);
+  assert.equal(collapsed[0].originalDistance, 3);
+  assert.equal(collapsed[0].time, 4);
+  assert.equal(collapsed[0].duration, 7);
+  assert.equal(collapsed.reduce(
+    (sum, instruction) => sum + getInstructionDisplayDistance(instruction),
+    0
+  ), effectiveTotalBefore);
+  assert.equal(collapsed.reduce(
+    (sum, instruction) => sum + (Number.isFinite(instruction.originalDistance) ? instruction.originalDistance : 0),
+    0
+  ), originalTotalBefore);
+  assert.equal(getInstructionDisplayDistance(collapsed[1]), 8);
+  assert.equal(collapsed[1].originalDistance, 8);
+  assert.equal(collapsed[1].time, 2);
+  assert.equal(collapsed[1].duration, 2);
+  assert.deepEqual(instructions, sourceSnapshot);
+  assert.notEqual(collapsed, instructions);
+  assert.notEqual(collapsed[0], departure);
+  assert.notEqual(collapsed[0].action, departure.action);
+  assert.equal(collapsed[0].metadata, metadata);
+});
+
+test('does not collapse absent, short, coordinate-less, or structurally unsafe initial steps', () => {
+  const departure = { action: { type: 'departure' }, coordinate: { id: 'departure' }, distance: 1 };
+  const turn = { action: { type: 'turn' }, coordinate: { id: 'turn' }, distance: 2 };
+  const arrival = { action: { type: 'arrival' }, coordinate: { id: 'arrival' }, distance: 0 };
+  const unsafeActions = [
+    { type: 'arrival' },
+    { type: 'stopover' },
+    { type: 'takeconnection' },
+    { type: 'elevator' },
+    { type: 'escalator' },
+    { type: 'stair' },
+    { type: 'turn', connection: { id: 'elevator-a', type: 'elevator' } }
+  ];
+  const cases = [
+    [],
+    [departure],
+    [departure, turn],
+    [departure, { action: { type: 'turn' }, distance: 2 }, arrival],
+    ...unsafeActions.map((action) => [departure, { action, coordinate: { id: action.type }, distance: 2 }, arrival])
+  ];
+
+  for (const instructions of cases) {
+    assert.deepEqual(collapseInitialWalkingInstructionForDisplay(instructions), instructions);
+  }
+});
+
+test('preserves later instructions and transfers the removed walking coordinate past connection and stopover', () => {
+  const departureCoordinate = { id: 'departure' };
+  const removedCoordinate = { id: 'removed-turn' };
+  const connectionCoordinate = { id: 'connection' };
+  const stopoverCoordinate = { id: 'stopover' };
+  const recipientCoordinate = { id: 'recipient-turn' };
+  const continuedCoordinate = { id: 'continued' };
+  const arrivalCoordinate = { id: 'arrival' };
+  const connection = { id: 'lift-a', type: 'elevator', metadata: { floor: 2 } };
+  const instructions = [
+    { action: { type: 'departure', arbitrary: 'departure' }, coordinate: departureCoordinate, distance: 1 },
+    { action: { type: 'turn', arbitrary: 'remove' }, coordinate: removedCoordinate, distance: 2 },
+    { action: { type: 'takeconnection', connection, arbitrary: 'connection' }, coordinate: connectionCoordinate, distance: 3, originalDistance: 30, _displayDistance: 300, time: 3, duration: 4, metadata: { index: 2 } },
+    { action: { type: 'stopover', arbitrary: 'stopover' }, coordinate: stopoverCoordinate, distance: 4, originalDistance: 40, _displayDistance: 400, time: 4, duration: 5, metadata: { index: 3 } },
+    { action: { type: 'turn', arbitrary: 'recipient' }, coordinate: recipientCoordinate, distance: 5, originalDistance: 50, _displayDistance: 500, time: 5, duration: 6, metadata: { index: 4 } },
+    { action: { type: 'continue', arbitrary: 'later-walk' }, coordinate: continuedCoordinate, distance: 6, originalDistance: 60, _displayDistance: 600, time: 6, duration: 7, metadata: { index: 5 } },
+    { action: { type: 'arrival', arbitrary: 'arrival' }, coordinate: arrivalCoordinate, distance: 0, originalDistance: 0, _displayDistance: 0, metadata: { index: 6 } }
+  ];
+  const laterSnapshot = structuredClone(instructions.slice(2));
+
+  const collapsed = collapseInitialWalkingInstructionForDisplay(instructions);
+
+  assert.equal(collapsed.length, instructions.length - 1);
+  assert.deepEqual(collapsed.slice(1).map((instruction) => instruction.action.type), [
+    'takeconnection',
+    'stopover',
+    'turn',
+    'continue',
+    'arrival'
+  ]);
+  for (let index = 0; index < laterSnapshot.length; index++) {
+    const actual = collapsed[index + 1];
+    const expected = laterSnapshot[index];
+    const { _hasCollapsedInitialWalkingStep, _collapsedInitialWalkingCoordinate, ...unchanged } = actual;
+    assert.deepEqual(unchanged, expected);
+    assert.equal(actual.coordinate, instructions[index + 2].coordinate);
+    assert.notEqual(actual, instructions[index + 2]);
+    assert.notEqual(actual.action, instructions[index + 2].action);
+  }
+  assert.equal(collapsed[3]._hasCollapsedInitialWalkingStep, true);
+  assert.equal(collapsed[3]._collapsedInitialWalkingCoordinate, removedCoordinate);
+  assert.equal(collapsed.filter((instruction) => instruction._hasCollapsedInitialWalkingStep).length, 1);
+  const recloned = collapseInitialWalkingInstructionForDisplay(collapsed);
+  assert.equal(recloned[3]._hasCollapsedInitialWalkingStep, true);
+  assert.equal(recloned[3]._collapsedInitialWalkingCoordinate, removedCoordinate);
+});
+
+test('collapses only the route-level initial walking step and omits transfer metadata without a later walking recipient', () => {
+  const instructions = [
+    { action: { type: 'departure' }, coordinate: { id: 'departure' }, distance: 1 },
+    { action: { type: 'turn' }, coordinate: { id: 'removed' }, distance: 2 },
+    { action: { type: 'turn' }, coordinate: { id: 'first-retained-turn' }, distance: 3 },
+    { action: { type: 'stopover' }, coordinate: { id: 'stopover' }, distance: 0 },
+    { action: { type: 'continue' }, coordinate: { id: 'second-leg-walk' }, distance: 4 },
+    { action: { type: 'arrival' }, coordinate: { id: 'arrival' }, distance: 0 }
+  ];
+  const noLaterWalking = [
+    { action: { type: 'departure' }, coordinate: { id: 'departure' }, distance: 1 },
+    { action: { type: 'turn' }, coordinate: { id: 'removed' }, distance: 2 },
+    { action: { type: 'arrival' }, coordinate: { id: 'arrival' }, distance: 0 }
+  ];
+
+  const collapsed = collapseInitialWalkingInstructionForDisplay(instructions);
+  const collapsedWithoutRecipient = collapseInitialWalkingInstructionForDisplay(noLaterWalking);
+
+  assert.deepEqual(collapsed.map((instruction) => instruction.action.type), [
+    'departure',
+    'turn',
+    'stopover',
+    'continue',
+    'arrival'
+  ]);
+  assert.equal(collapsed[3].coordinate.id, 'second-leg-walk');
+  assert.deepEqual(collapsedWithoutRecipient.map((instruction) => instruction.action.type), ['departure', 'arrival']);
+  assert.equal(Object.hasOwn(collapsedWithoutRecipient[0], '_hasCollapsedInitialWalkingStep'), false);
+  assert.equal(Object.hasOwn(collapsedWithoutRecipient[1], '_hasCollapsedInitialWalkingStep'), false);
 });
 
 test('index post-aggregation filtering preserves zero-distance structural actions', () => {

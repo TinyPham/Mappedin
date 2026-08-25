@@ -1,4 +1,5 @@
 const CONNECTION_ACTIONS = new Set(['enter', 'exit', 'takeconnection', 'exitconnection']);
+const INITIAL_WALKING_TYPE_EXCLUSIONS = ['connection', 'elevator', 'escalator', 'stair'];
 const FLOOR_RANK_BY_ID = new Map([
   ['m_dae8f26a40f6017f', 0],
   ['m_41a38d6d0411d397', 1],
@@ -37,6 +38,8 @@ function cloneInstructionShell(instruction) {
   copyDefinedProperty(clone, '_displayDistance', instruction._displayDistance);
   copyDefinedProperty(clone, '_mergedNextAction', cloneActionShell(instruction._mergedNextAction));
   copyDefinedProperty(clone, '_mergedNextInstruction', instruction._mergedNextInstruction);
+  copyDefinedProperty(clone, '_hasCollapsedInitialWalkingStep', instruction._hasCollapsedInitialWalkingStep);
+  copyDefinedProperty(clone, '_collapsedInitialWalkingCoordinate', instruction._collapsedInitialWalkingCoordinate);
   return clone;
 }
 
@@ -54,6 +57,13 @@ function isExitAction(type) {
 
 function isConnectionAction(type) {
   return type.includes('connection') || CONNECTION_ACTIONS.has(type);
+}
+
+function isSafeWalkingInstruction(instruction) {
+  const type = actionTypeOf(instruction);
+  return (type === 'turn' || type === 'continue') &&
+    !INITIAL_WALKING_TYPE_EXCLUSIONS.some((excludedType) => type.includes(excludedType)) &&
+    !instruction?.action?.connection;
 }
 
 function isElevatorConnection(connection) {
@@ -745,6 +755,43 @@ export function getConnectionDisplayDistance(instruction) {
 
 export function getInstructionDisplayDistance(instruction) {
   return getConnectionDisplayDistance(instruction);
+}
+
+export function collapseInitialWalkingInstructionForDisplay(instructions) {
+  const source = cloneInstructions(instructions);
+  const first = source[0];
+  const second = source[1];
+  const firstType = actionTypeOf(first);
+  const canCollapse = source.length > 2 &&
+    (firstType === 'departure' || firstType === 'start') &&
+    first?.coordinate &&
+    second?.coordinate &&
+    isSafeWalkingInstruction(second);
+
+  if (!canCollapse) return source;
+
+  const distance = getInstructionDisplayDistance(first) + getInstructionDisplayDistance(second);
+  first.distance = distance;
+  first._displayDistance = distance;
+  first.originalDistance =
+    (Number.isFinite(first.originalDistance) ? first.originalDistance : 0) +
+    (Number.isFinite(second.originalDistance) ? second.originalDistance : 0);
+  for (const field of ['time', 'duration']) {
+    const firstValue = Number.isFinite(first[field]) ? first[field] : 0;
+    const secondValue = Number.isFinite(second[field]) ? second[field] : 0;
+    if (Number.isFinite(first[field]) || Number.isFinite(second[field])) {
+      first[field] = firstValue + secondValue;
+    } else {
+      delete first[field];
+    }
+  }
+  const transferRecipient = source.slice(2).find(isSafeWalkingInstruction);
+  if (transferRecipient) {
+    transferRecipient._hasCollapsedInitialWalkingStep = true;
+    transferRecipient._collapsedInitialWalkingCoordinate = second.coordinate;
+  }
+  source.splice(1, 1);
+  return source;
 }
 
 function roundRouteDistance(distance, coordinates) {
