@@ -764,8 +764,6 @@ export function collapseInitialWalkingInstructionForDisplay(instructions) {
   const firstType = actionTypeOf(first);
   const canCollapse = source.length > 2 &&
     (firstType === 'departure' || firstType === 'start') &&
-    first?.coordinate &&
-    second?.coordinate &&
     isSafeWalkingInstruction(second);
 
   if (!canCollapse) return source;
@@ -788,7 +786,9 @@ export function collapseInitialWalkingInstructionForDisplay(instructions) {
   const transferRecipient = source.slice(2).find(isSafeWalkingInstruction);
   if (transferRecipient) {
     transferRecipient._hasCollapsedInitialWalkingStep = true;
-    transferRecipient._collapsedInitialWalkingCoordinate = second.coordinate;
+    if (second.coordinate != null) {
+      transferRecipient._collapsedInitialWalkingCoordinate = second.coordinate;
+    }
   }
   source.splice(1, 1);
   return source;

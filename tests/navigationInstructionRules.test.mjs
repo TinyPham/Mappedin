@@ -789,7 +789,31 @@ test('conserves initial display, original, and timing values without mutating so
   assert.equal(collapsed[0].metadata, metadata);
 });
 
-test('does not collapse absent, short, coordinate-less, or structurally unsafe initial steps', () => {
+test('preserves cumulative original-distance preview boundaries after the removed initial step', () => {
+  const instructions = [
+    { action: { type: 'departure' }, coordinate: { id: 'departure' }, distance: 2, originalDistance: 2 },
+    { action: { type: 'turn' }, coordinate: { id: 'removed' }, distance: 3, originalDistance: 3 },
+    { action: { type: 'turn' }, coordinate: { id: 'first-retained' }, distance: 5, originalDistance: 5 },
+    { action: { type: 'stopover' }, coordinate: { id: 'stopover' }, distance: 0, originalDistance: 0 },
+    { action: { type: 'continue' }, coordinate: { id: 'second-retained' }, distance: 7, originalDistance: 7 },
+    { action: { type: 'arrival' }, coordinate: { id: 'arrival' }, distance: 0, originalDistance: 0 }
+  ];
+  const cumulativeOriginalDistance = (steps) => steps.reduce((boundaries, instruction) => {
+    boundaries.push((boundaries.at(-1) || 0) + (Number.isFinite(instruction.originalDistance)
+      ? instruction.originalDistance
+      : 0));
+    return boundaries;
+  }, []);
+  const before = cumulativeOriginalDistance(instructions);
+
+  const collapsed = collapseInitialWalkingInstructionForDisplay(instructions);
+  const after = cumulativeOriginalDistance(collapsed);
+
+  assert.deepEqual(after, before.slice(1));
+  assert.deepEqual(after.slice(1), before.slice(2));
+});
+
+test('does not collapse absent, short, or structurally unsafe initial steps', () => {
   const departure = { action: { type: 'departure' }, coordinate: { id: 'departure' }, distance: 1 };
   const turn = { action: { type: 'turn' }, coordinate: { id: 'turn' }, distance: 2 };
   const arrival = { action: { type: 'arrival' }, coordinate: { id: 'arrival' }, distance: 0 };
@@ -806,13 +830,32 @@ test('does not collapse absent, short, coordinate-less, or structurally unsafe i
     [],
     [departure],
     [departure, turn],
-    [departure, { action: { type: 'turn' }, distance: 2 }, arrival],
     ...unsafeActions.map((action) => [departure, { action, coordinate: { id: action.type }, distance: 2 }, arrival])
   ];
 
   for (const instructions of cases) {
     assert.deepEqual(collapseInitialWalkingInstructionForDisplay(instructions), instructions);
   }
+});
+
+test('collapses coordinate-free initial walking steps and records only the transfer sentinel', () => {
+  const instructions = [
+    { action: { type: 'departure' }, distance: 1 },
+    { action: { type: 'turn' }, distance: 2 },
+    { action: { type: 'continue' }, distance: 3 },
+    { action: { type: 'arrival' }, distance: 0 }
+  ];
+
+  const collapsed = collapseInitialWalkingInstructionForDisplay(instructions);
+
+  assert.deepEqual(collapsed.map((instruction) => instruction.action.type), [
+    'departure',
+    'continue',
+    'arrival'
+  ]);
+  assert.equal(collapsed[0].distance, 3);
+  assert.equal(collapsed[1]._hasCollapsedInitialWalkingStep, true);
+  assert.equal(Object.hasOwn(collapsed[1], '_collapsedInitialWalkingCoordinate'), false);
 });
 
 test('preserves later instructions and transfers the removed walking coordinate past connection and stopover', () => {
