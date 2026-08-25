@@ -1067,6 +1067,29 @@ test('collapses only the route-level initial walking step and omits transfer met
   assert.equal(Object.hasOwn(collapsedWithoutRecipient[1], '_hasCollapsedInitialWalkingStep'), false);
 });
 
+test('index applies the initial walking collapse once after aggregation filtering for route display', () => {
+  const source = readFileSync(new URL('../main/main-function/index.ts', import.meta.url), 'utf8');
+  const aggregateFilter = /let\s+simplifiedInstructions\s*:\s*any\[\]\s*=\s*\(directions\.instructions\s*\|\|\s*\[\]\)\s*\.filter\([\s\S]*?shouldKeepAggregatedNavigationInstruction\([\s\S]*?\)\s*\);/;
+  const filterMatch = source.match(aggregateFilter);
+
+  assert.match(
+    source,
+    /import\s*\{[\s\S]*?\bcollapseInitialWalkingInstructionForDisplay\b[\s\S]*?\}\s*from\s*["']\.\.\/\.\.\/src\/navigation\/navigationInstructionRules\.js["']/
+  );
+  assert.ok(filterMatch, 'missing post-aggregation instruction filtering');
+
+  const collapseCalls = [...source.matchAll(/\bcollapseInitialWalkingInstructionForDisplay\s*\(/g)];
+  assert.equal(collapseCalls.length, 1, 'display collapse must run once for the whole route');
+
+  const collapseCall = collapseCalls[0];
+  const routeAssignment = source.indexOf('directions.instructions = simplifiedInstructions');
+  const timelineRender = source.indexOf('simplifiedInstructions.forEach((instruction: any, index: number) =>');
+
+  assert.ok(collapseCall.index > filterMatch.index + filterMatch[0].length);
+  assert.ok(collapseCall.index < routeAssignment);
+  assert.ok(collapseCall.index < timelineRender);
+});
+
 test('index post-aggregation filtering preserves zero-distance structural actions', () => {
   const source = readFileSync(new URL('../main/main-function/index.ts', import.meta.url), 'utf8');
   const start = source.indexOf('function shouldKeepAggregatedNavigationInstruction(');

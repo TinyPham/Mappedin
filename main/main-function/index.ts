@@ -34,6 +34,7 @@ import {
 } from "../../src/kiosk/kioskAdmin.js";
 import {
   aggregateNavigationLegs,
+  collapseInitialWalkingInstructionForDisplay,
   createInstructionFormatter,
   getRouteDisplayDistanceMeters,
   getInstructionDisplayDistance,
@@ -7798,6 +7799,7 @@ async function init() {
               shouldRenderNavigationInstruction
             )
           );
+        simplifiedInstructions = collapseInitialWalkingInstructionForDisplay(simplifiedInstructions);
 
         directions.instructions = simplifiedInstructions;
 
