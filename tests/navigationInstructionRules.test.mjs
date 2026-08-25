@@ -636,6 +636,93 @@ test('nearby landmark excludes route origin and destination objects', () => {
   assert.equal(formatter.format(instruction, [instruction], 0), 'Re phai gan Quay ca phe va banh ngot');
 });
 
+test('formats a collapsed continue using landmark context transferred past connection and stopover', () => {
+  const removedCoordinate = { floorId: 'floor-2', latitude: 10, longitude: 10 };
+  const retainedCoordinate = { floorId: 'floor-2', latitude: 10.01, longitude: 10 };
+  const formatter = createInstructionFormatter({
+    floors,
+    mapObjects: [
+      { name: 'Quay da chuyen', floor: { id: 'floor-2' }, anchor: removedCoordinate },
+      { name: 'Quay duong di', floor: { id: 'floor-2' }, anchor: retainedCoordinate },
+      { name: 'Quay binh thuong', floor: { id: 'floor-2' }, anchor: { floorId: 'floor-2', latitude: 10.02, longitude: 10 } }
+    ],
+    t,
+    getFloorName,
+    getName: (obj) => obj?.name
+  });
+  const instructions = [
+    { action: { type: 'departure' }, coordinate: { floorId: 'floor-2', latitude: 9.99, longitude: 10 }, distance: 1 },
+    { action: { type: 'turn', bearing: 'left' }, coordinate: removedCoordinate, distance: 2 },
+    { action: { type: 'takeconnection', connection: elevator }, coordinate: { floorId: 'floor-2', latitude: 10.001, longitude: 10 }, distance: 0 },
+    { action: { type: 'stopover' }, coordinate: { floorId: 'floor-2', latitude: 10.002, longitude: 10 }, distance: 0 },
+    { action: { type: 'continue', instruction: 'keep action' }, coordinate: retainedCoordinate, distance: 3 },
+    { action: { type: 'arrival' }, coordinate: { floorId: 'floor-2', latitude: 10.03, longitude: 10 }, distance: 0 }
+  ];
+
+  const collapsed = collapseInitialWalkingInstructionForDisplay(instructions);
+  const retained = collapsed[3];
+  const ordinaryContinue = {
+    action: { type: 'continue' },
+    coordinate: { floorId: 'floor-2', latitude: 10.02, longitude: 10 },
+    distance: 3
+  };
+
+  assert.deepEqual(retained.action, instructions[4].action);
+  assert.equal(retained.coordinate, retainedCoordinate);
+  assert.equal(retained._collapsedInitialWalkingCoordinate, removedCoordinate);
+  assert.equal(formatter.format(retained, collapsed, 3), 'Di thang gan Quay da chuyen');
+  assert.equal(formatter.format({ ...retained }, collapsed, 3), 'Di thang');
+  assert.equal(formatter.format(ordinaryContinue, [ordinaryContinue], 0), 'Di thang');
+});
+
+test('formats a coordinate-free collapsed continue from its retained coordinate without throwing', () => {
+  const retainedCoordinate = { floorId: 'floor-2', latitude: 10, longitude: 10 };
+  const formatter = createInstructionFormatter({
+    floors,
+    mapObjects: [{ name: 'Quay duong di', floor: { id: 'floor-2' }, anchor: retainedCoordinate }],
+    t,
+    getFloorName,
+    getName: (obj) => obj?.name
+  });
+  const collapsed = collapseInitialWalkingInstructionForDisplay([
+    { action: { type: 'departure' }, distance: 1 },
+    { action: { type: 'turn' }, distance: 2 },
+    { action: { type: 'continue' }, coordinate: retainedCoordinate, distance: 3 },
+    { action: { type: 'arrival' }, distance: 0 }
+  ]);
+
+  assert.equal(collapsed[1]._hasCollapsedInitialWalkingStep, true);
+  assert.equal(formatter.format(collapsed[1], collapsed, 1), 'Di thang gan Quay duong di');
+  assert.doesNotThrow(() => formatter.format({
+    action: { type: 'continue' },
+    _hasCollapsedInitialWalkingStep: true
+  }, [], 0));
+});
+
+test('turns prefer transferred landmark coordinates while retaining duplicate suppression', () => {
+  const transferredCoordinate = { floorId: 'floor-2', latitude: 10, longitude: 10 };
+  const retainedCoordinate = { floorId: 'floor-2', latitude: 10.01, longitude: 10 };
+  const formatter = createInstructionFormatter({
+    floors,
+    mapObjects: [
+      { name: 'Quay da chuyen', floor: { id: 'floor-2' }, anchor: transferredCoordinate },
+      { name: 'Quay duong di', floor: { id: 'floor-2' }, anchor: retainedCoordinate }
+    ],
+    t,
+    getFloorName,
+    getName: (obj) => obj?.name
+  });
+  const turn = {
+    action: { type: 'turn', bearing: 'right' },
+    coordinate: retainedCoordinate,
+    _hasCollapsedInitialWalkingStep: true,
+    _collapsedInitialWalkingCoordinate: transferredCoordinate
+  };
+
+  assert.equal(formatter.format(turn, [turn], 0), 'Re phai gan Quay da chuyen');
+  assert.equal(formatter.format({ ...turn, action: { type: 'turn', bearing: 'left' } }, [turn], 0), 'Re trai');
+});
+
 test('render filter removes non-arrival steps without display distance', () => {
   const turnWithoutDistance = {
     action: { type: 'turn', bearing: 'right' },

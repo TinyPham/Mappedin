@@ -645,7 +645,7 @@ export function createInstructionFormatter(options) {
   const landmarkMaxDist = options.landmarkMaxDist ?? 20;
 
   function landmarkTextFor(instruction) {
-    const coord = instruction?.coordinate;
+    const coord = instruction?._collapsedInitialWalkingCoordinate ?? instruction?.coordinate;
     const stepFloorId = getCoordinateFloorId(coord);
     const near = findNearbyLandmark(coord, stepFloorId, mapObjects, {
       maxDist: landmarkMaxDist,
@@ -725,6 +725,9 @@ export function createInstructionFormatter(options) {
     };
 
     const baseText = actionMap[actionType] || mappedinText || actionType;
+    if (actionType === 'continue' && instruction?._hasCollapsedInitialWalkingStep) {
+      return `${baseText}${landmarkTextFor(instruction)}`;
+    }
     return baseText;
   }
 
