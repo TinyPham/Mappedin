@@ -772,7 +772,11 @@ export function collapseInitialWalkingInstructionForDisplay(instructions) {
 
   if (!canCollapse) return source;
 
-  const distance = getInstructionDisplayDistance(first) + getInstructionDisplayDistance(second);
+  const firstDisplayDistance = getInstructionDisplayDistance(first);
+  const secondDisplayDistance = getInstructionDisplayDistance(second);
+  const distance =
+    (Number.isFinite(firstDisplayDistance) ? firstDisplayDistance : 0) +
+    (Number.isFinite(secondDisplayDistance) ? secondDisplayDistance : 0);
   first.distance = distance;
   first._displayDistance = distance;
   first.originalDistance =

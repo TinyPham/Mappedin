@@ -824,6 +824,37 @@ test('collapses the initial walking instruction into departure display distance'
   assert.equal(collapsed[1].coordinate, turnBCoordinate);
 });
 
+test('sanitizes non-finite effective distances while honoring display-distance precedence', () => {
+  const collapse = (departure) => collapseInitialWalkingInstructionForDisplay([
+    departure,
+    {
+      action: { type: 'turn' },
+      coordinate: { id: 'removed' },
+      distance: Infinity
+    },
+    { action: { type: 'arrival' }, coordinate: { id: 'arrival' }, distance: 0 }
+  ]);
+  const collapsed = collapse({
+    action: { type: 'departure' },
+    coordinate: { id: 'departure' },
+    distance: Infinity,
+    _displayDistance: Infinity
+  });
+  const withFiniteDisplayOverride = collapse({
+    action: { type: 'departure' },
+    coordinate: { id: 'departure' },
+    distance: Infinity,
+    _displayDistance: 4
+  });
+
+  assert.equal(Number.isFinite(collapsed[0].distance), true);
+  assert.equal(Number.isFinite(collapsed[0]._displayDistance), true);
+  assert.equal(collapsed[0].distance, 0);
+  assert.equal(collapsed[0]._displayDistance, 0);
+  assert.equal(withFiniteDisplayOverride[0].distance, 4);
+  assert.equal(withFiniteDisplayOverride[0]._displayDistance, 4);
+});
+
 test('conserves initial display, original, and timing values without mutating source instructions', () => {
   const metadata = { source: 'sdk', tags: ['initial'] };
   const departure = {
