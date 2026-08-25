@@ -1,5 +1,4 @@
 const CONNECTION_ACTIONS = new Set(['enter', 'exit', 'takeconnection', 'exitconnection']);
-const INITIAL_WALKING_TYPE_EXCLUSIONS = ['connection', 'elevator', 'escalator', 'stair'];
 const FLOOR_RANK_BY_ID = new Map([
   ['m_dae8f26a40f6017f', 0],
   ['m_41a38d6d0411d397', 1],
@@ -62,7 +61,6 @@ function isConnectionAction(type) {
 function isSafeWalkingInstruction(instruction) {
   const type = actionTypeOf(instruction);
   return (type === 'turn' || type === 'continue') &&
-    !INITIAL_WALKING_TYPE_EXCLUSIONS.some((excludedType) => type.includes(excludedType)) &&
     !instruction?.action?.connection;
 }
 
@@ -775,9 +773,11 @@ export function collapseInitialWalkingInstructionForDisplay(instructions) {
     (Number.isFinite(first.originalDistance) ? first.originalDistance : 0) +
     (Number.isFinite(second.originalDistance) ? second.originalDistance : 0);
   for (const field of ['time', 'duration']) {
+    const hasFirstValue = first[field] !== undefined;
+    const hasSecondValue = second[field] !== undefined;
     const firstValue = Number.isFinite(first[field]) ? first[field] : 0;
     const secondValue = Number.isFinite(second[field]) ? second[field] : 0;
-    if (Number.isFinite(first[field]) || Number.isFinite(second[field])) {
+    if (hasFirstValue || hasSecondValue) {
       first[field] = firstValue + secondValue;
     } else {
       delete first[field];

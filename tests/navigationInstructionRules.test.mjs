@@ -789,6 +789,29 @@ test('conserves initial display, original, and timing values without mutating so
   assert.equal(collapsed[0].metadata, metadata);
 });
 
+test('retains explicitly defined non-finite initial timing metadata as zero', () => {
+  const collapsed = collapseInitialWalkingInstructionForDisplay([
+    {
+      action: { type: 'departure' },
+      coordinate: { id: 'departure' },
+      distance: 1,
+      time: Number.NaN
+    },
+    {
+      action: { type: 'turn' },
+      coordinate: { id: 'removed' },
+      distance: 2,
+      duration: Infinity
+    },
+    { action: { type: 'arrival' }, coordinate: { id: 'arrival' }, distance: 0 }
+  ]);
+
+  assert.equal(Object.hasOwn(collapsed[0], 'time'), true);
+  assert.equal(Object.hasOwn(collapsed[0], 'duration'), true);
+  assert.equal(collapsed[0].time, 0);
+  assert.equal(collapsed[0].duration, 0);
+});
+
 test('preserves cumulative original-distance preview boundaries after the removed initial step', () => {
   const instructions = [
     { action: { type: 'departure' }, coordinate: { id: 'departure' }, distance: 2, originalDistance: 2 },
