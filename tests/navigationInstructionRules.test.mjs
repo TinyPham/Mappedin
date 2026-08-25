@@ -723,6 +723,27 @@ test('turns prefer transferred landmark coordinates while retaining duplicate su
   assert.equal(formatter.format({ ...turn, action: { type: 'turn', bearing: 'left' } }, [turn], 0), 'Re trai');
 });
 
+test('gates landmark text for bearing-based continues on the collapsed-step sentinel', () => {
+  const transferredCoordinate = { floorId: 'floor-2', latitude: 10, longitude: 10 };
+  const retainedCoordinate = { floorId: 'floor-2', latitude: 10.01, longitude: 10 };
+  const mapObjects = [
+    { name: 'Quay da chuyen', floor: { id: 'floor-2' }, anchor: transferredCoordinate },
+    { name: 'Quay duong di', floor: { id: 'floor-2' }, anchor: retainedCoordinate }
+  ];
+  const ordinaryFormatter = createInstructionFormatter({ floors, mapObjects, t, getFloorName, getName: (obj) => obj?.name });
+  const transferredFormatter = createInstructionFormatter({ floors, mapObjects, t, getFloorName, getName: (obj) => obj?.name });
+  const ordinaryContinue = { action: { type: 'continue', bearing: 'left' }, coordinate: retainedCoordinate };
+  const transferredContinue = {
+    action: { type: 'continue', bearing: 'right' },
+    coordinate: retainedCoordinate,
+    _hasCollapsedInitialWalkingStep: true,
+    _collapsedInitialWalkingCoordinate: transferredCoordinate
+  };
+
+  assert.equal(ordinaryFormatter.format(ordinaryContinue, [ordinaryContinue], 0), 'Re trai');
+  assert.equal(transferredFormatter.format(transferredContinue, [transferredContinue], 0), 'Re phai gan Quay da chuyen');
+});
+
 test('render filter removes non-arrival steps without display distance', () => {
   const turnWithoutDistance = {
     action: { type: 'turn', bearing: 'right' },

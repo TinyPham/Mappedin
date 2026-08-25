@@ -665,6 +665,9 @@ export function createInstructionFormatter(options) {
     const bearing = (instruction.action?.bearing || '').toLowerCase();
     const connection = instruction.action?.connection;
     const mappedinText = instruction.action?.instruction || instruction.instruction || '';
+    const landmarkText = () => actionType !== 'continue' || instruction?._hasCollapsedInitialWalkingStep
+      ? landmarkTextFor(instruction)
+      : '';
 
     if (connection) {
       const isEnter = isEnterAction(actionType);
@@ -709,11 +712,11 @@ export function createInstructionFormatter(options) {
           .replace(/Turn\s+around/gi, t('action_turn_around', 'Quay lai'))
           .replace(/Slight\s+left/gi, t('action_slight_left', 'Re trai nhe'))
           .replace(/Slight\s+right/gi, t('action_slight_right', 'Re phai nhe'));
-        return `${text}${landmarkTextFor(instruction)}`;
+        return `${text}${landmarkText()}`;
       }
-      if (bearing.includes('left')) return `${t('action_turn_left', 'Re trai')}${landmarkTextFor(instruction)}`;
-      if (bearing.includes('right')) return `${t('action_turn_right', 'Re phai')}${landmarkTextFor(instruction)}`;
-      return `${t('action_turn', 'Re')}${landmarkTextFor(instruction)}`;
+      if (bearing.includes('left')) return `${t('action_turn_left', 'Re trai')}${landmarkText()}`;
+      if (bearing.includes('right')) return `${t('action_turn_right', 'Re phai')}${landmarkText()}`;
+      return `${t('action_turn', 'Re')}${landmarkText()}`;
     }
 
     const actionMap = {
@@ -726,7 +729,7 @@ export function createInstructionFormatter(options) {
 
     const baseText = actionMap[actionType] || mappedinText || actionType;
     if (actionType === 'continue' && instruction?._hasCollapsedInitialWalkingStep) {
-      return `${baseText}${landmarkTextFor(instruction)}`;
+      return `${baseText}${landmarkText()}`;
     }
     return baseText;
   }
