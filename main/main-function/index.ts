@@ -4098,8 +4098,10 @@ async function init() {
   let mainEntranceMarker: any = null;
   // Lưu object "Main Entrance" để có thể tạo lại marker
   let mainEntranceObject: any = null;
+  const SHOW_LOCATION_MARKERS = false;
   // Lưu reference đến marker tên bản đồ
   let mapNameMarker: any = null;
+  const SHOW_MAP_NAME_MARKER = false;
 
   // Box icon fallback (emoji) - thay vì sun icon
   const boxIconFallback = "📦";
@@ -4125,6 +4127,7 @@ async function init() {
    */
   const renderObjectMarkersForCurrentFloor = () => {
     clearObjectMarkers();
+    if (!SHOW_LOCATION_MARKERS) return;
     if (!objects || objects.length === 0) return;
 
     const currentFloorId = mapView.currentFloor?.id;
@@ -4446,6 +4449,8 @@ async function init() {
    * Render connection markers cho floor hiện tại
    */
   const renderConnectionOverlaysForCurrentFloor = () => {
+    clearConnectionOverlays();
+    if (!SHOW_LOCATION_MARKERS) return;
     const currentFloorId = mapView.currentFloor?.id;
     console.log(`🔌 [CONNECTIONS] Attempting to render overlays for floor: ${currentFloorId} (Markers Visible: ${connectionMarkersVisible})`);
 
@@ -4453,7 +4458,6 @@ async function init() {
       console.log("🔌 [CONNECTIONS] Skipping render: visibility flag is false");
       return;
     }
-    clearConnectionOverlays();
     const currentZoom = getCameraZoom();
     const coordKey = (c: any) =>
       `${c?.floorId || c?.floor?.id || ""}:${c?.latitude?.toFixed?.(6) ?? c?.latitude}:${c?.longitude?.toFixed?.(6) ?? c?.longitude}`;
@@ -5341,6 +5345,7 @@ async function init() {
       try { mapView.Markers.remove(m); } catch (e) { }
     });
     currentLocationMarkers = [];
+    if (!SHOW_LOCATION_MARKERS) return;
 
     // Note: We don't clear markerIdToObject here to avoid breaking other references, 
     // but in a perfect world we should clean up stale IDs. 
@@ -5568,6 +5573,16 @@ async function init() {
 
   // Tạo marker tên bản đồ "Cảng Hàng không Quốc tế Long Thành" cho overview
   const createMapNameMarker = () => {
+    if (!SHOW_MAP_NAME_MARKER) {
+      if (mapNameMarker) {
+        try {
+          mapView.Markers.remove(mapNameMarker);
+        } catch (e) { }
+        mapNameMarker = null;
+      }
+      return;
+    }
+
     // Xóa marker cũ nếu có
     if (mapNameMarker) {
       try {
@@ -5708,6 +5723,16 @@ async function init() {
 
   // Hàm tạo lại marker "Main Entrance"
   const recreateMainEntranceMarker = () => {
+    if (!SHOW_LOCATION_MARKERS) {
+      if (mainEntranceMarker) {
+        try {
+          mapView.Markers.remove(mainEntranceMarker);
+        } catch (e) { }
+        mainEntranceMarker = null;
+      }
+      return;
+    }
+
     if (!mainEntranceObject) return;
 
     // Xóa marker cũ nếu có
@@ -5781,7 +5806,7 @@ async function init() {
           console.warn("Error removing Main Entrance marker:", e);
         }
       }
-      if (!mapNameMarker) {
+      if (SHOW_MAP_NAME_MARKER && !mapNameMarker) {
         createMapNameMarker();
         console.log("✅ Created map name marker in overview");
       }
@@ -5797,7 +5822,7 @@ async function init() {
         }
       }
       // Tạo lại "Main Entrance" nếu chưa có
-      if (!mainEntranceMarker && mainEntranceObject) {
+      if (SHOW_LOCATION_MARKERS && !mainEntranceMarker && mainEntranceObject) {
         recreateMainEntranceMarker();
         console.log("✅ Created Main Entrance marker (not in overview)");
       }
@@ -12065,11 +12090,11 @@ async function init() {
       if (typeof r === 'string') try { r = JSON.parse(r); } catch (e) { }
 
       const modelAssetMap: Record<string, any> = { "car": car, "tree_palm": tree_palm, "three_palm": tree_palm };
-      let finalUrl = modelAssetMap[m.url] || resolveUrl(m.url);
+      const finalUrl = modelAssetMap[m.url] || resolveUrl(m.url);
       if (!finalUrl) return;
 
-      // 3. CHỐNG CACHE FILE LỖI
-      const cacheBustedUrl = finalUrl.startsWith("data:") ? finalUrl : `${finalUrl}?v=${Date.now()}`;
+      // 3. Giữ URL ổn định để tái sử dụng cache khi nhiều object dùng cùng asset.
+      // Khi thay nội dung GLB, đổi tên file hoặc version trong URL nguồn.
 
       // 4. CHỐNG TRÀN BUFFER GPU: Tắt tương tác cho cây cối
       const modelName = (m.name || "").toLowerCase();
@@ -12077,7 +12102,7 @@ async function init() {
 
       console.log(`📡 [STREAMING] Loading: ${m.name || m.uuid}`);
 
-      const model = await mapView.Models.add(coord, cacheBustedUrl, {
+      const model = await mapView.Models.add(coord, finalUrl, {
         rotation: r || [0, 0, 0],
         scale: s || [1, 1, 1],
         interactive: !isDeco, // Cây cối không cần click
