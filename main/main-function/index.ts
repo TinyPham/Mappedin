@@ -54,11 +54,6 @@ import { getCategoryAreaListStyle } from "../../src/ui/categoryDropdownLayout.js
 import { bindMobileFlightFilterAccordion } from "../../src/ui/mobileFlightFilterAccordion.mjs";
 import { getModelStreamingZoomThresholds } from "../../src/performance/modelStreamingThresholds.js";
 import {
-  STARTUP_LOADING_MAX_MS,
-  getStartupGateTimeoutMs,
-  withStartupTimeout
-} from "../../src/performance/startupLoadingBudget.js";
-import {
   STARTUP_CAMERA_ROTATION_DURATION_MS,
   STARTUP_CAMERA_ZOOM_DELAY_MS,
   STARTUP_CAMERA_ZOOM_DURATION_MS,
@@ -2023,26 +2018,10 @@ async function init() {
   let simProgress = 0;
   let progressInterval: any = null;
   (window as any)._isStartupCameraAnimating = false;
-  let startupAssetsReadySettled = false;
-  let resolveStartupAssetsReady: (reason?: string) => void = () => { };
-  const startupAssetsReadyPromise = new Promise<string | undefined>((resolve) => {
-    resolveStartupAssetsReady = resolve;
-  });
-  const markStartupAssetsReady = (reason: string) => {
-    if (startupAssetsReadySettled) return;
-    startupAssetsReadySettled = true;
-    resolveStartupAssetsReady(reason);
-  };
-  const startupGatePromise = withStartupTimeout(
-    startupAssetsReadyPromise,
-    getStartupGateTimeoutMs(0),
-    'timeout'
-  ).then((reason) => {
-    if (reason === 'timeout' && !startupAssetsReadySettled) {
-      console.warn(`Startup loading budget reached ${STARTUP_LOADING_MAX_MS}ms; continuing with background streaming.`);
-      markStartupAssetsReady('timeout');
-    }
-    return reason;
+  // Readiness means the SDK view and interaction setup are complete, not that GLBs loaded.
+  let markMapReady: () => void = () => { };
+  const startupGatePromise = new Promise<void>((resolve) => {
+    markMapReady = resolve;
   });
 
   if (loadingScreen && loadingText && loadingBar) {
@@ -2065,8 +2044,8 @@ async function init() {
     }, 150);
   }
 
-  // Init Translations
-  await TranslationManager.init();
+  // Init Translations in parallel with Map core; join before data-dependent UI setup.
+  const initialDataPromise = TranslationManager.init();
   // ============================================
   // 1. KHỞI TẠO MAP DATA VÀ MAP VIEW
   // ============================================
@@ -2249,6 +2228,9 @@ async function init() {
       // preloadFloors: allFloors,
     }
   );
+
+  // The SDK can fetch and render while init-data is loading. The setup below needs its data.
+  await initialDataPromise;
 
   // Cấu hình độ nhạy Camera trực tiếp sau khi khởi tạo (Đảm bảo hiệu lực cho Mobile)
   try {
@@ -3206,7 +3188,7 @@ async function init() {
   // ============================================
   // Set minZoomLevel và maxZoomLevel, và zoom ban đầu = 1.0
   function runStartupCameraSequence() {
-    // Start camera motion only after startup data/model preload has settled.
+    // Start camera motion only after the SDK view and interaction setup are ready.
     (window as any)._isStartupCameraAnimating = true;
     const startupRotationResult = mapView.Camera.animateTo({
       bearing: 322.85,
@@ -12499,26 +12481,18 @@ async function init() {
 
       if (!models || models.length === 0) {
         console.log("🆕 Empty DB - No models to load.");
-        markStartupAssetsReady('empty-models');
         return;
       }
 
       _allModelMetadata = models;
       console.log(`📦 Cached ${models.length} model metadata from DB`);
 
-      const currentFloorId = mapView.currentFloor?.id;
-      if (currentFloorId) {
-        if (loadingText && loadingBar) {
-          const baseMsg = TranslationManager.t('loading_3d_map', 'Đang khởi tạo bản đồ...');
-          loadingText.textContent = `${baseMsg} 95%`;
-          loadingBar.style.width = `95%`;
-        }
-      }
-      markStartupAssetsReady('models-ready');
+      // Metadata may arrive after startup camera motion; do not depend on another camera event.
+      // While the startup camera is moving, its completion callback will trigger streaming.
+      updateModelStreaming();
 
     } catch (e) {
       console.error("❌ Error loading from API:", e);
-      markStartupAssetsReady('model-load-error');
     }
   };
 
@@ -14768,6 +14742,7 @@ async function init() {
   } catch (e) {
     console.error("Failed to initialize Admin UI:", e);
   }
+  markMapReady();
 }
 
 // ============================================

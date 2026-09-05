@@ -17,7 +17,7 @@ test('startup user guide waits for loading overlay and camera rotation before op
   assert.match(ts, /startupGatePromise/);
   assert.match(ts, /runStartupCameraSequence/);
   assert.match(ts, /_isStartupCameraAnimating/);
-  assert.match(ts, /withStartupTimeout/);
+  assert.match(ts, /markMapReady/);
   assert.match(ts, /mapView\.Camera\.animateTo\(\{\s*bearing:\s*322\.85,\s*pitch:\s*33\.08,\s*\},\s*\{\s*duration:\s*STARTUP_CAMERA_ROTATION_DURATION_MS\s*\}\)/);
   assert.match(ts, /duration:\s*STARTUP_CAMERA_ZOOM_DURATION_MS/);
   assert.match(ts, /},\s*STARTUP_CAMERA_ZOOM_DELAY_MS\)/);
