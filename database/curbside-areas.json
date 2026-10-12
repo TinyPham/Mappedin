@@ -132,6 +132,10 @@
       "meshStep": 4,
       "overviewHeightReference": "rendered-floor-base",
       "garageSpaceId": "s_a72eb30f600a9bba",
+      "markerAnchor": {
+        "latitude": 10.772253420769129,
+        "longitude": 107.04054476732475
+      },
       "connectionOverlap": 0.35,
       "junctionBlendWidth": 30,
       "garageSurfaceHeight": 0.08,

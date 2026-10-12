@@ -5199,6 +5199,7 @@ async function init() {
   const airportMarkerController = createAirportMarkerController({
     mapView, objects: allMapObjects,
     getLocations: () => TranslationManager.data.locations,
+    getMarkerStyles: () => TranslationManager.data.areaVisualStyles,
     getName: (obj: any) => TranslationManager.getName(obj),
     getImage: getImageUrlForMarker,
     getGate: (id: string) => airportOperations.gates.find((gate: any) => gate.mappedinId === id),

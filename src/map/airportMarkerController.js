@@ -2,15 +2,16 @@ import {getAviationMarkerPolicy, markerCoordinatesForFloor} from './aviationMark
 import {markerPresentation} from './markerPresentation.js';
 import {clusterAviationMarkers} from './aviationMarkerClustering.js';
 import {transitAccessAreaById} from './transitAccessAreas.mjs';
+import {frontageAreaById} from './frontageAreaMarkers.mjs';
 
 // Each rendered marker is anchored to one real POI, even at reduced detail.
 export function createAirportMarkerController({mapView, objects, getLocations, getName, getImage,
-  getGate, getCheckin = () => null, getRequiredObjectIds = () => [], overviewFloorId,
+  getGate, getCheckin = () => null, getRequiredObjectIds = () => [], getMarkerStyles = () => ({}), overviewFloorId,
   markerIdToObject, onSelect}) {
   const owned = new Map();
   let floorId = null, floorEntries = null, lastBucket = null, pendingFrame = null;
-  // A distinct bucket at 16.5 guarantees the label threshold is exact.
-  const bucket = zoom => zoom < 16.5 ? 16 : zoom <= 17.5 ? 17.5 :
+  // A distinct bucket at 17 guarantees the label threshold is exact.
+  const bucket = zoom => zoom < 17 ? 16 : zoom <= 17.5 ? 17.5 :
     zoom >= 21.5 ? 21.5 : Math.floor(zoom * 2) / 2;
 
   const choose = async (entry, event) => {
@@ -63,19 +64,26 @@ export function createAirportMarkerController({mapView, objects, getLocations, g
   }
   function collectFloorEntries() {
     if (!floorId || floorId === overviewFloorId) return [];
-    const locations = getLocations() || {}, requiredObjectIds = getRequiredObjectIds();
+    const locations = getLocations() || {}, requiredObjectIds = getRequiredObjectIds(), markerStyles = getMarkerStyles() || {};
     const entries = [];
     for (const obj of objects) {
       const accessArea = transitAccessAreaById.get(obj.id);
-      if (accessArea && accessArea.floorId !== floorId) continue;
-      const coordinates = markerCoordinatesForFloor(obj, floorId, overviewFloorId);
+      const frontageArea = frontageAreaById.get(obj.id);
+      const area = accessArea || frontageArea;
+      if (area && area.floorId !== floorId) continue;
+      let coordinates = markerCoordinatesForFloor(obj, floorId, overviewFloorId);
       if (!coordinates.length) continue;
+      const anchor = frontageArea && (markerStyles[obj.id]?.markerAnchor || frontageArea.anchor);
+      if (Number.isFinite(anchor?.latitude) && Number.isFinite(anchor?.longitude)) {
+        // Move only the rendered pin; leave the source object's routing anchor intact.
+        coordinates = [{...coordinates[0], latitude:anchor.latitude, longitude:anchor.longitude}];
+      }
       const name = getName(obj);
       if (!name) continue;
       const location = locations[obj.id] || locations[obj.mappedinId];
       const policy = getAviationMarkerPolicy(obj, location,
         {zoom: mapView.Camera.zoomLevel, gate: getGate(obj.id), requiredObjectIds});
-      const iconPath = accessArea ? (location?.uiImage || accessArea.icon) :
+      const iconPath = area ? (location?.uiImage || area.icon) :
         (location?.subCategoryIcon || getImage(obj));
       const icon = iconPath ? (iconPath.startsWith('/') || /^https?:/.test(iconPath) ?
         iconPath : `/icon-category/${iconPath}`) : null;
@@ -94,7 +102,7 @@ export function createAirportMarkerController({mapView, objects, getLocations, g
       const sourceFloorId = coordinate.sourceFloorId || coordinate.floorId;
       const html = markerPresentation({name, icon, policy, sourceFloorId,
         ownershipKey: key, memberCount: members.length,
-        checkinIsland: entry.checkin?.island || '', showLabel: zoom >= 16.5});
+        checkinIsland: entry.checkin?.island || '', showLabel: zoom >= 17});
       const options = {interactive: 'pointer-events-auto', rank: policy.rank,
         occlude: policy.occlude, dynamicResize: policy.dynamicResize,
         placement: ['center'], lowPriorityPin: {enabled: false}};
