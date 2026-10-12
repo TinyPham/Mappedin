@@ -74,6 +74,7 @@ import { rankWayfindingSearchResults } from "../../src/navigation/wayfindingSear
 import { getCategoryAreaListStyle } from "../../src/ui/categoryDropdownLayout.js";
 import { bindMobileFlightFilterAccordion } from "../../src/ui/mobileFlightFilterAccordion.mjs";
 import { getModelStreamingZoomThresholds } from "../../src/performance/modelStreamingThresholds.js";
+import { createAuthenticatedPolling } from "../../src/admin/adminPolling.js";
 import {
   STARTUP_LOADING_MAX_MS,
   getStartupGateTimeoutMs,
@@ -94,6 +95,7 @@ import {
   closeTutorialTabSession
 } from "../../src/tutorial/tutorialTabState.js";
 import { tutorialSteps } from "../../src/tutorial/tutorialSteps.js";
+import { combinedTutorialUiFallbacks } from "../../src/tutorial/combinedTutorialTranslations.mjs";
 import { selectFloorsForDropdown } from "../../src/config/selectableFloors.js";
 
 // Global Declarations to resolve scope issues
@@ -263,10 +265,8 @@ const isAdminLoginRequested = (() => {
 })();
 let isViewOnly = true;
 let isAdminAuthenticated = false;
-let adminPollingInterval: ReturnType<typeof setInterval> | null = null;
+let adminPolling: ReturnType<typeof createAuthenticatedPolling> | null = null;
 const ADMIN_HIDE_STYLE_ID = 'admin-auth-hide-style';
-let runAdminPollingStart = () => { };
-let runAdminPollingStop = () => { };
 
 // Detect Mobile Device
 const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -311,11 +311,11 @@ function setAdminAuthenticated(authenticated: boolean) {
 }
 
 function startAdminPolling() {
-  runAdminPollingStart();
+  adminPolling?.start();
 }
 
 function stopAdminPolling() {
-  runAdminPollingStop();
+  adminPolling?.stop();
 }
 
 function renderAdminSessionBar() {
@@ -1518,7 +1518,8 @@ class TranslationManager {
       'zh': '分',
       'ja': '分',
       'ko': '분'
-    }
+    },
+    ...combinedTutorialUiFallbacks
   };
 
   // Get UI text (static)
@@ -3009,7 +3010,7 @@ async function init() {
         // Delay khoảng 500ms mỗi tầng để thả lỏng hoàn toàn Thread chính
         await new Promise(r => setTimeout(r, 500));
       }
-      console.log(`✅ Background geometric cache completed.`);
+      mapDebugLog(`✅ Background geometric cache completed.`);
     } catch (e) { }
   }, 2000); // Đợi 2 giây sau khi app hoàn toàn trơn tru mới bắt đầu tải ngầm
 
@@ -3472,7 +3473,8 @@ async function init() {
     return Array.from(mergedObjects.values());
   };
 
-  // Log Mappedin CDN Image Links
+  // Avoid building large diagnostic tables during normal kiosk startup.
+  if (isMapRuntimeDebugEnabled()) {
   console.group("📍 Mappedin CDN Image Links");
   const objectImages = allMapObjects.map(o => {
     // 1. Try images array (Suggested)
@@ -3503,6 +3505,7 @@ async function init() {
     console.log("Sample object structure:", allMapObjects[0]);
   }
   console.groupEnd();
+  }
   let currentSearchResults: any[] = []; // Track active search results
   let selectedSpace: any = null;
   let currentSearchMarkers: any[] = []; // Track active search markers
@@ -4219,8 +4222,8 @@ async function init() {
       const combined = [...nativeConns, ...keywordConns];
       const unique = combined.filter((v, i, a) => a.findIndex(t => t.id === v.id) === i);
 
-      console.log(`🔌 [CONNECTIONS] Found ${nativeConns.length} native and ${keywordConns.length} keyword-based connections.`);
-      if (unique.length > 0) {
+      mapDebugLog(`🔌 [CONNECTIONS] Found ${nativeConns.length} native and ${keywordConns.length} keyword-based connections.`);
+      if (isMapRuntimeDebugEnabled() && unique.length > 0) {
         console.group("📋 LIST OF ALL CONNECTIONS");
         console.table(unique.map(c => ({
           ID: c.id,
@@ -4326,7 +4329,7 @@ async function init() {
   };
 
   // Log raw connections here after resolveConnStyle is defined
-  console.log("🔍 [CONNECTIONS] Raw connection objects from mapData:", (connections || []).map((c: any) => {
+  if (isMapRuntimeDebugEnabled()) mapDebugLog("🔍 [CONNECTIONS] Raw connection objects from mapData:", (connections || []).map((c: any) => {
     const style = resolveConnStyle(c);
     return {
       id: c.id,
@@ -5262,10 +5265,7 @@ async function init() {
     console.groupEnd();
   };
 
-  // Run once on load
-  setTimeout(logComprehensiveMapContent, 2000);
-
-  // Expose
+  // Large data dumps run only when explicitly requested from the console.
   (window as any).logMapData = logComprehensiveMapContent;
 
 
@@ -5481,7 +5481,7 @@ async function init() {
       floorName.includes("tổng quan") ||
       floorName === "overview";
 
-    console.log("🔍 Current floor:", currentFloor?.name, "isOverview:", isOverview);
+    mapDebugLog("🔍 Current floor:", currentFloor?.name, "isOverview:", isOverview);
 
     if (isOverview) {
       // Ở overview: Ẩn "Main Entrance", hiện tên bản đồ
@@ -5504,7 +5504,7 @@ async function init() {
         try {
           mapView.Markers.remove(mapNameMarker);
           mapNameMarker = null;
-          console.log("✅ Removed map name marker (not in overview)");
+          mapDebugLog("✅ Removed map name marker (not in overview)");
         } catch (e) {
           console.warn("Error removing map name marker:", e);
         }
@@ -5592,7 +5592,7 @@ async function init() {
 
     const targetZoom = 16.5; // Tất cả các tầng đều zoom về 16.5x
 
-    console.log(`🖱️ Manual floor switch via drop-down. Targeted zoom: ${targetZoom}x, Centering: ${initialVenueCenter ? "Initial Center" : "Current Center"}`);
+    mapDebugLog(`🖱️ Manual floor switch via drop-down. Targeted zoom: ${targetZoom}x, Centering: ${initialVenueCenter ? "Initial Center" : "Current Center"}`);
 
     // Đánh dấu đang chuyển tầng thủ công để vô hiệu hóa AUTO-SWITCH
     isManualFloorSwitch = true;
@@ -5634,7 +5634,7 @@ async function init() {
     // Reset cờ sau khi animation hoàn tất
     setTimeout(() => {
       isManualFloorSwitch = false;
-      console.log("✅ Manual floor switch completed. AUTO-SWITCH re-enabled.");
+      mapDebugLog("✅ Manual floor switch completed. AUTO-SWITCH re-enabled.");
     }, 1500);
   });
 
@@ -5786,11 +5786,7 @@ async function init() {
   } catch (e) { console.warn("Could not expose category state", e); }
 
   const isCategoryDebugEnabled = () => {
-    try {
-      return checkIsLocal();
-    } catch (e) {
-      return false;
-    }
+    return isMapRuntimeDebugEnabled();
   };
 
   const getCurrentFloorFilterIds = () => {
@@ -6630,8 +6626,9 @@ async function init() {
   let isFloorSwitching = false;
 
   mapView.on("camera-change", (transform: any) => {
-    // Yêu cầu: console log góc quay ngang và dọc của bản đồ mỗi khi xoay
-    console.log(`[Camera] Bearing (Ngang): ${transform.bearing?.toFixed(2) ?? mapView.Camera.bearing.toFixed(2)}, Pitch (Dọc): ${transform.pitch?.toFixed(2) ?? mapView.Camera.pitch.toFixed(2)}`);
+    if (isMapRuntimeDebugEnabled()) {
+      mapDebugLog(`[Camera] Bearing (Ngang): ${transform.bearing?.toFixed(2) ?? mapView.Camera.bearing.toFixed(2)}, Pitch (Dọc): ${transform.pitch?.toFixed(2) ?? mapView.Camera.pitch.toFixed(2)}`);
+    }
 
     const zoom = transform.zoomLevel;
     const isZoomingIn = zoom > lastZoomLevel;
@@ -11043,12 +11040,13 @@ async function init() {
   // API SERVICE
   // ============================================
   ApiService = {
-    async getAllModels() {
+    async getAllModels({ signal }: { signal?: AbortSignal } = {}) {
       try {
-        const res = await fetch(`${API_BASE_URL}/models`);
+        const res = await fetch(`${API_BASE_URL}/models`, { signal });
         if (!res.ok) throw new Error("Failed to fetch models");
         return await res.json();
       } catch (err) {
+        if (signal?.aborted) return [];
         console.error("API Get Error:", err);
         return [];
       }
@@ -11475,7 +11473,7 @@ async function init() {
    * Entry point để kích hoạt stream models cho một tầng
    */
   const _loadModelsForFloor = async (floorId: string) => {
-    console.log(`🌐 [STREAMING] Activating model stream for floor: ${floorId}`);
+    mapDebugLog(`🌐 [STREAMING] Activating model stream for floor: ${floorId}`);
     _loadedFloors.add(floorId);
     (window as any).updateModelStreaming();
   };
@@ -11486,6 +11484,7 @@ async function init() {
   const _pendingModelLoads = new Map<string, Promise<any>>();
   const _addSingleModelToMapRaw = async (m: any) => {
     if (MODEL_INSTANCE_REGISTRY.has(m.uuid)) return;
+    const activeFloorId = mapView.currentFloor?.id;
     const flbSourceUuid = m.flbProxySourceUuid || m.uuid;
     const isFlbAsset = Boolean(getFlbManifestEntry(m, flbManifest));
     const flbGeneration = flbPersistence.generation(flbSourceUuid);
@@ -11527,7 +11526,7 @@ async function init() {
       const modelName = (m.name || "").toLowerCase();
       const isDeco = modelName.includes('cây') || modelName.includes('vườn') || modelName.includes('thảm') || modelName.includes('tree') || modelName.includes('plant') || modelName.includes('palm') || modelName.includes('floral') || modelName.includes('cỏ');
 
-      console.log(`📡 [STREAMING] Loading: ${m.name || m.uuid}`);
+      mapDebugLog(`📡 [STREAMING] Loading: ${m.name || m.uuid}`);
 
       const model = await mapView.Models.add(coord, cacheBustedUrl, {
         rotation: r || [0, 0, 0],
@@ -11535,6 +11534,10 @@ async function init() {
         interactive: !isDeco && !m.flbProxySourceUuid,
         verticalOffset: Number(m.elevation) || 0
       });
+      if (mapView.currentFloor?.id !== activeFloorId) {
+        mapView.Models.remove(model);
+        return;
+      }
       if (isFlbAsset && (flbGeneration !== flbPersistence.generation(flbSourceUuid) || !flbPersistence.canLoad(flbSourceUuid))) {
         mapView.Models.remove(model);
         return;
@@ -11564,16 +11567,25 @@ async function init() {
   const _addSingleModelToMap = (m: any) => {
     if (MODEL_INSTANCE_REGISTRY.has(m.uuid)) return Promise.resolve(MODEL_INSTANCE_REGISTRY.get(m.uuid));
     if (_pendingModelLoads.has(m.uuid)) return _pendingModelLoads.get(m.uuid);
-    const pending = Promise.resolve().then(() => _addSingleModelToMapRaw(m)).finally(() => _pendingModelLoads.delete(m.uuid));
+    const requestedFloorId = mapView.currentFloor?.id;
+    const pending = Promise.resolve().then(() => _addSingleModelToMapRaw(m)).finally(() => {
+      _pendingModelLoads.delete(m.uuid);
+      if (mapView.currentFloor?.id && mapView.currentFloor.id !== requestedFloorId) {
+        (window as any).updateModelStreaming?.();
+      }
+    });
     _pendingModelLoads.set(m.uuid, pending);
     return pending;
   };
+  let modelStreamingGeneration = 0;
   const updateModelStreaming = debounce(async () => {
+    const generation = ++modelStreamingGeneration;
     // Bỏ qua khi đang reset camera (Home) hoặc chuyển tầng để tránh lag
     if ((window as any)._isStartupCameraAnimating) return;
     if ((window as any)._isResettingCamera || isGlobalSwitchingFloor) return;
     const currentFloor = mapView.currentFloor;
     if (!currentFloor) return;
+    const isCurrentStream = () => generation === modelStreamingGeneration && mapView.currentFloor?.id === currentFloor.id;
 
     const floorName = (currentFloor.name || "").toLowerCase();
     const focalPoint = (mapView.Camera as any).center;
@@ -11588,9 +11600,9 @@ async function init() {
       loadRadius: LOAD_RADIUS,
       unloadRadius: UNLOAD_RADIUS
     } = getModelStreamingZoomThresholds(isMobile);
-    const MAX_CONCURRENT_MODELS = 300;
+    const MAX_CONCURRENT_MODELS = 80;
 
-    console.log(`📡 [STREAMING] Current Zoom: ${currentZoom.toFixed(2)} (Target > ${ZOOM_LOAD_THRESHOLD})`);
+    mapDebugLog(`📡 [STREAMING] Current Zoom: ${currentZoom.toFixed(2)} (Target > ${ZOOM_LOAD_THRESHOLD})`);
 
     // Xác định tầng dưới để giữ Thang máy/Thang cuốn liên thông
     const sortedFloors = [...mapData.getByType("floor")].sort((a, b) => (a as any).elevation - (b as any).elevation);
@@ -11650,13 +11662,21 @@ async function init() {
     });
 
     const modelsToLoad: any[] = [];
-    const signageNeeded = candidateModels.filter((m: any) => m.flbVerified && !MODEL_INSTANCE_REGISTRY.has(m.uuid) && !_pendingModelLoads.has(m.uuid)).length;
-    if (signageNeeded) {
-      const evictable = [...MODEL_INSTANCE_REGISTRY.entries()].map(([uuid, instance]) => ({uuid,instance,meta:[...MODEL_ID_REGISTRY.values()].find((m: any) => m.uuid === uuid)}))
-        .filter(({meta}) => meta && !meta.flbVerified && !isThang(meta) && !isPersistentLowerFloorModel(meta))
-        .sort((a,b) => calculateDistance(focalPoint,b.meta.originalCoordinate) - calculateDistance(focalPoint,a.meta.originalCoordinate));
-      for (const {uuid,instance} of evictable) {
-        if (MODEL_INSTANCE_REGISTRY.size + _pendingModelLoads.size + signageNeeded <= MAX_CONCURRENT_MODELS) break;
+    const essentialNeeded = candidateModels.filter((m: any) =>
+      (m.flbVerified || isThang(m) || isPersistentLowerFloorModel(m)) &&
+      !MODEL_INSTANCE_REGISTRY.has(m.uuid) && !_pendingModelLoads.has(m.uuid)).length;
+    if (essentialNeeded) {
+      const currentSignageNeeded = candidateModels.filter((m: any) => m.flbVerified && m.floorId === currentFloor.id &&
+        !MODEL_INSTANCE_REGISTRY.has(m.uuid) && !_pendingModelLoads.has(m.uuid)).length;
+      const evictable = [...MODEL_INSTANCE_REGISTRY.entries()].map(([uuid, instance]) => {
+        const meta = [...MODEL_ID_REGISTRY.values()].find((m: any) => m.uuid === uuid);
+        return { uuid, instance, meta, priority: meta && (isThang(meta) || isPersistentLowerFloorModel(meta)) ? 1 : 0 };
+      }).filter(({meta,priority}) => meta && !meta.flbVerified &&
+        (!priority || (meta.floorId !== currentFloor.id && currentSignageNeeded > 0)))
+        .sort((a,b) => a.priority - b.priority || calculateDistance(focalPoint,b.meta.originalCoordinate) - calculateDistance(focalPoint,a.meta.originalCoordinate));
+      for (const {uuid,instance,priority} of evictable) {
+        const needed = priority ? currentSignageNeeded : essentialNeeded;
+        if (MODEL_INSTANCE_REGISTRY.size + _pendingModelLoads.size + needed <= MAX_CONCURRENT_MODELS) break;
         mapView.Models.remove(instance);MODEL_INSTANCE_REGISTRY.delete(uuid);MODEL_ID_REGISTRY.delete(instance.id);
       }
     }
@@ -11675,15 +11695,18 @@ async function init() {
     });
 
     if (modelsToLoad.length > 0 && currentZoom >= ZOOM_LOAD_THRESHOLD) {
-      console.log(`📦 [STREAMING] Queueing ${modelsToLoad.length} new models to load...`);
+      mapDebugLog(`📦 [STREAMING] Queueing ${modelsToLoad.length} new models to load...`);
     } else if (modelsToLoad.length > 0) {
-      console.log(`📡 [STREAMING] Priority load: ${modelsToLoad.length} vertical assets`);
+      mapDebugLog(`📡 [STREAMING] Priority load: ${modelsToLoad.length} vertical assets`);
     }
 
     // 4. Thực hiện Load mới theo thứ tự ưu tiên gần nhất
     if (modelsToLoad.length > 0) {
       modelsToLoad.sort((a, b) => {
         if (Boolean(a.flbVerified) !== Boolean(b.flbVerified)) return a.flbVerified ? -1 : 1;
+        const aEssential = isThang(a) || isPersistentLowerFloorModel(a);
+        const bEssential = isThang(b) || isPersistentLowerFloorModel(b);
+        if (aEssential !== bEssential) return aEssential ? -1 : 1;
         const dA = calculateDistance(focalPoint, { latitude: Number(a.latitude), longitude: Number(a.longitude) });
         const dB = calculateDistance(focalPoint, { latitude: Number(b.latitude), longitude: Number(b.longitude) });
         return dA - dB;
@@ -11691,6 +11714,7 @@ async function init() {
 
       const BATCH_SIZE = 3;
       for (let i = 0; i < modelsToLoad.length; i += BATCH_SIZE) {
+        if (!isCurrentStream()) return;
         if (MODEL_INSTANCE_REGISTRY.size >= MAX_CONCURRENT_MODELS) break;
         const capacity = MAX_CONCURRENT_MODELS - MODEL_INSTANCE_REGISTRY.size - _pendingModelLoads.size;
         if (capacity <= 0) break;
@@ -12752,25 +12776,15 @@ async function init() {
   // ============================================
   // POLLING: SYNC FROM DB -> UI
   // ============================================
-  if (!isViewOnly) {
-    setInterval(async () => {
-      if (isUpdating) return; // Don't sync if user is editing
-
-      const apiModels = await ApiService.getAllModels();
-
-      for (const m of apiModels) {
-        // Simple Logic: Update transforms if model exists
-        const instance = MODEL_INSTANCE_REGISTRY.get(m.uuid);
-        if (instance) {
-          const r = m.rotation; // Check if changed?
-          // For now, let's just log. Full sync requires complex diffing to avoid jitter.
-        } else {
-          // If new model appears in DB (added by another user/tab), reload likely needed
-          // checking diff is complex here.
-        }
-      }
-    }, 5000); // Check every 5s
-  }
+  adminPolling = createAuthenticatedPolling({
+    isAuthenticated: () => isAdminAuthenticated,
+    canPoll: () => !isUpdating,
+    task: ({ signal }: { signal: AbortSignal }) => ApiService.getAllModels({ signal }),
+    onError: (error: unknown) => mapDebugLog('Admin model polling failed:', error)
+  });
+  startAdminPolling();
+  window.addEventListener('pagehide', stopAdminPolling);
+  window.addEventListener('pageshow', startAdminPolling);
 
   // ============================================
   // AREA CLASSIFICATION SYSTEM

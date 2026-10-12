@@ -1,28 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { cssDeclarations, parseCssRules } from './helpers/cssRules.mjs';
 
 const html = readFileSync(new URL('../main/html/index.html', import.meta.url), 'utf8');
 const css = readFileSync(new URL('../main/css/styles.css', import.meta.url), 'utf8');
-
-function getRuleBlock(selector, startIndex = 0) {
-  const selectorIndex = css.indexOf(selector, startIndex);
-  assert.notEqual(selectorIndex, -1, `Missing selector: ${selector}`);
-
-  const blockStart = css.indexOf('{', selectorIndex);
-  assert.notEqual(blockStart, -1, `Missing block start for: ${selector}`);
-
-  let depth = 0;
-  for (let i = blockStart; i < css.length; i += 1) {
-    if (css[i] === '{') depth += 1;
-    if (css[i] === '}') depth -= 1;
-    if (depth === 0) {
-      return css.slice(blockStart + 1, i);
-    }
-  }
-
-  assert.fail(`Missing block end for: ${selector}`);
-}
+const rules = parseCssRules(css);
 
 test('desktop settings button sits in the sidebar tabs after directions', () => {
   const tabsStart = html.indexOf('<div class="sidebar-tabs"');
@@ -57,24 +40,48 @@ test('desktop settings popover contains theme and brightness controls beside sid
   assert.match(panelMarkup, /id="brightness-selector-wrapper"/);
 });
 
-test('desktop settings popover opens from the sidebar edge on desktop only', () => {
-  const desktopIndex = css.indexOf('@media (min-width: 1201px)');
-  assert.notEqual(desktopIndex, -1, 'Missing desktop media query');
+test('settings popover follows the expanded and collapsed sidebar and animates visibility', () => {
+  for (const [width, edge] of [[769, '340px'], [1200, '340px'], [1201, '380px'], [1440, '380px']]) {
+    const viewport = { width, height: 900 };
+    const selectors = ['#desktop-map-settings-panel'];
+    const closed = cssDeclarations(rules, selectors, viewport);
+    assert.equal(closed.position, 'fixed');
+    assert.equal(closed.left, edge);
+    assert.equal(closed.top, '20px');
+    assert.equal(closed.display, 'flex');
+    assert.equal(closed.visibility, 'hidden');
+    assert.equal(closed.opacity, '0');
+    assert.equal(closed['pointer-events'], 'none');
+    const open = cssDeclarations(rules, [...selectors, '#desktop-map-settings-panel.open'], viewport);
+    assert.equal(open.visibility, 'visible');
+    assert.equal(open.opacity, '1');
+    assert.equal(open['pointer-events'], 'auto');
+    assert.equal(open.transform, 'scale(1) translate(0, 0)');
+    const collapsed = cssDeclarations(rules, [...selectors,
+      '.sidebar-collapsed ~ #main-content #desktop-map-settings-panel',
+      '#main-sidebar-left.sidebar-collapsed ~ #main-content #desktop-map-settings-panel'
+    ], viewport);
+    assert.equal(collapsed.left, '0');
+    for (const wrapper of ['theme', 'brightness']) {
+      const declarations = cssDeclarations(rules, [`.${wrapper}-selector-wrapper`,
+        `#desktop-map-settings-panel .${wrapper}-selector-wrapper`
+      ], viewport);
+      assert.equal(declarations.position, 'static');
+      assert.equal(declarations.left, 'auto');
+      assert.equal(declarations.top, 'auto');
+      assert.equal(declarations.width, '100%');
+    }
+  }
+});
 
-  const panelBlock = getRuleBlock('#desktop-map-settings-panel', desktopIndex);
-  assert.match(panelBlock, /position:\s*absolute/);
-  assert.match(panelBlock, /left:\s*0\s*!important/);
-  assert.match(panelBlock, /top:\s*20px\s*!important/);
-  assert.match(panelBlock, /display:\s*none/);
-
-  const openBlock = getRuleBlock('#desktop-map-settings-panel.open', desktopIndex);
-  assert.match(openBlock, /display:\s*flex/);
-
-  const themeWrapperBlock = getRuleBlock('#desktop-map-settings-panel .theme-selector-wrapper', desktopIndex);
-  assert.match(themeWrapperBlock, /position:\s*static\s*!important/);
-  assert.match(themeWrapperBlock, /left:\s*auto\s*!important/);
-
-  const brightnessWrapperBlock = getRuleBlock('#desktop-map-settings-panel .brightness-selector-wrapper', desktopIndex);
-  assert.match(brightnessWrapperBlock, /position:\s*static\s*!important/);
-  assert.match(brightnessWrapperBlock, /left:\s*auto\s*!important/);
+test('mobile settings panel keeps its 8px inset when the sidebar is collapsed', () => {
+  for (const width of [320, 390, 768]) {
+    const panel = cssDeclarations(rules, ['#desktop-map-settings-panel',
+      '.sidebar-collapsed ~ #main-content #desktop-map-settings-panel',
+      '#main-sidebar-left.sidebar-collapsed ~ #main-content #desktop-map-settings-panel'
+    ], { width, height: 844 });
+    assert.equal(panel.left, '8px', `Collapsed sidebar must not move the mobile panel at ${width}px`);
+    assert.equal(panel.right, '8px');
+    assert.equal(panel.width, 'calc(100vw - 16px)');
+  }
 });

@@ -1,98 +1,57 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { cssDeclarations, cssRule, parseCssRules } from './helpers/cssRules.mjs';
 
-const css = readFileSync(new URL('../main/css/styles.css', import.meta.url), 'utf8');
+const rules = parseCssRules(readFileSync(new URL('../main/css/styles.css', import.meta.url), 'utf8'));
 
-function getRuleBlock(selector, startIndex = 0) {
-  const selectorIndex = css.indexOf(selector, startIndex);
-  assert.notEqual(selectorIndex, -1, `Missing selector: ${selector}`);
-
-  const blockStart = css.indexOf('{', selectorIndex);
-  assert.notEqual(blockStart, -1, `Missing block start for: ${selector}`);
-
-  let depth = 0;
-  for (let i = blockStart; i < css.length; i += 1) {
-    if (css[i] === '{') depth += 1;
-    if (css[i] === '}') depth -= 1;
-    if (depth === 0) {
-      return css.slice(blockStart + 1, i);
+for (const [label, widths, right, gap, floorHeight, themePadding, themeFont, themeGap] of [
+  ['wide', [993, 1024, 1199], '12px', '10px', '44px', '0 12px', '13px', '6px'],
+  ['upper boundary', [1200], '12px', '10px', '40px', '0 12px', '13px', '6px'],
+  ['narrow', [901, 992], '8px', '6px', '44px', '0 9px', '12px', '4px'],
+  ['iPad Air', [769, 820, 900], '6px', '4px', '32px', '0 7px', '10px', '3px']
+]) {
+  test(label + ' tablet controls retain compact top controls and stacked settings', () => {
+    for (const width of widths) {
+      const viewport = { width, height: 900 };
+      const panel = cssDeclarations(rules, ['#desktop-map-settings-panel'], viewport);
+      assert.equal(panel.left, '340px');
+      assert.equal(panel['flex-direction'], 'column');
+      assert.equal(panel.width, '310px');
+      for (const control of ['theme', 'brightness']) {
+        const wrapper = cssDeclarations(rules, ['.' + control + '-selector-wrapper',
+          '#desktop-map-settings-panel .' + control + '-selector-wrapper'
+        ], viewport);
+        assert.equal(wrapper.position, 'static');
+        assert.equal(wrapper.left, 'auto');
+        assert.equal(wrapper.top, 'auto');
+        assert.equal(wrapper.width, '100%');
+        const toggleSelector = control === 'theme' ? '.theme-selector-toggle' : '.brightness-toggle';
+        const toggle = cssDeclarations(rules, [toggleSelector, '#desktop-map-settings-panel ' + toggleSelector], viewport);
+        assert.equal(toggle.height, '40px');
+        assert.equal(toggle['min-height'], '40px');
+        assert.equal(toggle['box-sizing'], 'border-box');
+        assert.equal(toggle.padding, control === 'theme' ? themePadding : '0 10px');
+        assert.equal(toggle.gap, control === 'theme' ? themeGap : '6px');
+        if (control === 'theme') assert.equal(toggle['font-size'], themeFont);
+      }
+      const topControls = cssDeclarations(rules, ['#map-top-controls'], viewport);
+      assert.equal(topControls.top, '20px');
+      assert.equal(topControls.right, right);
+      assert.equal(topControls.gap, gap);
+      const dropdown = cssDeclarations(rules, ['.pro-dropdown-toggle'], viewport);
+      assert.equal(dropdown.height, floorHeight);
+      assert.equal(dropdown['min-height'], floorHeight);
+      const slider = cssDeclarations(rules, ['#brightness-slider', '#desktop-map-settings-panel #brightness-slider'], viewport);
+      assert.equal(slider.flex, '1');
+      assert.equal(slider['min-width'], '80px');
+      assert.equal(slider.width, '58px', 'The compact basis remains below the panel minimum width');
     }
-  }
-
-  assert.fail(`Missing block end for: ${selector}`);
+  });
 }
 
-test('tablet top controls use compact one-row sizing between 769px and 1200px', () => {
-  const tabletMediaIndex = css.indexOf('@media (min-width: 769px) and (max-width: 1200px)');
-  assert.notEqual(tabletMediaIndex, -1, 'Missing tablet controls media query');
-
-  const sharedButtonBlock = getRuleBlock('.theme-selector-toggle,', tabletMediaIndex);
-  assert.match(sharedButtonBlock, /height:\s*40px/);
-  assert.match(sharedButtonBlock, /padding:\s*0 12px/);
-  assert.match(sharedButtonBlock, /font-size:\s*13px/);
-  assert.match(sharedButtonBlock, /gap:\s*6px/);
-
-  const brightnessBlock = getRuleBlock('.brightness-toggle', tabletMediaIndex);
-  assert.match(brightnessBlock, /height:\s*40px/);
-  assert.match(brightnessBlock, /padding:\s*0 10px/);
-  assert.match(brightnessBlock, /gap:\s*6px/);
-
-  const sliderBlock = getRuleBlock('#brightness-slider', tabletMediaIndex);
-  assert.match(sliderBlock, /width:\s*58px/);
-});
-
-test('tablet top controls are spaced to fit alongside floor and language controls', () => {
-  const tabletMediaIndex = css.indexOf('@media (min-width: 769px) and (max-width: 1200px)');
-
-  const themeWrapperBlock = getRuleBlock('.theme-selector-wrapper', tabletMediaIndex);
-  const brightnessWrapperBlock = getRuleBlock('.brightness-selector-wrapper', tabletMediaIndex);
-  const mapControlsBlock = getRuleBlock('#map-top-controls', tabletMediaIndex);
-
-  assert.match(themeWrapperBlock, /left:\s*12px\s*!important/);
-  assert.match(brightnessWrapperBlock, /left:\s*142px\s*!important/);
-  assert.match(mapControlsBlock, /right:\s*12px\s*!important/);
-  assert.match(mapControlsBlock, /gap:\s*8px\s*!important/);
-});
-
-test('narrow tablet top controls use extra compact sizing between 769px and 992px', () => {
-  const narrowTabletMediaIndex = css.indexOf('@media (min-width: 769px) and (max-width: 992px)');
-  assert.notEqual(narrowTabletMediaIndex, -1, 'Missing narrow tablet controls media query');
-
-  const sharedButtonBlock = getRuleBlock('.theme-selector-toggle,', narrowTabletMediaIndex);
-  assert.match(sharedButtonBlock, /height:\s*36px/);
-  assert.match(sharedButtonBlock, /padding:\s*0 9px/);
-  assert.match(sharedButtonBlock, /font-size:\s*12px/);
-  assert.match(sharedButtonBlock, /gap:\s*4px/);
-
-  const brightnessBlock = getRuleBlock('.brightness-toggle', narrowTabletMediaIndex);
-  assert.match(brightnessBlock, /height:\s*36px/);
-  assert.match(brightnessBlock, /padding:\s*0 8px/);
-  assert.match(brightnessBlock, /gap:\s*4px/);
-
-  const sliderBlock = getRuleBlock('#brightness-slider', narrowTabletMediaIndex);
-  assert.match(sliderBlock, /width:\s*44px/);
-});
-
-test('ipad air tablet controls use ultra compact sizing between 769px and 900px', () => {
-  const ipadAirMediaIndex = css.indexOf('@media (min-width: 769px) and (max-width: 900px)');
-  assert.notEqual(ipadAirMediaIndex, -1, 'Missing iPad Air tablet controls media query');
-
-  const sharedButtonBlock = getRuleBlock('.theme-selector-toggle,', ipadAirMediaIndex);
-  assert.match(sharedButtonBlock, /height:\s*32px/);
-  assert.match(sharedButtonBlock, /padding:\s*0 7px/);
-  assert.match(sharedButtonBlock, /font-size:\s*10px/);
-  assert.match(sharedButtonBlock, /gap:\s*3px/);
-
-  const brightnessBlock = getRuleBlock('.brightness-toggle', ipadAirMediaIndex);
-  assert.match(brightnessBlock, /height:\s*32px/);
-  assert.match(brightnessBlock, /padding:\s*0 6px/);
-  assert.match(brightnessBlock, /gap:\s*3px/);
-
-  const sliderBlock = getRuleBlock('#brightness-slider', ipadAirMediaIndex);
-  assert.match(sliderBlock, /width:\s*30px/);
-
-  const categoryLabelBlock = getRuleBlock('.category-label-box', ipadAirMediaIndex);
-  assert.match(categoryLabelBlock, /font-size:\s*12px\s*!important/);
-  assert.match(categoryLabelBlock, /padding:\s*7px 9px\s*!important/);
+test('iPad Air category labels retain readable compact typography', () => {
+  const label = cssRule(rules, '.category-label-box', ['(min-width: 769px) and (max-width: 900px)']);
+  assert.ok(label.includes('font-size: 12px !important;'));
+  assert.ok(label.includes('padding: 7px 9px !important;'));
 });

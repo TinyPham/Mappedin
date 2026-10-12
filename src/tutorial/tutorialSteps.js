@@ -13,7 +13,7 @@ export const tutorialSteps = {
     {
       id: 'mobile-search-explore-theme',
       title: 'Tìm kiếm, khám phá danh mục và phong cách hiển thị',
-      description: 'Tại thanh công cụ này, bạn có thể dễ dàng tìm kiếm địa điểm, mở nhanh danh sách các dịch vụ tiện ích, đồng thời tuỳ chỉnh giao diện bản đồ và độ sáng bảo vệ mắt bằng nút cài đặt bên cạnh.',
+      description: 'Nhập tên cửa hàng hoặc khu vực vào ô tìm kiếm; nhấn mũi tên để mở danh mục dịch vụ. Nhấn nút Cài đặt bên cạnh để chọn chủ đề màu sắc và kéo thanh trượt điều chỉnh độ sáng.',
       image: '/tutorial/mobile/02-search.svg',
       targetSelector: '#search-tab-header',
       placement: 'bottom'
@@ -23,7 +23,7 @@ export const tutorialSteps = {
       title: 'Khám phá dịch vụ',
       description: 'Từ Ăn uống, Mua sắm đến Nhà thuốc hay Thư giãn... Chỉ một chạm vào danh mục, tất cả các địa điểm liên quan sẽ hiển thị rõ ràng trên bản đồ để bạn tha hồ lựa chọn.',
       image: '/tutorial/mobile/04-category-list.svg',
-      targetSelector: '#category-section',
+      targetSelectors: ['#category-section', '#mobile-category-toggle'],
       placement: 'bottom'
     },
     {

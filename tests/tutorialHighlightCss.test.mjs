@@ -1,60 +1,49 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { cssDeclarations, parseCssRules } from './helpers/cssRules.mjs';
 
 const css = readFileSync(new URL('../main/css/styles.css', import.meta.url), 'utf8');
-
-function getLastRuleBlock(selector) {
-  const selectorIndex = css.lastIndexOf(selector);
-  assert.notEqual(selectorIndex, -1, `Missing selector: ${selector}`);
-
-  const blockStart = css.indexOf('{', selectorIndex);
-  assert.notEqual(blockStart, -1, `Missing block start for: ${selector}`);
-
-  let depth = 0;
-  for (let i = blockStart; i < css.length; i += 1) {
-    if (css[i] === '{') depth += 1;
-    if (css[i] === '}') depth -= 1;
-    if (depth === 0) return css.slice(blockStart + 1, i);
-  }
-
-  assert.fail(`Missing block end for: ${selector}`);
-}
+const rules = parseCssRules(css);
 
 test('tutorial overlay does not blur the highlighted UI behind the popup', () => {
-  const modalBlock = getLastRuleBlock('.user-guide-modal');
-
-  assert.doesNotMatch(modalBlock, /backdrop-filter:\s*blur/i);
-  assert.doesNotMatch(modalBlock, /-webkit-backdrop-filter:\s*blur/i);
-  assert.match(modalBlock, /background:\s*rgba\(15,\s*23,\s*42,\s*0\.10\)/);
+  const modal = cssDeclarations(rules, ['.user-guide-modal']);
+  assert.equal(modal['backdrop-filter'], 'none');
+  assert.equal(modal['-webkit-backdrop-filter'], 'none');
+  assert.equal(modal.background, 'rgba(15, 23, 42, 0.10)');
 });
 
-test('tutorial highlight uses a bright spotlight above the dim layer', () => {
-  const highlightBlock = getLastRuleBlock('.user-guide-highlight-box');
-
-  assert.match(highlightBlock, /z-index:\s*1/);
-  assert.match(highlightBlock, /background:\s*transparent/);
-  assert.match(highlightBlock, /border:\s*4px solid #ffffff/);
-  assert.match(highlightBlock, /0 0 0 9999px rgba\(15,\s*23,\s*42,\s*0\.48\)/);
-  assert.match(highlightBlock, /0 0 0 5px rgba\(33,\s*76,\s*166,\s*0\.9\)/);
+test('tutorial multi-highlight boxes glow without dimming other highlighted targets', () => {
+  const highlight = cssDeclarations(rules, ['.user-guide-highlight-box']);
+  assert.equal(highlight.position, 'fixed');
+  assert.equal(highlight['z-index'], '1');
+  assert.equal(highlight.background, 'transparent');
+  assert.equal(highlight.border, '4px solid #ffffff');
+  assert.equal(highlight['pointer-events'], 'none');
+  assert.equal(highlight['box-shadow'], '0 0 0 5px rgba(33, 76, 166, 0.9), 0 0 28px rgba(255, 255, 255, 0.95)');
+  assert.doesNotMatch(highlight['box-shadow'], /9999px/, 'Individual boxes must not dim neighboring highlights');
+  const modal = cssDeclarations(rules, ['.user-guide-modal']);
+  assert.equal(modal.background, 'rgba(15, 23, 42, 0.10)');
+  assert.equal(modal['backdrop-filter'], 'none');
+  assert.equal(modal['-webkit-backdrop-filter'], 'none');
 });
 
 test('tutorial copy card is glass style and image media is hidden by default', () => {
-  const cardBlock = getLastRuleBlock('.user-guide-copy-card');
-  assert.match(cardBlock, /background:\s*rgba\(255,\s*255,\s*255,\s*0\.72\)/);
-  assert.match(cardBlock, /backdrop-filter:\s*blur\(14px\)/);
-
-  const mediaBlock = getLastRuleBlock('.user-guide-media');
-  assert.match(mediaBlock, /display:\s*none\s*!important/);
+  const card = cssDeclarations(rules, ['.user-guide-copy-card']);
+  assert.equal(card.background, 'rgba(255, 255, 255, 0.72)');
+  assert.equal(card['backdrop-filter'], 'blur(14px)');
+  assert.equal(card['-webkit-backdrop-filter'], 'blur(14px)');
+  const media = cssDeclarations(rules, ['.user-guide-media']);
+  assert.equal(media.display, 'none');
 });
 
 test('tutorial arrow layer draws red curved connector above highlight', () => {
-  const arrowBlock = getLastRuleBlock('.user-guide-arrow-layer');
-  assert.match(arrowBlock, /z-index:\s*1/);
-  assert.match(arrowBlock, /pointer-events:\s*none/);
-  assert.match(arrowBlock, /overflow:\s*visible/);
-
-  const pathBlock = getLastRuleBlock('.user-guide-arrow-path');
-  assert.match(pathBlock, /stroke-dasharray:\s*12 10/);
-  assert.match(pathBlock, /stroke-width:\s*4/);
+  const arrow = cssDeclarations(rules, ['.user-guide-arrow-layer']);
+  assert.equal(arrow['z-index'], '1');
+  assert.equal(arrow['pointer-events'], 'none');
+  assert.equal(arrow.overflow, 'visible');
+  const path = cssDeclarations(rules, ['.user-guide-arrow-path']);
+  assert.equal(path.stroke, '#e11d48');
+  assert.equal(path['stroke-dasharray'], '12 10');
+  assert.equal(path['stroke-width'], '4');
 });

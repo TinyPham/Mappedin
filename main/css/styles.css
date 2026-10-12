@@ -3451,9 +3451,11 @@ body.user-guide-open {
     pointer-events: none;
   }
 
-  .sidebar-collapsed ~ #main-content #desktop-map-settings-panel,
-  #main-sidebar-left.sidebar-collapsed ~ #main-content #desktop-map-settings-panel {
-    left: 0 !important;
+  @media (min-width: 769px) {
+    .sidebar-collapsed ~ #main-content #desktop-map-settings-panel,
+    #main-sidebar-left.sidebar-collapsed ~ #main-content #desktop-map-settings-panel {
+      left: 0 !important;
+    }
   }
 
   #desktop-map-settings-panel.open {
