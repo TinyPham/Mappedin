@@ -1,20 +1,27 @@
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { functionText } from '../helpers/mainSource.mjs';
+import { functionText, findNodes, sourceFile, ts } from '../helpers/mainSource.mjs';
 
 const source = readFileSync(new URL('../../main/main-function/index.ts', import.meta.url), 'utf8');
 
-test('camera-change handler does not log every camera frame', () => {
-  const cameraBlockStart = source.indexOf('mapView.on("camera-change", (transform: any) => {');
-  assert.notEqual(cameraBlockStart, -1, 'camera-change handler not found');
-  const cameraBlock = source.slice(cameraBlockStart, source.indexOf('});', cameraBlockStart) + 3);
-  assert.doesNotMatch(cameraBlock, /console\.log/, 'camera-change handler must not log on every camera update');
+test('camera bearing/pitch logs remain enabled as requested, independently of debug switches', () => {
+  const handler = findNodes(node => ts.isCallExpression(node) &&
+    node.expression.getText(sourceFile) === 'mapView.on' && node.arguments[0]?.text === 'camera-change' &&
+    ts.isArrowFunction(node.arguments[1]) && node.arguments[1].parameters[0]?.name.getText(sourceFile) === 'transform')[0]?.arguments[1];
+  assert.ok(handler, 'Missing camera transform handler');
+  const logging = handler.body.statements.find(statement => ts.isExpressionStatement(statement) &&
+    ts.isCallExpression(statement.expression) && statement.expression.expression.getText(sourceFile) === 'console.log');
+  assert.ok(logging, 'Camera logging must be unconditional, matching the approved console feature');
+  assert.match(logging.getText(sourceFile), /\[Camera\].*Bearing.*Pitch/);
 });
 
-test('large map content dump is exposed manually but not scheduled automatically', () => {
+test('full map dump runs once automatically after two seconds and remains callable manually', () => {
   assert.match(source, /\(window as any\)\.logMapData = logComprehensiveMapContent/);
-  assert.doesNotMatch(source, /setTimeout\(logComprehensiveMapContent,\s*2000\)/);
+  const scheduled = findNodes(node => ts.isCallExpression(node) && node.expression.getText(sourceFile) === 'setTimeout' &&
+    node.arguments[0]?.getText(sourceFile) === 'logComprehensiveMapContent');
+  assert.equal(scheduled.length, 1);
+  assert.equal(scheduled[0].arguments[1].getText(sourceFile), '2000');
 });
 
 test('admin polling starts only after authenticated admin state and can be stopped', () => {
@@ -32,9 +39,10 @@ test('model streaming retains the approved concurrent model cap', () => {
   assert.match(functionText('updateModelStreaming'), /const\s+MAX_CONCURRENT_MODELS\s*=\s*300/);
 });
 
-test('kiosk runtime diagnostics are gated behind explicit debug flag', () => {
+test('category diagnostics require their own explicit switch while other runtime diagnostics remain gated', () => {
   assert.doesNotMatch(functionText('isCategoryDebugEnabled'), /checkIsLocal\(\)/);
-  assert.match(functionText('isCategoryDebugEnabled'), /isMapRuntimeDebugEnabled\(\)/);
+  assert.match(functionText('isCategoryDebugEnabled'), /__CATEGORY_DEBUG__\s*===\s*true/);
+  assert.doesNotMatch(functionText('isCategoryDebugEnabled'), /isMapRuntimeDebugEnabled\(\)/);
 
   const noisyRuntimePatterns = [
     /console\.log\(`[^`]*\[CONNECTIONS\]/,

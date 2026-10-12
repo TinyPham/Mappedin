@@ -3473,8 +3473,7 @@ async function init() {
     return Array.from(mergedObjects.values());
   };
 
-  // Avoid building large diagnostic tables during normal kiosk startup.
-  if (isMapRuntimeDebugEnabled()) {
+  // Log Mappedin CDN Image Links (approved console inspection feature).
   console.group("📍 Mappedin CDN Image Links");
   const objectImages = allMapObjects.map(o => {
     // 1. Try images array (Suggested)
@@ -3505,7 +3504,6 @@ async function init() {
     console.log("Sample object structure:", allMapObjects[0]);
   }
   console.groupEnd();
-  }
   let currentSearchResults: any[] = []; // Track active search results
   let selectedSpace: any = null;
   let currentSearchMarkers: any[] = []; // Track active search markers
@@ -5265,7 +5263,8 @@ async function init() {
     console.groupEnd();
   };
 
-  // Large data dumps run only when explicitly requested from the console.
+  // Run once on load and keep the manual console entry point.
+  setTimeout(logComprehensiveMapContent, 2000);
   (window as any).logMapData = logComprehensiveMapContent;
 
 
@@ -5786,7 +5785,7 @@ async function init() {
   } catch (e) { console.warn("Could not expose category state", e); }
 
   const isCategoryDebugEnabled = () => {
-    return isMapRuntimeDebugEnabled();
+    return (window as any).__CATEGORY_DEBUG__ === true;
   };
 
   const getCurrentFloorFilterIds = () => {
@@ -6626,9 +6625,7 @@ async function init() {
   let isFloorSwitching = false;
 
   mapView.on("camera-change", (transform: any) => {
-    if (isMapRuntimeDebugEnabled()) {
-      mapDebugLog(`[Camera] Bearing (Ngang): ${transform.bearing?.toFixed(2) ?? mapView.Camera.bearing.toFixed(2)}, Pitch (Dọc): ${transform.pitch?.toFixed(2) ?? mapView.Camera.pitch.toFixed(2)}`);
-    }
+    console.log(`[Camera] Bearing (Ngang): ${transform.bearing?.toFixed(2) ?? mapView.Camera.bearing.toFixed(2)}, Pitch (Dọc): ${transform.pitch?.toFixed(2) ?? mapView.Camera.pitch.toFixed(2)}`);
 
     const zoom = transform.zoomLevel;
     const isZoomingIn = zoom > lastZoomLevel;

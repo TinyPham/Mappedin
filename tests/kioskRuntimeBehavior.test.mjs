@@ -2,16 +2,38 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { executeFunction } from './helpers/mainSource.mjs';
 
-test('local kiosk diagnostics stay off unless a debug switch is explicitly enabled', () => {
+test('category diagnostics stay off independently of camera logs and general runtime debug', () => {
   const window = { location: { search: '', hostname: 'localhost' }, localStorage: { getItem: () => null } };
   const enabled = executeFunction('isMapRuntimeDebugEnabled', { window });
   assert.equal(enabled(), false);
-  const category = executeFunction('isCategoryDebugEnabled', { isMapRuntimeDebugEnabled: enabled, checkIsLocal: () => true });
+  const category = executeFunction('isCategoryDebugEnabled', { window, isMapRuntimeDebugEnabled: enabled, checkIsLocal: () => true });
   assert.equal(category(), false);
-  window.location.search = '?debug=true'; assert.equal(enabled(), true); assert.equal(category(), true);
+  window.location.search = '?debug=true'; assert.equal(enabled(), true); assert.equal(category(), false);
+  window.__CATEGORY_DEBUG__ = true; assert.equal(category(), true);
+  window.__CATEGORY_DEBUG__ = false; assert.equal(category(), false);
+  window.__CATEGORY_DEBUG__ = 'true'; assert.equal(category(), false);
   window.location.search = ''; window.__MAP_DEBUG__ = true; assert.equal(enabled(), true);
   window.__MAP_DEBUG__ = false; window.localStorage.getItem = () => '1'; assert.equal(enabled(), true);
   window.localStorage.getItem = () => { throw new Error('storage blocked'); }; assert.equal(enabled(), false);
+});
+
+test('full map console tables use existing data and keep floor, ID, name and type details', () => {
+  const tables = [], groups = [];
+  const objects = [{ id: 's_room', name: 'Room', type: 'space', floorId: 'floor3' },
+    { id: 'p_point', name: 'Point', type: 'point', floorId: 'floor3' },
+    { id: 's_other', name: 'Other', type: 'space', floorId: 'floor1' }];
+  executeFunction('logComprehensiveMapContent', {
+    mapData: { getByType: type => { assert.equal(type, 'floor'); return [{ id: 'floor3', name: 'T3', elevation: 3 }]; } },
+    allMapObjects: objects, TranslationManager: { getName: obj => `Translated ${obj.name}` },
+    console: { group: label => groups.push(label), groupEnd() {}, log() {}, table: rows => tables.push(rows) },
+    fetch: () => assert.fail('Logging must not fetch map assets or models')
+  })();
+  assert.equal(tables.length, 1);
+  assert.deepEqual(tables[0].map(row => row.ID), ['p_point', 's_room']);
+  assert.equal(tables[0][1]['Original Name'], 'Room');
+  assert.equal(tables[0][1]['Translated (Current)'], 'Translated Room');
+  assert.equal(tables[0][1].Type, 'space/room');
+  assert.ok(groups.some(label => label.includes('T3')));
 });
 
 test('color refresh retains anonymous spaces and area objects across all ID prefixes', () => {
