@@ -11484,7 +11484,6 @@ async function init() {
   const _pendingModelLoads = new Map<string, Promise<any>>();
   const _addSingleModelToMapRaw = async (m: any) => {
     if (MODEL_INSTANCE_REGISTRY.has(m.uuid)) return;
-    const activeFloorId = mapView.currentFloor?.id;
     const flbSourceUuid = m.flbProxySourceUuid || m.uuid;
     const isFlbAsset = Boolean(getFlbManifestEntry(m, flbManifest));
     const flbGeneration = flbPersistence.generation(flbSourceUuid);
@@ -11534,10 +11533,6 @@ async function init() {
         interactive: !isDeco && !m.flbProxySourceUuid,
         verticalOffset: Number(m.elevation) || 0
       });
-      if (mapView.currentFloor?.id !== activeFloorId) {
-        mapView.Models.remove(model);
-        return;
-      }
       if (isFlbAsset && (flbGeneration !== flbPersistence.generation(flbSourceUuid) || !flbPersistence.canLoad(flbSourceUuid))) {
         mapView.Models.remove(model);
         return;
@@ -11567,25 +11562,17 @@ async function init() {
   const _addSingleModelToMap = (m: any) => {
     if (MODEL_INSTANCE_REGISTRY.has(m.uuid)) return Promise.resolve(MODEL_INSTANCE_REGISTRY.get(m.uuid));
     if (_pendingModelLoads.has(m.uuid)) return _pendingModelLoads.get(m.uuid);
-    const requestedFloorId = mapView.currentFloor?.id;
-    const pending = Promise.resolve().then(() => _addSingleModelToMapRaw(m)).finally(() => {
-      _pendingModelLoads.delete(m.uuid);
-      if (mapView.currentFloor?.id && mapView.currentFloor.id !== requestedFloorId) {
-        (window as any).updateModelStreaming?.();
-      }
-    });
+    const pending = Promise.resolve().then(() => _addSingleModelToMapRaw(m)).finally(() => _pendingModelLoads.delete(m.uuid));
     _pendingModelLoads.set(m.uuid, pending);
     return pending;
   };
-  let modelStreamingGeneration = 0;
+
   const updateModelStreaming = debounce(async () => {
-    const generation = ++modelStreamingGeneration;
     // Bỏ qua khi đang reset camera (Home) hoặc chuyển tầng để tránh lag
     if ((window as any)._isStartupCameraAnimating) return;
     if ((window as any)._isResettingCamera || isGlobalSwitchingFloor) return;
     const currentFloor = mapView.currentFloor;
     if (!currentFloor) return;
-    const isCurrentStream = () => generation === modelStreamingGeneration && mapView.currentFloor?.id === currentFloor.id;
 
     const floorName = (currentFloor.name || "").toLowerCase();
     const focalPoint = (mapView.Camera as any).center;
@@ -11600,7 +11587,7 @@ async function init() {
       loadRadius: LOAD_RADIUS,
       unloadRadius: UNLOAD_RADIUS
     } = getModelStreamingZoomThresholds(isMobile);
-    const MAX_CONCURRENT_MODELS = 80;
+    const MAX_CONCURRENT_MODELS = 300;
 
     mapDebugLog(`📡 [STREAMING] Current Zoom: ${currentZoom.toFixed(2)} (Target > ${ZOOM_LOAD_THRESHOLD})`);
 
@@ -11662,21 +11649,13 @@ async function init() {
     });
 
     const modelsToLoad: any[] = [];
-    const essentialNeeded = candidateModels.filter((m: any) =>
-      (m.flbVerified || isThang(m) || isPersistentLowerFloorModel(m)) &&
-      !MODEL_INSTANCE_REGISTRY.has(m.uuid) && !_pendingModelLoads.has(m.uuid)).length;
-    if (essentialNeeded) {
-      const currentSignageNeeded = candidateModels.filter((m: any) => m.flbVerified && m.floorId === currentFloor.id &&
-        !MODEL_INSTANCE_REGISTRY.has(m.uuid) && !_pendingModelLoads.has(m.uuid)).length;
-      const evictable = [...MODEL_INSTANCE_REGISTRY.entries()].map(([uuid, instance]) => {
-        const meta = [...MODEL_ID_REGISTRY.values()].find((m: any) => m.uuid === uuid);
-        return { uuid, instance, meta, priority: meta && (isThang(meta) || isPersistentLowerFloorModel(meta)) ? 1 : 0 };
-      }).filter(({meta,priority}) => meta && !meta.flbVerified &&
-        (!priority || (meta.floorId !== currentFloor.id && currentSignageNeeded > 0)))
-        .sort((a,b) => a.priority - b.priority || calculateDistance(focalPoint,b.meta.originalCoordinate) - calculateDistance(focalPoint,a.meta.originalCoordinate));
-      for (const {uuid,instance,priority} of evictable) {
-        const needed = priority ? currentSignageNeeded : essentialNeeded;
-        if (MODEL_INSTANCE_REGISTRY.size + _pendingModelLoads.size + needed <= MAX_CONCURRENT_MODELS) break;
+    const signageNeeded = candidateModels.filter((m: any) => m.flbVerified && !MODEL_INSTANCE_REGISTRY.has(m.uuid) && !_pendingModelLoads.has(m.uuid)).length;
+    if (signageNeeded) {
+      const evictable = [...MODEL_INSTANCE_REGISTRY.entries()].map(([uuid, instance]) => ({uuid,instance,meta:[...MODEL_ID_REGISTRY.values()].find((m: any) => m.uuid === uuid)}))
+        .filter(({meta}) => meta && !meta.flbVerified && !isThang(meta) && !isPersistentLowerFloorModel(meta))
+        .sort((a,b) => calculateDistance(focalPoint,b.meta.originalCoordinate) - calculateDistance(focalPoint,a.meta.originalCoordinate));
+      for (const {uuid,instance} of evictable) {
+        if (MODEL_INSTANCE_REGISTRY.size + _pendingModelLoads.size + signageNeeded <= MAX_CONCURRENT_MODELS) break;
         mapView.Models.remove(instance);MODEL_INSTANCE_REGISTRY.delete(uuid);MODEL_ID_REGISTRY.delete(instance.id);
       }
     }
@@ -11704,9 +11683,6 @@ async function init() {
     if (modelsToLoad.length > 0) {
       modelsToLoad.sort((a, b) => {
         if (Boolean(a.flbVerified) !== Boolean(b.flbVerified)) return a.flbVerified ? -1 : 1;
-        const aEssential = isThang(a) || isPersistentLowerFloorModel(a);
-        const bEssential = isThang(b) || isPersistentLowerFloorModel(b);
-        if (aEssential !== bEssential) return aEssential ? -1 : 1;
         const dA = calculateDistance(focalPoint, { latitude: Number(a.latitude), longitude: Number(a.longitude) });
         const dB = calculateDistance(focalPoint, { latitude: Number(b.latitude), longitude: Number(b.longitude) });
         return dA - dB;
@@ -11714,7 +11690,6 @@ async function init() {
 
       const BATCH_SIZE = 3;
       for (let i = 0; i < modelsToLoad.length; i += BATCH_SIZE) {
-        if (!isCurrentStream()) return;
         if (MODEL_INSTANCE_REGISTRY.size >= MAX_CONCURRENT_MODELS) break;
         const capacity = MAX_CONCURRENT_MODELS - MODEL_INSTANCE_REGISTRY.size - _pendingModelLoads.size;
         if (capacity <= 0) break;

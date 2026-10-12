@@ -28,8 +28,8 @@ test('admin polling starts only after authenticated admin state and can be stopp
   assert.doesNotMatch(source, /if\s*\(!isViewOnly\)\s*{\s*setInterval\(async \(\) =>/);
 });
 
-test('model streaming has a kiosk-safe concurrent model cap', () => {
-  assert.match(source, /const\s+MAX_CONCURRENT_MODELS\s*=\s*80/);
+test('model streaming retains the approved concurrent model cap', () => {
+  assert.match(functionText('updateModelStreaming'), /const\s+MAX_CONCURRENT_MODELS\s*=\s*300/);
 });
 
 test('kiosk runtime diagnostics are gated behind explicit debug flag', () => {
