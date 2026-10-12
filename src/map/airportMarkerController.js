@@ -1,6 +1,7 @@
 import {getAviationMarkerPolicy, markerCoordinatesForFloor} from './aviationMarkerPolicy.js';
 import {markerPresentation} from './markerPresentation.js';
 import {clusterAviationMarkers} from './aviationMarkerClustering.js';
+import {transitAccessAreaById} from './transitAccessAreas.mjs';
 
 // Each rendered marker is anchored to one real POI, even at reduced detail.
 export function createAirportMarkerController({mapView, objects, getLocations, getName, getImage,
@@ -65,6 +66,8 @@ export function createAirportMarkerController({mapView, objects, getLocations, g
     const locations = getLocations() || {}, requiredObjectIds = getRequiredObjectIds();
     const entries = [];
     for (const obj of objects) {
+      const accessArea = transitAccessAreaById.get(obj.id);
+      if (accessArea && accessArea.floorId !== floorId) continue;
       const coordinates = markerCoordinatesForFloor(obj, floorId, overviewFloorId);
       if (!coordinates.length) continue;
       const name = getName(obj);
@@ -72,7 +75,8 @@ export function createAirportMarkerController({mapView, objects, getLocations, g
       const location = locations[obj.id] || locations[obj.mappedinId];
       const policy = getAviationMarkerPolicy(obj, location,
         {zoom: mapView.Camera.zoomLevel, gate: getGate(obj.id), requiredObjectIds});
-      const iconPath = location?.subCategoryIcon || getImage(obj);
+      const iconPath = accessArea ? (location?.uiImage || accessArea.icon) :
+        (location?.subCategoryIcon || getImage(obj));
       const icon = iconPath ? (iconPath.startsWith('/') || /^https?:/.test(iconPath) ?
         iconPath : `/icon-category/${iconPath}`) : null;
       for (const coordinate of coordinates) {

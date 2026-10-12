@@ -98,7 +98,7 @@ export function clusterAviationMarkers(entries, {zoom = 17, floorId, overviewFlo
   }
   const groups = new Map(), result = [], facilities = [];
   for (const entry of ordered) {
-    if (entry.policy.iconOnly) { result.push(present([entry])); continue; }
+    if (entry.policy.iconOnly || entry.policy.accessArea) { result.push(present([entry])); continue; }
     const island = entry.checkin?.island;
     if (!island && !entry.policy.label) { facilities.push(entry); continue; }
     const kind = island ? `island:${island}` : `individual:${identity(entry)}`;

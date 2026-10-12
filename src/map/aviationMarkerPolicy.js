@@ -1,3 +1,5 @@
+import {transitAccessAreaById} from './transitAccessAreas.mjs';
+
 // Category IDs are stable database identities; display language never determines priority.
 const REQUIRED = new Set([60,61,62,63,86,87,88,92,95,96,98,101,104,124,125,126,127,128,129,130,131,132,133,135,136,137,138,139,167,176,177,178,208]);
 const VERTICAL = new Set([60,62]);
@@ -5,8 +7,9 @@ export function escapeMarkerHtml(value){return String(value??'').replace(/[&<>"'
 export function getAviationMarkerPolicy(object={},location=null,{zoom=15,gate=null,requiredCategoryIds=[],requiredObjectIds=[]}={}) {
  const category=Number(location?.subCategoryId??location?.SubCategoryID);
  const vertical=VERTICAL.has(category)||['elevator','escalator','stairway','stairs'].includes(String(object.type||'').toLowerCase());
- const required=!vertical&&(Boolean(gate)||REQUIRED.has(category)||requiredCategoryIds.includes(category)||requiredObjectIds.includes(object.id));
- return {required,rank:required?'always-visible':'low',occlude:!required,dynamicResize:vertical,iconSize:24,
+ const accessArea=transitAccessAreaById.has(object.id);
+ const required=!vertical&&(accessArea||Boolean(gate)||REQUIRED.has(category)||requiredCategoryIds.includes(category)||requiredObjectIds.includes(object.id));
+ return {required,accessArea,rank:required?'always-visible':'low',occlude:!required,dynamicResize:vertical,iconSize:24,
   showLabel:!vertical,iconOnly:vertical,label:gate?.gateNo!=null?`Gate ${Number(gate.gateNo)}`:null};
 }
 export function markerCoordinatesForFloor(object,currentFloorId,overviewFloorId){
