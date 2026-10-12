@@ -20,13 +20,18 @@ export function buildFlightWayfindingPlan({
   currentOrigin = null,
   checkin = null,
   gate = null,
-  belt = null
+  belt = null,
+  flightContext = null,
+  journeyContext = null
 } = {}) {
+  const context = (flightContext || journeyContext) ? {journeyContext:{...journeyContext,...(flightContext?{trafficClass:flightContext.trafficClass||undefined}:{}),flightContext,
+    journeyKind: flightContext?.ArrDep === 'A' || action === 'belt' ? 'arrival' : 'departure'}} : {};
   if (action === 'route') {
     return {
       origin: isKioskMode ? kioskOrigin : checkin,
       destination: gate,
-      stopovers: isKioskMode && checkin ? [checkin] : []
+      stopovers: isKioskMode && checkin ? [checkin] : [],
+      ...context
     };
   }
 
@@ -39,6 +44,7 @@ export function buildFlightWayfindingPlan({
   return {
     origin: isKioskMode ? kioskOrigin : currentOrigin,
     destination: destinations[action] ?? null,
-    stopovers: []
+    stopovers: [],
+    ...context
   };
 }

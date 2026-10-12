@@ -1,5 +1,26 @@
+import { createPlaybackLifecycle } from '../../src/journeys/playbackLifecycle.js';
+import { markerCoordinatesForFloor } from '../../src/map/aviationMarkerPolicy.js';
+import { prepareAccessRoadVisuals, installAccessRoadMarkings } from '../../src/map/accessRoadVisuals.mjs';
+import { prepareRoofAppearance, installRoofAppearance } from '../../src/map/roofAppearance.mjs';
+import { createAirportMarkerController } from '../../src/map/airportMarkerController.js';
+import bundledAirportOperations from '../../src/config/airportOperations.json';
+let airportOperations: any = bundledAirportOperations;
+let airportOperationsAvailable = false;
+import { createAirportDirections } from '../../src/navigation/airportDirections.js';
+import { createJourneyContext } from '../../src/navigation/airportJourneyContext.js';
+import { getAirportRouteNoticeKeys } from '../../src/navigation/airportRouteNotice.js';
+import { mountAirportJourneyPanel } from '../../src/journeys/airportJourneyPanel.js';
+import { routeLookAheadBearing, interpolateBearing, sampleJourneyRoute } from '../../src/journeys/journeyTimeline.js';
+import flbManifest from '../../Model3D/flb/manifest.json';
+import { getFlbAssetUrl, getFlbManifestEntry } from '../../src/map/flbModelPolicy.js';
+import { verifiedFlbRuntimeModels, flbPickerCatalogue, flbOverviewProxies } from '../../src/map/flbPlacementRuntime.js';
+import { planAirportJourney } from '../../src/navigation/airportJourneyPlanner.js';
+import { createAirportJourneySdkAdapter } from '../../src/navigation/airportJourneySdkAdapter.js';
+import { mountFlbSamplePreview } from '../../src/map/flbSamplePreview.js';
+import { createFlbPersistenceController } from '../../src/map/flbPersistenceController.js';
 import {
   getMapData,
+  hydrateMapData,
   show3dMap,
   type Directions,
   type TGetDirectionsOptions
@@ -1200,18 +1221,20 @@ class TranslationManager {
       'ko': '경로 안내'
     },
     'not_found': {
-      'vn': 'Không tìm thấy đường đi',
-      'en': 'Route not found',
-      'zh': '未找到路线',
-      'ja': 'ルートが見つかりません',
-      'ko': '경로를 찾을 수 없습니다'
+      'vn': 'Không tìm thấy đường đi phù hợp. Vui lòng liên hệ quầy thông tin để biết thêm thông tin chi tiết.',
+      'vi': 'Không tìm thấy đường đi phù hợp. Vui lòng liên hệ quầy thông tin để biết thêm thông tin chi tiết.',
+      'en': 'No suitable route was found. Please contact the information desk for further details.',
+      'zh': '未找到合适的路线。请联系问讯处了解更多详细信息。',
+      'ja': '適切な経路が見つかりませんでした。詳しくは案内カウンターにお問い合わせください。',
+      'ko': '적절한 경로를 찾을 수 없습니다. 자세한 내용은 안내 데스크에 문의해 주세요.'
     },
     'error_nav': {
-      'vn': 'Lỗi khi tìm đường đi',
-      'en': 'Error finding route',
-      'zh': '寻道错误',
-      'ja': 'ルート検索エラー',
-      'ko': '경로 검색 오류'
+      'vn': 'Không tìm thấy đường đi phù hợp. Vui lòng liên hệ quầy thông tin để biết thêm thông tin chi tiết.',
+      'vi': 'Không tìm thấy đường đi phù hợp. Vui lòng liên hệ quầy thông tin để biết thêm thông tin chi tiết.',
+      'en': 'No suitable route was found. Please contact the information desk for further details.',
+      'zh': '未找到合适的路线。请联系问讯处了解更多详细信息。',
+      'ja': '適切な経路が見つかりませんでした。詳しくは案内カウンターにお問い合わせください。',
+      'ko': '적절한 경로를 찾을 수 없습니다. 자세한 내용은 안내 데스크에 문의해 주세요.'
     },
     'route_found': {
       'vn': 'Đã tìm thấy đường đi',
@@ -1563,6 +1586,8 @@ class TranslationManager {
   // Get Name for Map Object logic (Locations, Categories, SubCategories)
   static getName(obj: any): string {
     if (!obj) return '';
+    const gate = airportOperations.gates.find((g: any) => g.mappedinId === (obj.id || obj.mappedinId));
+    if (gate) return `Gate ${gate.gateNo}`;
     const id = obj.id || obj.mappedinId; // handle mixed objects
     const lang = (this.currentLang || 'vn').toLowerCase();
 
@@ -2101,6 +2126,7 @@ async function init() {
   // ApiService moved to top level
   let hideInfo: any = null;
   let updateInfo: any = null;
+  let dispatchAirportMarkerSelection: any = null;
 
   // ============================================
   // LAZY LOADING: Cache metadata + track loaded floors
@@ -2110,6 +2136,7 @@ async function init() {
   // Theo dõi tầng nào đã load models rồi (tránh load lại)
   const _loadedFloors: Set<string> = new Set();
   let _hasSyncedOverviewModelFloor = false;
+  let flbPersistence: any = null;
 
   // Placement Globals
   let placingModelConfig: any = null;
@@ -2190,20 +2217,39 @@ async function init() {
 
     if (url.startsWith("./")) return url.replace("./", `${SERVER_URL}/`);
     if (!url.startsWith("http")) {
-      if (url.includes("Model3D/")) return `${SERVER_URL}/${url}`;
+      if (url.includes("Model3D/")) return `${SERVER_URL}/${url.replace(/^\/+/, '')}`;
       return `${SERVER_URL}/Model3D/${url}`;
     }
     return url;
   };
 
 
+  try {
+    const response = await fetch(`${API_BASE_URL}/airport-operations`, {signal: AbortSignal.timeout(10000)});
+    if (!response.ok) throw new Error('Operations API unavailable');
+    const config = await response.json();
+    if (config.version !== bundledAirportOperations.version || config.mapId !== bundledAirportOperations.mapId || !Array.isArray(config.gates) || !Array.isArray(config.counters) || !Array.isArray(config.zones) || !config.profiles) throw new Error('Operations configuration mismatch');
+    airportOperations = config;
+    airportOperationsAvailable = true;
+  } catch (error) {
+    console.error('[Airport] Operations configuration unavailable; routing is disabled.', error);
+  }
   // Load map data từ Mappedin API
   const MAP_ID = "693687f4f176dd000ba13a3b";
+  let accessRoadVisuals: any = { paintSources: {}, targets: [] };
+  let roofAppearancePlan: any = { surfaces: [] };
+  const applyAccessRoadVisuals = (mvf: any) => {
+    accessRoadVisuals = prepareAccessRoadVisuals(mvf, TranslationManager.data?.areaVisualStyles || {}, getServerAreaColors());
+    roofAppearancePlan = prepareRoofAppearance(mvf, TranslationManager.data?.roofAppearances?.[MAP_ID], accessRoadVisuals);
+  };
   const mapData = await getMapData({
     key: "mik_84tXkEaqR5Ogul15S52130732",
     secret: "mis_JuNKdPNKhdMjONyk40x0T8nrCVH4ANPQWtQ9nmoQGEZ86b10fe5",
     mapId: MAP_ID,
-  });
+    onMVFParsed: applyAccessRoadVisuals,
+  }).then(data => accessRoadVisuals.targets.length
+    ? hydrateMapData((data as any).internal.mvf, { ...(data as any).internal.getMapDataOptions, onMVFParsed: undefined })
+    : data);
 
   // Tìm overview floor sớm để dùng cho markers
   const overviewFloor = mapData.getByType("floor").find((f: any) => {
@@ -2249,6 +2295,10 @@ async function init() {
       // preloadFloors: allFloors,
     }
   );
+
+  const refreshAccessRoadVisuals = installAccessRoadMarkings(mapView, mapData, accessRoadVisuals, getServerAreaColors);
+  const roofAppearance = installRoofAppearance(mapView, mapData, roofAppearancePlan, () => TranslationManager.data?.roofAppearances?.[MAP_ID]);
+  (window as any).roofAppearanceController = roofAppearance;
 
   // Cấu hình độ nhạy Camera trực tiếp sau khi khởi tạo (Đảm bảo hiệu lực cho Mobile)
   try {
@@ -3855,6 +3905,7 @@ async function init() {
     .toLowerCase();
 
   const isPersistentLowerFloorModel = (obj: any) => {
+    if (obj?.flbVerified) return obj.floorId === mapView.currentFloor?.id;
     if (!obj) return false;
 
     const candidates = [obj.file, obj.url, obj.name, obj.desc];
@@ -4124,150 +4175,8 @@ async function init() {
    * Tham khảo cách render connection markers
    */
   const renderObjectMarkersForCurrentFloor = () => {
+    // All POIs are owned by the airport marker controller; no duplicate overlay producer.
     clearObjectMarkers();
-    if (!objects || objects.length === 0) return;
-
-    const currentFloorId = mapView.currentFloor?.id;
-
-    objects.forEach((objStub: any) => {
-      const obj = resolveObjectById(objStub?.id) || objStub;
-      if (!obj.name) return;
-
-      if (currentFloorId) {
-        const objFloorId = obj.floor?.id || obj.floorId;
-        if (objFloorId && objFloorId !== currentFloorId) return;
-      }
-
-      // Lấy coordinates (thử nhiều cách)
-      let coordsToRender: any[] = [];
-      if (Array.isArray(obj.coordinates) && obj.coordinates.length > 0) {
-        coordsToRender = obj.coordinates;
-      } else {
-        const singleCoord = obj.coordinate || obj.anchor || obj.position;
-        if (singleCoord) {
-          coordsToRender.push(singleCoord);
-        }
-      }
-
-      if (coordsToRender.length === 0) return;
-
-
-      // Lấy image nếu có (từ photos/images/metadata)
-      let imageUrl: string | null = null;
-      if (obj.photos && Array.isArray(obj.photos) && obj.photos.length > 0) {
-        const photo = obj.photos[0];
-        if (typeof photo === "string") {
-          imageUrl = photo;
-        } else if (photo?.url || photo?.src || photo?.href) {
-          imageUrl = photo.url || photo.src || photo.href;
-        }
-      } else if (obj.images && Array.isArray(obj.images) && obj.images.length > 0) {
-        const img = obj.images[0];
-        if (typeof img === "string") {
-          imageUrl = img;
-        } else if (img?.url || img?.src || img?.href) {
-          imageUrl = img.url || img.src || img.href;
-        }
-      } else if (obj.metadata?.image || obj.metadata?.photo) {
-        imageUrl = obj.metadata.image || obj.metadata.photo;
-      }
-
-      // Render marker cho mỗi coordinate (tham khảo connection markers style)
-      coordsToRender.forEach((coord: any) => {
-        try {
-          // Ưu tiên lấy tên từ Database thông qua TranslationManager để đồng bộ ngôn ngữ
-          const localizedName = TranslationManager.getName(obj);
-          const label = (localizedName && localizedName !== obj.id) ? localizedName : obj.name;
-
-          let markerHtml: string;
-
-          // 1. Force ATM Icon override
-          // 1. Get SubCategory Icon from TranslationManager data (Pre-fetched from Backend)
-          let activeIconUrl = imageUrl;
-
-          try {
-            // Look up extended data for this object
-            const locData = TranslationManager.data.locations?.[obj.id] || TranslationManager.data.locations?.[obj.mappedinId];
-            if (locData && locData.subCategoryIcon) {
-              const iconPath = locData.subCategoryIcon;
-              // Basic validation: must have extension and not be empty
-              if (iconPath && iconPath.indexOf('.') !== -1) {
-                if (iconPath.startsWith('/')) {
-                  activeIconUrl = iconPath;
-                } else {
-                  activeIconUrl = `/icon-category/${iconPath}`;
-                }
-              }
-            }
-          } catch (e) { }
-
-          // 2. Force ATM Icon override (Preserve specific override as requested)
-          // Manual override for ATMs as requested
-          if (label && (label.toLowerCase().includes('atm') || label.toLowerCase().includes('ngân hàng') || label.toLowerCase().includes('bank'))) {
-            activeIconUrl = "/icon-category/AirportService/atm.png";
-          }
-
-          if (activeIconUrl) {
-            // Có image → dùng image (Square Style - Premium Design)
-            // Use onerror fallback to prevent white boxes
-            const onerrorStr = `
-              if (this.dataset.tried === 'true') {
-                 this.style.display='none'; 
-                 // If fallback fails, show text fallback
-                 this.parentElement.innerHTML='<div style=\\'width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;font-weight:bold;font-size:15px;\\'>${label.charAt(0).toUpperCase()}</div>';
-              } else {
-                 this.dataset.tried = 'true';
-                 // Try reverting to original Mappedin image if different
-                 if ('${imageUrl || ''}' !== '' && this.src.indexOf('${imageUrl || 'SHOULD_NOT_MATCH'}') === -1) {
-                    this.src = '${imageUrl}';
-                 } else {
-                    this.style.display='none';
-                    this.parentElement.innerHTML='<div style=\\'width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;font-weight:bold;font-size:15px;\\'>${label.charAt(0).toUpperCase()}</div>';
-                 }
-              }
-            `.replace(/\s+/g, ' ');
-
-            markerHtml = `
-              <div class="mappedin-poi-marker" style="display:flex;flex-direction:column;align-items:center;gap:3px; transition: opacity 0.3s ease, transform 0.3s ease;">
-                <div style="width:34px;height:34px;display:flex;align-items:center;justify-content:center;background:#fff;border-radius:50%;box-shadow:0 3px 6px rgba(0,0,0,0.15);border:1.5px solid #fff;">
-                  <img src="${activeIconUrl}" alt="${label}" onerror="${onerrorStr}" style="width:20px;height:20px;object-fit:contain;" />
-                </div>
-                <div style="font-size:13px;line-height:1.2;font-weight:700;color:#111;-webkit-text-stroke:3px #fff;paint-order:stroke fill;text-shadow:0 1px 1px rgba(0,0,0,0.22);white-space:nowrap;">
-                  ${label}
-                </div>
-              </div>
-            `;
-          } else {
-            // Không có image → dùng box icon 📦
-            markerHtml = `
-              <div class="mappedin-poi-marker" style="display:flex;flex-direction:column;align-items:center;gap:2px; transition: opacity 0.3s ease, transform 0.3s ease;">
-                <div style="display:flex;align-items:center;justify-content:center;filter:drop-shadow(0 0 4px rgba(255,255,255,0.8));">
-                  <div style="width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:20px;">
-                    ${boxIconFallback}
-                  </div>
-                </div>
-                <div style="font-size:13px;line-height:1.2;font-weight:700;color:#111;-webkit-text-stroke:3px #fff;paint-order:stroke fill;text-shadow:0 1px 1px rgba(0,0,0,0.22);white-space:nowrap;">
-                  ${label}
-                </div>
-              </div>
-            `;
-          }
-
-          const marker = mapView.Markers.add(coord, markerHtml, {
-            interactive: true,
-          } as any);
-
-          objectMarkers.push(marker);
-          const markerId = (marker as any)?.id;
-          if (markerId) {
-            // Lưu object đầy đủ vào map
-            markerIdToObject.set(markerId, obj);
-          }
-        } catch (e) {
-          // Bỏ qua nếu có lỗi
-        }
-      });
-    });
   };
 
   // Initial render
@@ -4446,73 +4355,7 @@ async function init() {
    * Render connection markers cho floor hiện tại
    */
   const renderConnectionOverlaysForCurrentFloor = () => {
-    const currentFloorId = mapView.currentFloor?.id;
-    console.log(`🔌 [CONNECTIONS] Attempting to render overlays for floor: ${currentFloorId} (Markers Visible: ${connectionMarkersVisible})`);
-
-    if (!connectionMarkersVisible) {
-      console.log("🔌 [CONNECTIONS] Skipping render: visibility flag is false");
-      return;
-    }
     clearConnectionOverlays();
-    const currentZoom = getCameraZoom();
-    const coordKey = (c: any) =>
-      `${c?.floorId || c?.floor?.id || ""}:${c?.latitude?.toFixed?.(6) ?? c?.latitude}:${c?.longitude?.toFixed?.(6) ?? c?.longitude}`;
-
-    (connections || []).forEach((conn: any) => {
-      // Resolve coordinates from native connections or keyword fallbacks
-      let coords: any[] = [];
-      if (Array.isArray(conn.coordinates) && conn.coordinates.length > 0) {
-        coords = conn.coordinates;
-      } else if (conn.coordinate) {
-        coords = [conn.coordinate];
-      } else if (conn.anchor) {
-        coords = [conn.anchor];
-      }
-
-      const floorCoords = coords.filter((c: any) => {
-        if (!currentFloorId) return true;
-        const fId = c?.floorId || c?.floor?.id || conn.floorId || conn.floor?.id;
-        return fId === currentFloorId;
-      });
-      if (floorCoords.length === 0) return;
-
-      // Loại bỏ duplicate coordinates trên cùng floor
-      const seen = new Set<string>();
-      const uniqueCoords = floorCoords.filter((c: any) => {
-        const k = coordKey(c);
-        if (seen.has(k)) return false;
-        seen.add(k);
-        return true;
-      });
-
-      const { text, icon } = resolveConnStyle(conn);
-      uniqueCoords.forEach((coord: any) => {
-        try {
-          const marker = mapView.Markers.add(
-            coord,
-            getConnectionMarkerHtml(icon, text),
-            { interactive: true } as any
-          );
-
-          connectionMarkers.push(marker);
-          const markerId = (marker as any)?.id;
-          if (markerId) {
-            (conn as any).__iconUrl = icon;
-            (conn as any).__labelText = text;
-            markerIdToConnection.set(markerId, conn);
-          }
-        } catch { }
-      });
-    });
-
-    console.log(`🔌 Rendered ${connectionMarkers.length} connection markers on floor: ${currentFloorId}`);
-    if (connections && connections.length > 0) {
-      console.log("📍 Connection objects found in mapData:", connections.map((c: any) => ({
-        id: c.id,
-        type: c.type,
-        coordsCount: c.coordinates?.length || 0
-      })));
-    }
   };
 
   (window as any).renderConnectionOverlaysForCurrentFloor = renderConnectionOverlaysForCurrentFloor;
@@ -5122,6 +4965,13 @@ async function init() {
 
   // Lấy style cơ bản cho một khu vực dựa trên phân loại vai trò không gian
   const getObjectBaseStyle = (obj: any) => {
+    const roofStyle = roofAppearance.styleForObject(obj);
+    if (roofStyle) return roofStyle;
+    const sourceId = accessRoadVisuals.paintSources[obj.id] || obj.id;
+    if (TranslationManager.data?.areaVisualStyles?.[sourceId]) {
+      const color = getAreaColorOverride(sourceId) || '#68747E';
+      return { color, hoverColor: color };
+    }
     const name = (obj.name || "");
     const objFloorId = obj?.floor?.id || obj?.floorId || (typeof obj?.floor === 'string' ? obj.floor : null);
     const isOverviewPoly = overviewFloor && objFloorId === overviewFloor.id;
@@ -5178,6 +5028,16 @@ async function init() {
    */
   const applyAreaColors = () => {
     const currentFloorId = mapView.currentFloor?.id;
+    refreshAccessRoadVisuals();
+    roofAppearance.refresh();
+    // Synthetic overview surfaces have no location; refresh them by their real source ID.
+    for (const [visualId, sourceId] of Object.entries(accessRoadVisuals.paintSources)) {
+      const space = mapData.getById('space', visualId);
+      if (space?.floor?.id === currentFloorId) {
+        const color = getAreaColorOverride(sourceId as string) || '#68747E';
+        mapView.updateState(space, { color, hoverColor: color });
+      }
+    }
     getColorRenderObjects().forEach((obj) => {
       if (!obj || !obj.id) return;
       // Skip connections and points as they don't have colorable polygons
@@ -5223,10 +5083,11 @@ async function init() {
         }
       }
       const stateUpdate: any = {
-        interactive: true,
+        interactive: style.interactive ?? true,
         color: style.color,
         hoverColor: style.hoverColor
       };
+      if (style.topColor) stateUpdate.topColor = style.topColor;
 
       try {
         mapView.updateState(obj, stateUpdate);
@@ -5331,179 +5192,24 @@ async function init() {
    * - Nếu có image → hiển thị hình tròn với avatar
    * - Nếu không có image → hiển thị hình tròn với text
    */
-  // Track current location markers to clear on refresh
-  let currentLocationMarkers: any[] = [];
-
-  // Exposed function to refresh markers (used by setLanguage)
-  const refreshLocationMarkers = () => {
-    // 1. Clear existing markers
-    currentLocationMarkers.forEach(m => {
-      try { mapView.Markers.remove(m); } catch (e) { }
-    });
-    currentLocationMarkers = [];
-
-    // Note: We don't clear markerIdToObject here to avoid breaking other references, 
-    // but in a perfect world we should clean up stale IDs. 
-    // For now, map will just grow, which is acceptable for this scale.
-
-    // 2. Add new markers with translated names
-    allMapObjects.forEach((obj) => {
-      // Use TranslationManager to get name (current language)
-      const name = TranslationManager.getName(obj);
-      if (name) {
-        try {
-          // Skip Main Entrance (handled separately)
-          const nameLower = name.toLowerCase();
-          const isMainEntrance = nameLower.includes("main entrance") ||
-            nameLower.includes("main terminal entrance") ||
-            nameLower.includes("cổng chính") ||
-            nameLower.includes("正门") || nameLower.includes("航站楼主入口") ||
-            nameLower.includes("メインエントランス") || nameLower.includes("ターミナル") ||
-            nameLower.includes("정문") || nameLower.includes("터미널") ||
-            nameLower === TranslationManager.t('main_entrance', 'Cổng chính').toLowerCase();
-
-          if (isMainEntrance) {
-            mainEntranceObject = obj;
-            return;
-          }
-
-          // FIX: Hide "Restroom/Toilet" markers that are erroneously placed at Venue Center
-          // or generically hide them on Overview to prevent clutter unless zoomed in
-          const isRestroom = nameLower.includes("nhà vệ sinh") || nameLower.includes("toilet") || nameLower.includes("restroom") || nameLower.includes("wc");
-          if (isRestroom) {
-            // Check distance to venue center (approximate)
-            const centerLat = 10.77262290;
-            const centerLon = 107.04114030;
-            // Simple heuristic: if object has no specific coordinate or is at 0,0 or center
-            // Access internal coordinate if possible
-            const lat = (obj as any).latitude ?? (obj as any).coordinate?.latitude;
-            const lon = (obj as any).longitude ?? (obj as any).coordinate?.longitude;
-
-            if (lat && lon) {
-              const dLat = Math.abs(lat - centerLat);
-              const dLon = Math.abs(lon - centerLon);
-              if (dLat < 0.00005 && dLon < 0.00005) {
-                // Too close to center label, likely data error or overlap
-                return;
-              }
-            }
-          }
-
-          let imgUrl = getImageUrlForMarker(obj);
-          let markerHtml = '';
-
-          // Reuse HTML generation logic
-          let activeIconUrl = imgUrl;
-
-          try {
-            const locData = TranslationManager.data.locations?.[obj.id] || TranslationManager.data.locations?.[obj.mappedinId];
-            if (locData && locData.subCategoryIcon) {
-              const iconPath = locData.subCategoryIcon;
-              // Basic validation
-              if (iconPath && iconPath.indexOf('.') !== -1) {
-                if (iconPath.startsWith('/')) {
-                  activeIconUrl = iconPath;
-                } else {
-                  activeIconUrl = `/icon-category/${iconPath}`;
-                }
-              }
-            }
-          } catch (e) { }
-
-          // 1. Force ATM & Special Area Icon overrides
-          const isPublic = nameLower.includes("công cộng") || nameLower.includes("public") ||
-            nameLower.includes("公共") || nameLower.includes("공공") ||
-            (obj.name && (obj.name.toLowerCase().includes("public") || obj.name.toLowerCase().includes("công cộng")));
-
-          const isRestricted = nameLower.includes("hạn chế") || nameLower.includes("nhân viên") ||
-            nameLower.includes("restricted") || nameLower.includes("staff") ||
-            nameLower.includes("禁区") || nameLower.includes("制限") || nameLower.includes("禁") ||
-            nameLower.includes("スタッフ") || nameLower.includes("직원") ||
-            nameLower.includes("立ち入り禁止") ||
-            (obj.name && (obj.name.toLowerCase().includes("restricted") || obj.name.toLowerCase().includes("staff") ||
-              obj.name.toLowerCase().includes("hạn chế") || obj.name.toLowerCase().includes("nhân viên")));
-
-          if (nameLower.includes('atm') || nameLower.includes('ngân hàng') || nameLower.includes('bank')) {
-            activeIconUrl = "/icon-category/AirportService/atm.png";
-          } else if (isPublic) {
-            activeIconUrl = "/icon-category/landside.png";
-            imgUrl = "/icon-category/landside.png"; // Force fallback
-            console.log("🎨 Applying Landside icon to:", name || obj.name);
-          } else if (isRestricted) {
-            activeIconUrl = "/icon-category/airside.png";
-            imgUrl = "/icon-category/airside.png"; // Force fallback
-            console.log("🎨 Applying Airside icon to:", name || obj.name);
-          }
-
-          if (activeIconUrl) {
-            // Square Style - Premium Design
-            const onerrorStr = `
-              if (this.dataset.tried === 'true') {
-                 this.style.display='none'; 
-                 this.parentElement.innerHTML='<div style=\\'width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;font-weight:bold;font-size:15px;\\'>${name.charAt(0).toUpperCase()}</div>';
-              } else {
-                 this.dataset.tried = 'true';
-                 if ('${imgUrl || ''}' !== '' && this.src.indexOf('${imgUrl || 'SHOULD_NOT_MATCH'}') === -1) {
-                    this.src = '${imgUrl}';
-                 } else {
-                    this.style.display='none';
-                    this.parentElement.innerHTML='<div style=\\'width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;font-weight:bold;font-size:15px;\\'>${name.charAt(0).toUpperCase()}</div>';
-                 }
-              }
-            `.replace(/\s+/g, ' ');
-
-            markerHtml = `
-            <div style="display:flex;flex-direction:column;align-items:center;gap:3px;">
-              <div style="width:34px;height:34px;background:#fff;border-radius:50%;box-shadow:0 3px 6px rgba(0,0,0,0.2);display:flex;align-items:center;justify-content:center;border:1.5px solid #fff;">
-                <img src="${activeIconUrl}" alt="${name}" onerror="${onerrorStr}" style="width:20px;height:20px;object-fit:contain;" />
-              </div>
-              <div style="font-size:13px;line-height:1.2;font-weight:700;color:#111;-webkit-text-stroke:3px #fff;paint-order:stroke fill;text-shadow:0 1px 1px rgba(0,0,0,0.22);white-space:nowrap;">
-                ${name}
-              </div>
-            </div>`;
-          } else {
-            const firstLetter = name.charAt(0).toUpperCase();
-            markerHtml = `
-            <div style="display:flex;flex-direction:column;align-items:center;gap:3px;">
-              <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:bold;font-size:14px;">
-                ${firstLetter}
-              </div>
-              <div style="font-size:13px;line-height:1.2;font-weight:700;color:#111;-webkit-text-stroke:3px #fff;paint-order:stroke fill;text-shadow:0 1px 1px rgba(0,0,0,0.22);white-space:nowrap;">
-                ${name}
-              </div>
-            </div>`;
-          }
-
-          // SAFETY CHECK: Ensure the object has a valid coordinate before adding a marker
-          // Some objects like elevators/escalators might not have a center coordinate in certain SDK versions
-          let hasCoordinate = false;
-          try {
-            const coord = (obj as any).coordinate || (obj as any).center || mapView.createCoordinate(0, 0);
-            // In Mappedin Web SDK, the Markers.add internally calls getCoordinate. 
-            // We can't always check easily before call, but we can prevent the crash from being noisy.
-            hasCoordinate = !!coord;
-          } catch (e) {
-            hasCoordinate = false;
-          }
-
-          if (hasCoordinate) {
-            const marker = mapView.Markers.add(obj, markerHtml, { interactive: true } as any);
-            currentLocationMarkers.push(marker); // Track it
-
-            const markerId = (marker as any)?.id;
-            if (markerId) {
-              markerIdToObject.set(markerId, obj);
-            }
-          }
-        } catch (e) {
-          // If it still fails (e.g. internal getCoordinate fails), log it only in debug
-          // console.warn("Skipping marker for object without valid coordinate:", name);
-        }
-      }
-    });
-
-    console.log(`📍 Refreshed ${currentLocationMarkers.length} location markers`);
-  };
+  const airportMarkerController = createAirportMarkerController({
+    mapView, objects: allMapObjects,
+    getLocations: () => TranslationManager.data.locations,
+    getName: (obj: any) => TranslationManager.getName(obj),
+    getImage: getImageUrlForMarker,
+    getGate: (id: string) => airportOperations.gates.find((gate: any) => gate.mappedinId === id),
+    getCheckin: (id: string) => airportOperations.counters.find((counter: any) => counter.mappedinId === id),
+    getRequiredObjectIds: () => [...airportOperations.gates,...airportOperations.counters,...(airportOperations.belts||[])].map((point:any)=>point.mappedinId),
+    overviewFloorId: overviewFloor?.id,
+    markerIdToObject,
+    onSelect: (obj: any, marker: any, event: any) => {
+      dispatchAirportMarkerSelection?.({markers:marker?[marker]:[],spaces:[obj],objects:[obj],doors:[obj],coordinate:obj.coordinate||obj.anchor,originalEvent:event});
+    }
+  });
+  const refreshLocationMarkers = () => airportMarkerController.refresh();
+  const canShowAreaMarker = (obj: any) => !isMapInOverview() && markerCoordinatesForFloor(
+    { ...obj, coordinate: getObjectAnchor(obj) }, mapView.currentFloor?.id, overviewFloor?.id
+  ).length > 0;
 
   // Initial call
   refreshLocationMarkers();
@@ -5718,6 +5424,8 @@ async function init() {
       mainEntranceMarker = null;
     }
 
+    if (!canShowAreaMarker(mainEntranceObject)) return;
+
     // Tạo lại marker
     const imgUrl = getImageUrlForMarker(mainEntranceObject);
     let markerHtml = '';
@@ -5762,6 +5470,11 @@ async function init() {
 
   // Hàm để ẩn/hiện markers dựa trên floor hiện tại
   const updateMarkersForCurrentFloor = () => {
+    if (mainEntranceMarker && !canShowAreaMarker(mainEntranceObject)) {
+      markerIdToObject.delete(mainEntranceMarker.id);
+      mapView.Markers.remove(mainEntranceMarker);
+      mainEntranceMarker = null;
+    }
     const currentFloor = mapView.currentFloor;
     const floorName = currentFloor?.name?.toLowerCase() || "";
     const isOverview = floorName.includes("overview") ||
@@ -5822,6 +5535,11 @@ async function init() {
     floorSelector.value = id;
     console.log("Floor changed to: ", event?.floor.name);
 
+    // Remove every previous-floor POI immediately, including selected/search pins.
+    airportMarkerController.clear();
+    clearSearchMarkers();
+    updateMarkersForCurrentFloor();
+
     // SKIP all side effects during warm-up switch (multi-floor activation workaround)
     if (_isWarmupSwitch) return;
 
@@ -5830,13 +5548,17 @@ async function init() {
 
       // TỐI ƯU: Chỉ render markers SAU KHI animation kết thúc (1200ms) để giữ camera mượt mà tuyệt đối
       setTimeout(() => {
+        if (mapView.currentFloor?.id !== id) return;
         requestAnimationFrame(() => {
+          if (mapView.currentFloor?.id !== id) return;
           if (connectionMarkersVisible) renderConnectionOverlaysForCurrentFloor();
           renderObjectMarkersForCurrentFloor();
+          refreshLocationMarkers();
           updateMarkersForCurrentFloor();
 
           // Defer UI/Categories update to the next frame
           requestAnimationFrame(() => {
+            if (mapView.currentFloor?.id !== id) return;
             updateUIVisibility();
             if (_allModelMetadata.length > 0) _loadModelsForFloor(id);
             if (activeSubCategoryId) reapplyActiveSubCategoryPins();
@@ -5932,6 +5654,7 @@ async function init() {
   // NEW HANDLERS FOR CATEGORY NAVIGATION
   const reapplyActiveSubCategoryPins = async () => {
     if (!activeSubCategoryId) return;
+    if (isMapInOverview()) { clearSearchMarkers(); return; }
 
     // User Request: If a specific item is selected (length===1), DO NOT reset to show entire category.
     // Instead, RE-APPLY the single item highlight (in case floor switch cleared it).
@@ -5941,7 +5664,7 @@ async function init() {
         console.log("🔒 Re-applying single item highlight:", obj.name);
         mapView.updateState(obj, { interactive: true, color: "#4CAF50", hoverColor: "#45a049" });
         const anchor = getObjectAnchor(obj);
-        if (anchor) {
+        if (anchor && canShowAreaMarker(obj)) {
           // Re-create Name Marker (Persistent)
           const markerHtml = `<div class="search-marker" style="transform:translate(-50%,-100%);">
                                   <div style="background:#085ebb;color:white;padding:4px 8px;border-radius:4px;font-size:12px;font-weight:bold;white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,0.2);">${obj.name}</div>
@@ -5993,7 +5716,7 @@ async function init() {
         });
 
         const anchor = getObjectAnchor(obj);
-        if (anchor) {
+        if (anchor && canShowAreaMarker(obj)) {
           const isFilePath = activeCategoryIcon && activeCategoryIcon.indexOf('.') !== -1;
           const markerHtml = isFilePath ? `
             <div class="search-marker">
@@ -6026,7 +5749,7 @@ async function init() {
       try {
         mapView.updateState(obj, { interactive: true, color: "#4CAF50", hoverColor: "#45a049" });
         const anchor = getObjectAnchor(obj);
-        if (anchor) {
+        if (anchor && canShowAreaMarker(obj)) {
           const markerHtml = `
             <div class="search-marker">
               <div class="search-marker-icon" style="background:#4CAF50;color:white;width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 3px 8px rgba(0,0,0,0.3);border:2px solid white;">${icon}</div>
@@ -6654,7 +6377,7 @@ async function init() {
                     try {
                       mapView.updateState(area, { interactive: true, color: "#4CAF50", hoverColor: "#45a049" }); // Green
                       const anchor = getObjectAnchor(area);
-                      if (anchor) {
+                      if (anchor && canShowAreaMarker(area)) {
                         const markerHtml = `<div class="search-marker" style="transform:translate(-50%,-100%);">
                                     <div style="background:#085ebb;color:white;padding:4px 8px;border-radius:4px;font-size:12px;font-weight:bold;white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,0.2);">${areaName}</div>
                                     <div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:6px solid #085ebb;margin:0 auto;"></div>
@@ -7000,6 +6723,7 @@ async function init() {
   // Init UI
   setTimeout(updateUIVisibility, 500);
 
+  document.documentElement.dataset.airportStartupStage = 'kiosk-context';
   const kioskRuntime = await loadKioskRuntime(window.location.href, {
     apiBase: getApiBaseUrl(),
     fetch,
@@ -7019,6 +6743,7 @@ async function init() {
     }
   });
 
+  document.documentElement.dataset.airportStartupStage = 'navigation-controls';
   const showKioskRuntimeError = () => {
     if (!kioskRuntime.isKioskMode || !kioskRuntime.error) return;
     let banner = document.getElementById('kiosk-runtime-error');
@@ -7099,6 +6824,18 @@ async function init() {
   (window as any).syncURL = syncURL;
 
   // ============================================
+  let airportRouteVersion = 0;
+  let airportJourneyPreferences: any = { profileId: airportOperations.defaultProfile, mobility: 'standard', followCamera: true };
+  let airportJourneyPanel: any = null;
+  let airportNavigationDrawQueue: Promise<any> = Promise.resolve();
+  let airportOriginFocusTimer: any = null;
+  const airportPlayback = createPlaybackLifecycle(() => airportRouteVersion);
+  const ensureAirportAnimationFloor = (floorId: string, token: any) => airportPlayback.changeFloor(token, floorId, mapView);
+  let latestAirportRoute: any = null;
+  const airportDirections = createAirportDirections({
+    mapData, config: airportOperations,
+    getContext: () => ({ ...airportJourneyPreferences, mode: airportJourneyPreferences.requireProcedure ? 'procedure' : 'physical', origin: wayfindingOrigin, destination: wayfindingDestination, stopovers: wayfindingStopovers })
+  });
   let wayfindingOrigin: any = getEffectiveWayfindingOrigin(kioskRuntime, null);
   let wayfindingDestination: any = null;
   let wayfindingStopovers: any[] = [];
@@ -7109,6 +6846,34 @@ async function init() {
   let isSelectingOrigin: boolean = false;
   let isSelectingDestination: boolean = false;
   let currentNavigation: any = null;
+  const renderAirportRouteNotices = () => {
+    const container = document.getElementById('wayfinding-route-notices');
+    if (!container) return;
+    container.replaceChildren();
+    if (!latestAirportRoute) return;
+    const keys = getAirportRouteNoticeKeys({
+      origin: wayfindingOrigin, destination: wayfindingDestination,
+      stopovers: wayfindingStopovers
+    }, airportOperations, TranslationManager.data.locations);
+    const titleText = TranslationManager.t('rn_title');
+    if (!titleText || titleText === 'rn_title') return;
+    for (const key of keys) {
+      // The full multilingual notice must be present in Translation_UI.
+      const message = TranslationManager.t(key);
+      if (!message || message === key) continue;
+      const card = document.createElement('section');
+      card.setAttribute('role', 'note');
+      card.style.cssText = 'padding:12px 14px;border:1px solid #f6d394;border-left:4px solid #d68a17;border-radius:10px;background:#fffaf0;color:#664410;margin-top:10px;';
+      const title = document.createElement('strong');
+      title.style.cssText = 'display:block;font-size:12px;font-weight:750;margin-bottom:5px;';
+      title.textContent = '⚠ ' + titleText;
+      const body = document.createElement('div');
+      body.style.cssText = 'font-size:12px;line-height:1.55;white-space:normal;';
+      body.textContent = message;
+      card.append(title,body);
+      container.appendChild(card);
+    }
+  };
   let currentSelectedStepIndex: number = -1; // Bước đang được chọn
 
   let kioskPickMode: 'object' | 'coordinate' | null = null;
@@ -7354,6 +7119,11 @@ async function init() {
    * Clear navigation path và markers
    */
   const clearNavigation = () => {
+    airportRouteVersion++;
+    airportPlayback.invalidate();
+    clearTimeout(airportOriginFocusTimer);
+    latestAirportRoute = null;
+    airportJourneyPanel?.setRoute(null);
     try {
       // Xóa highlighted path section
       if (mapView.Navigation && typeof (mapView.Navigation as any).clearAllHighlightedPathSections === 'function') {
@@ -7427,9 +7197,10 @@ async function init() {
         // Sử dụng getObjectBaseStyle để lấy màu mặc định theo vai trò khu vực
         const resetStyle = getObjectBaseStyle(objectToReset);
         mapView.updateState(objectToReset, {
-          interactive: true,
+          interactive: resetStyle.interactive ?? true,
           color: resetStyle.color,
           hoverColor: resetStyle.hoverColor,
+          ...(resetStyle.topColor ? { topColor: resetStyle.topColor } : {}),
         });
       } catch (e) {
         // Bỏ qua nếu không thể updateState
@@ -7472,9 +7243,10 @@ async function init() {
           // Sử dụng getObjectBaseStyle để lấy màu mặc định theo vai trò khu vực
           const refreshStyle = getObjectBaseStyle(obj);
           mapView.updateState(obj, {
-            interactive: true,
+            interactive: refreshStyle.interactive ?? true,
             color: refreshStyle.color,
             hoverColor: refreshStyle.hoverColor,
+            ...(refreshStyle.topColor ? { topColor: refreshStyle.topColor } : {}),
           });
         }
       } catch (e) {
@@ -7506,17 +7278,19 @@ async function init() {
    * Draw navigation path
    */
   const drawNavigation = async () => {
+    let requestVersion = airportRouteVersion;
     wayfindingOrigin = getEffectiveWayfindingOrigin(kioskRuntime, wayfindingOrigin);
     if (!wayfindingOrigin || !wayfindingDestination) {
       return;
     }
-    const renderRouteNotFoundState = (messageKey: string = 'not_found', fallback: string = "KhÃ´ng tÃ¬m tháº¥y Ä‘Æ°á»ng Ä‘i") => {
+    const getRouteUnavailableMessage = () => TranslationManager.t('not_found', 'Không tìm thấy đường đi phù hợp. Vui lòng liên hệ quầy thông tin để biết thêm thông tin chi tiết.');
+    const renderRouteNotFoundState = () => {
       (window as any).isNavigationActive = false;
       wayfindingDirections = null;
       currentNavigation = null;
       syncURL(true);
 
-      const message = TranslationManager.t(messageKey, fallback);
+      const message = getRouteUnavailableMessage();
       const statusEl = document.getElementById("wayfinding-status");
       if (statusEl) {
         statusEl.textContent = "";
@@ -7551,6 +7325,8 @@ async function init() {
 
     try {
       clearNavigation();
+      requestVersion = airportRouteVersion;
+      if (!airportOperationsAvailable) throw Object.assign(new Error('OPERATIONS_UNAVAILABLE'), {code:'OPERATIONS_UNAVAILABLE'});
       (window as any).isNavigationActive = false;
       wayfindingDirections = null;
 
@@ -7626,7 +7402,16 @@ async function init() {
           }
         }
       };
-      const routeLegs = resolveWayfindingRouteTargets(waypoints, routeTargetOptions);
+      let procedurePlan: any = null;
+      if (airportJourneyPreferences.requireProcedure) {
+        if (wayfindingStopovers.length) throw Object.assign(new Error('PROCEDURE_STOPOVERS_UNSUPPORTED'), {code:'PROCEDURE_STOPOVERS_UNSUPPORTED'});
+        const context = createJourneyContext({...airportJourneyPreferences,origin:wayfindingOrigin,destination:wayfindingDestination},airportOperations);
+        const sdk = createAirportJourneySdkAdapter({mapData,config:airportOperations});
+        procedurePlan = await planAirportJourney({...context,kind:context.journeyKind,traffic:context.trafficClass,transfer:airportJourneyPreferences.transferKind,origin:wayfindingOrigin.id,destination:wayfindingDestination.id,requestVersion}, {
+          config:airportOperations,...sdk,getRequestVersion:()=>airportRouteVersion
+        });
+      }
+      const routeLegs = procedurePlan ? procedurePlan.legs.map((leg:any)=>({origin:leg.from.entity,destination:leg.to.entity,routeOrigin:leg.from.entity,routeDestination:leg.to.entity})) : resolveWayfindingRouteTargets(waypoints, routeTargetOptions);
       const routeCalculationPolicy = getWayfindingRouteCalculationPolicy(routeLegs.length);
       mapDebugLog('[Wayfinding] Route calculation started', {
         legCount: routeLegs.length,
@@ -7638,6 +7423,7 @@ async function init() {
       const legDirections: any[] = [];
       const preparedLegs: any[] = [];
       const preselectedDirections = new Map<number, Directions>();
+      procedurePlan?.legs.forEach((leg:any,index:number)=>preselectedDirections.set(index,leg.directions));
       const primarySmoothing =
         routeCalculationPolicy.primarySmoothing as TGetDirectionsOptions['smoothing'];
       const fallbackSmoothing =
@@ -7649,7 +7435,7 @@ async function init() {
         accessible: routeCalculationPolicy.compareAccessibleRoutes
       };
 
-      if (routeLegs.length === 2 && waypoints.length === 3) {
+      if (!procedurePlan && routeLegs.length === 2 && waypoints.length === 3) {
         const stopoverCandidates = getIntermediateWayfindingRouteTargetCandidates(
           waypoints[1],
           routeLegs[0].routeOrigin,
@@ -7661,7 +7447,7 @@ async function init() {
           destination: routeLegs[1].routeDestination,
           candidates: stopoverCandidates,
           getDirections: (from: any, to: any, options: TGetDirectionsOptions) =>
-            mapData.getDirections(from, to, options),
+            airportDirections(from, to, options),
           directionsOptions: primaryDirectionsOptions,
           isUsableDirections,
           requireNonIntersecting: false
@@ -7694,12 +7480,12 @@ async function init() {
           : null;
         let previewPrimaryRequest: PreviewPrimaryRequest | null = null;
 
-        if (routeCalculationPolicy.refineObjectTargets &&
+        if (!procedurePlan && routeCalculationPolicy.refineObjectTargets &&
           (String((origin as any)?.__type || '').toLowerCase() === 'object' ||
             String((dest as any)?.__type || '').toLowerCase() === 'object')) {
           try {
             mapDebugLog('[Wayfinding] Preview route started', { legIndex: i });
-            const previewDirections = await mapData.getDirections(origin, dest, primaryOptions);
+            const previewDirections = await airportDirections(origin, dest, primaryOptions);
             mapDebugLog('[Wayfinding] Preview route completed', { legIndex: i });
             if (isUsableDirections(previewDirections)) {
               previewPrimaryRequest = {
@@ -7744,7 +7530,7 @@ async function init() {
           primaryFailure
         } = await requestUsableLegDirections({
           getDirections: (from: any, to: any, options: any) =>
-            mapData.getDirections(from, to, options),
+            airportDirections(from, to, options),
           routeOrigin,
           routeDestination,
           primaryOptions,
@@ -7753,6 +7539,7 @@ async function init() {
           isUsableDirections
         });
 
+        if (requestVersion !== airportRouteVersion) return;
         legDirections.push(dir);
         const preparedLeg = prepareNavigationLeg(dir, {
           legIndex: i,
@@ -7772,7 +7559,8 @@ async function init() {
         });
       }
 
-      const waypointLabels = waypoints.map((waypoint: any) =>
+      const labeledWaypoints = procedurePlan ? [procedurePlan.legs[0].from.entity,...procedurePlan.legs.map((leg:any)=>leg.to.entity)] : waypoints;
+      const waypointLabels = labeledWaypoints.map((waypoint: any) =>
         TranslationManager.getName(waypoint) || waypoint?.name || waypoint?.id || ''
       );
       const { uiDirections, legSpans } = aggregateNavigationLegs(preparedLegs, {
@@ -7788,6 +7576,7 @@ async function init() {
         legSpans
       });
 
+      if (requestVersion !== airportRouteVersion) return;
       if (isUsableDirections(uiDirections)) {
         // ============================================
         // PRE-PROCESS: Hướng dẫn chi tiết (Granular Instructions Strategy)
@@ -7805,10 +7594,10 @@ async function init() {
 
         const navigationPathOptions = {
           displayArrowsOnPath: true,
-          animateArrowsOnPath: true,
+          animateArrowsOnPath: !window.matchMedia('(prefers-reduced-motion: reduce)').matches,
           color: '#4b90e2',
           accentColor: '#ffffff',
-          width: 0.7, // Giữ đường dẫn mảnh hơn để giảm lấn tường khi render.
+          width: 0.7 * (2 / 3), // Chỉ giảm nét vẽ xuống 2/3; không thay đổi hình học tuyến đường.
         };
         const navigationOptions: any = {
           pathOptions: { ...navigationPathOptions },
@@ -7819,14 +7608,23 @@ async function init() {
           },
         };
         await drawThenCommitNavigation({
-          draw: () => mapView.Navigation.draw(legDirections, navigationOptions),
+          draw: () => {
+            airportNavigationDrawQueue = airportNavigationDrawQueue.catch(() => {}).then(() => {
+              if (requestVersion === airportRouteVersion) return mapView.Navigation.draw(legDirections, navigationOptions);
+            });
+            return airportNavigationDrawQueue;
+          },
           commit: () => {
+            if (requestVersion !== airportRouteVersion) return;
             wayfindingDirections = uiDirections;
+            latestAirportRoute = { context: createJourneyContext({ ...airportJourneyPreferences, mode: airportJourneyPreferences.requireProcedure ? 'procedure' : 'physical', origin: wayfindingOrigin, destination: wayfindingDestination, stopovers: wayfindingStopovers }, airportOperations), coordinates: uiDirections.coordinates, legs: legDirections };
+            airportJourneyPanel?.setRoute(latestAirportRoute);
             currentNavigation = mapView.Navigation;
             (window as any).isNavigationActive = true;
             syncURL(false);
           }
         });
+        if (requestVersion !== airportRouteVersion) return;
 
         // ============================================
         // HELPERS CHO NAVIGATION UI
@@ -7922,7 +7720,7 @@ async function init() {
 
         try {
           if (!directions.instructions || directions.instructions.length === 0) {
-            instructionsHtml = `<div style="padding:10px; color:#666; font-style:italic;">${TranslationManager.t('not_found', "Không tìm thấy đường đi")}</div>`;
+            instructionsHtml = `<div style="padding:10px; color:#64748b; line-height:1.6; font-style:italic; text-align:center;">${getRouteUnavailableMessage()}</div>`;
           } else {
             instructionsHtml = `<div id="instructions-raw-list" style="padding-top: 10px; padding-bottom: 30px;">`;
 
@@ -7991,7 +7789,7 @@ async function init() {
 
         } catch (e) {
           console.warn("Error drawing navigation steps:", e);
-          instructionsHtml = `<div style="padding:10px; color:#f44336;">${TranslationManager.t('error_nav', "Lỗi khi tìm đường đi")}</div>`;
+          instructionsHtml = `<div style="padding:10px; color:#64748b; line-height:1.6; font-style:italic; text-align:center;">${getRouteUnavailableMessage()}</div>`;
         }
 
         if (instructionsListEl) instructionsListEl.innerHTML = instructionsHtml;
@@ -8031,7 +7829,9 @@ async function init() {
                     </span>
                   </div>
                 </div>
-              </div>`;
+              </div>
+              <div id="wayfinding-route-notices" style="padding:0 20px 12px;background:white;" aria-live="polite"></div>`;
+            renderAirportRouteNotices();
           }
           if (previewBar) {
             previewBar.style.display = "block";
@@ -8071,15 +7871,18 @@ async function init() {
           const originFloorId = wayfindingOrigin.floor?.id || wayfindingOrigin.floorId || wayfindingOrigin.coordinate?.floorId;
           const originCoord = wayfindingOrigin.coordinate || wayfindingOrigin.anchor;
 
-          setTimeout(async () => {
+          airportOriginFocusTimer = setTimeout(async () => {
+            if (requestVersion !== airportRouteVersion) return;
             let isFloorSwitched = false;
             if (originFloorId && originFloorId !== mapView.currentFloor.id) {
               await mapView.setFloor(originFloorId);
+              if (requestVersion !== airportRouteVersion) return;
               const fSelector = document.getElementById('floor-selector') as HTMLSelectElement;
               if (fSelector) fSelector.value = originFloorId;
 
               // KHÔNG CẦN CHỜ LÂU NỮA - await setFloor đã tải xong mặt bằng cơ bản
               await new Promise(r => setTimeout(r, 50));
+              if (requestVersion !== airportRouteVersion) return;
               isFloorSwitched = true;
             }
 
@@ -8125,13 +7928,26 @@ async function init() {
         return;
       }
     } catch (e) {
+      if (requestVersion !== airportRouteVersion) return;
       console.error("Error drawing navigation:", e);
-      renderRouteNotFoundState('error_nav', "Lỗi khi tìm đường đi");
+      renderRouteNotFoundState();
       return;
     }
   };
 
+  if (new URL(window.location.href).searchParams.get('flb-preview') === 'true') {
+    mountFlbSamplePreview({mapView,mapData,manifest:flbManifest,resolveUrl});
+  }
   (window as any).drawNavigation = drawNavigation;
+  airportJourneyPanel = mountAirportJourneyPanel({
+    mapData, config: airportOperations,
+    onPreferencesChange: (preferences: any) => {
+      airportJourneyPreferences = preferences;
+      if (wayfindingOrigin && wayfindingDestination) drawNavigation();
+      else clearNavigation();
+    },
+    onPlay: () => animateBlueDotFullPath()
+  });
 
 
 
@@ -8634,7 +8450,7 @@ async function init() {
       item.onmouseenter = () => item.style.backgroundColor = "#f0f4ff";
       item.onmouseleave = () => item.style.backgroundColor = "white";
 
-      const cleanName = result.name.replace(/room|door|gate/gi, '').trim();
+      const cleanName = result.name;
       const floorObj = result.primaryObject.floor || result.primaryObject.floorId;
       let floorName = '';
       if (floorObj) {
@@ -8648,7 +8464,8 @@ async function init() {
       const distanceText = !nearestText && result.showDistance && Number.isFinite(result.distanceMeters)
         ? `${TranslationManager.t('distance_from_start', 'Cách điểm đi')} · ${Math.round(result.distanceMeters || 0)}m`
         : '';
-      const subtitleParts = [nearestText || distanceText, floorName].filter(Boolean);
+      const gateRole = airportOperations.gates.some((g:any)=>g.mappedinId===result.primaryObject.id) ? TranslationManager.t('flight_departure','Khởi hành') : '';
+      const subtitleParts = [nearestText || distanceText, gateRole, floorName].filter(Boolean);
       const subtitle = subtitleParts.join(' · ');
 
       item.innerHTML = `
@@ -9156,91 +8973,10 @@ async function init() {
     }
   };
 
-  const startNavigationAnimation = async () => {
-    if (!wayfindingDirections || isAnimating) return;
-    isAnimating = true;
-    isPaused = false;
-
-    const coords = wayfindingDirections.coordinates;
-    const { distances, totalDistance } = buildDistanceTable(coords);
-
-    const previewBtn = document.getElementById("wayfinding-preview-btn");
-    const previewBtnMain = document.getElementById("wayfinding-preview-btn-main");
-    if (previewBtn) previewBtn.textContent = TranslationManager.t('pause_preview', "Tạm dừng");
-
-    const marker = await mapView.Markers.add(coords[0], `
-      <div style="width:20px;height:20px;background:#214ca6;border:3px solid white;border-radius:50%;box-shadow:0 0 10px rgba(0,0,0,0.3);"></div>
-    `);
-
-    animationState = { marker, coords, distances, totalDistance, currentDist: 0 };
-
-    blueDotAnimationInterval = setInterval(() => {
-      if (isPaused) return;
-
-      animationState.currentDist += (BLUE_DOT_SPEED_MPS * ((window as any).speedMultiplier || 1.0) * (FRAME_INTERVAL / 1000));
-
-      if (animationState.currentDist >= totalDistance) {
-        stopNavigationAnimation();
-        return;
-      }
-
-      const newCoord = interpolateByDistance(coords, distances, animationState.currentDist);
-      if (newCoord) {
-        (mapView.Markers as any).animateTo(marker, newCoord, { duration: FRAME_INTERVAL, easing: 'linear' });
-
-        // AUTO-FOLLOW CAMERA
-        mapView.Camera.set({ center: newCoord });
-
-        // AUTO-SWITCH FLOOR IF NEEDED
-        if (newCoord.floorId && newCoord.floorId !== mapView.currentFloor.id) {
-          mapView.setFloor(newCoord.floorId);
-        }
-
-        // SYNC SIDEBAR STEP HIGHLIGHTING
-        // Find current instruction index based on distance
-        let currentStepIndex = 0;
-        let cumulativeDist = 0;
-        const insts = (window as any).simplifiedInstructionsGlobal || [];
-        for (let i = 0; i < insts.length; i++) {
-          cumulativeDist += (insts[i] as any).distance || 0;
-          if (animationState.currentDist <= cumulativeDist) {
-            currentStepIndex = i;
-            break;
-          }
-        }
-
-        if (currentStepIndex !== currentSelectedStepIndex) {
-          currentSelectedStepIndex = currentStepIndex;
-          const steps = document.querySelectorAll('.instruction-step');
-          steps.forEach((s, idx) => {
-            if (idx === currentStepIndex) {
-              (s as HTMLElement).style.background = '#f0f4ff';
-              (s as HTMLElement).style.borderLeft = '4px solid #214ca6';
-              s.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-            } else {
-              (s as HTMLElement).style.background = 'white';
-              (s as HTMLElement).style.borderLeft = '4px solid transparent';
-            }
-          });
-        }
-      }
-    }, FRAME_INTERVAL);
-  };
-
-  const stopNavigationAnimation = () => {
-    clearInterval(blueDotAnimationInterval);
-    if (animationState && animationState.marker) {
-      mapView.Markers.remove(animationState.marker);
-    }
-    isAnimating = false;
-    isPaused = false;
-    animationState = null;
-    const previewBtn = document.getElementById("wayfinding-preview-btn");
-    if (previewBtn) previewBtn.textContent = TranslationManager.t('start_preview', "Bắt đầu");
-  };
-
-  const pauseAnimation = () => { isPaused = true; };
-  const resumeAnimation = () => { isPaused = false; };
+  const startNavigationAnimation = () => animateBlueDotFullPath();
+  const stopNavigationAnimation = () => exitWayfindingDemo();
+  const pauseAnimation = () => { if (!isPaused) pauseResumeAnimation(); };
+  const resumeAnimation = () => { if (isPaused) pauseResumeAnimation(); };
 
   (window as any).setAnimationSpeed = (speed: number) => {
     const oldMultiplier = (window as any).speedMultiplier || 1.0;
@@ -9274,6 +9010,7 @@ async function init() {
   // Language Change Listener
   window.addEventListener('language-change', () => {
     updateWayfindingUI();
+    renderAirportRouteNotices();
     if (wayfindingOrigin && wayfindingDestination) {
       drawNavigation();
     }
@@ -9292,7 +9029,7 @@ async function init() {
    * - Hiển thị popup với thông tin
    * - Highlight object bằng màu xanh lá
    */
-  mapView.on("click", async (event: any) => {
+  const handleMapClick = async (event: any) => {
     if (kioskPickMode) {
       if (!isAdminAuthenticated) {
         kioskAdmin.cancelPick();
@@ -9456,9 +9193,7 @@ async function init() {
           scale = placingModelConfig.scale;
           rotation = placingModelConfig.rotation;
           name = placingModelConfig.name;
-          url = (placingModelConfig.file && !placingModelConfig.file.startsWith('http'))
-            ? `${SERVER_URL}/Model3D/${placingModelConfig.file}`
-            : (placingModelConfig.file || placingModelConfig.url);
+          url = resolveUrl(placingModelConfig.file || placingModelConfig.url);
         }
 
         if (placingPreviewModel) {
@@ -9484,6 +9219,9 @@ async function init() {
 
         const inpPublic = document.getElementById("inp-model-public") as HTMLInputElement;
         let finalDesc = (placingMode === 'new') ? "Nhập thông tin mô tả model 3D tại đây" : sourceModelData?.desc || "";
+        if (placingMode === 'new' && placingModelConfig.flbNo) {
+          finalDesc = JSON.stringify({role:'flb-signage',flbNo:placingModelConfig.flbNo,placementStatus:'verified',source:'admin-map-placement'});
+        }
         if (inpPublic?.checked) {
           if (!finalDesc.includes("[PUBLIC]")) finalDesc = (finalDesc + " [PUBLIC]").trim();
         } else {
@@ -9589,6 +9327,9 @@ async function init() {
       // Thử tìm từ markerIdToObject
       else if (mid && markerIdToObject.has(mid)) {
         clickedObject = markerIdToObject.get(mid);
+        if (clickedObject?.__airportSourceFloorId && clickedObject.__airportSourceFloorId !== mapView.currentFloor?.id) {
+          mapView.setFloor(clickedObject.__airportSourceFloorId);
+        }
       }
       // Nếu marker được tạo từ object, thử tìm object từ marker.target, marker.object, hoặc marker.space
       else {
@@ -10097,7 +9838,9 @@ async function init() {
       } // ✅ ĐÓNG if (clickedObject && clickedObject.name)
     }   // ✅ ĐÓNG if (clickedObject)
 
-  }); // ✅✅ ĐÓNG mapView.on("click")
+  };
+  dispatchAirportMarkerSelection = handleMapClick;
+  mapView.on("click", handleMapClick);
 
   // ============================================
   // 14. CLOSE BUTTON HANDLER
@@ -10176,6 +9919,7 @@ async function init() {
 
   if (tabSearch) tabSearch.onclick = () => switchTab('search');
   if (tabDirections) tabDirections.onclick = () => switchTab('directions');
+  document.documentElement.dataset.airportStartupStage = 'navigation-ready';
   const closeBtn = document.querySelector(".close-btn") as HTMLButtonElement;
   if (closeBtn) {
     closeBtn.addEventListener("click", (e) => {
@@ -10282,306 +10026,67 @@ async function init() {
   /**
    * Hàm animate blue dot dọc theo một đoạn path từ fromCoord đến toCoord
    */
-  const animateBlueDotAlongPath = (fromCoord: any, toCoord: any, pathCoordinates: any[]) => {
-    if (!blueDot || !fromCoord || !toCoord || !pathCoordinates || pathCoordinates.length < 2) {
-      return;
-    }
-
-    // Dừng animation cũ nếu đang chạy
-    if (blueDotAnimationInterval) {
-      clearInterval(blueDotAnimationInterval);
-      blueDotAnimationInterval = null;
-    }
-
-    // Tìm index của fromCoord và toCoord trong pathCoordinates
-    const findNearestIndex = (targetCoord: any, startFrom: number = 0): number => {
-      if (!targetCoord) return -1;
-      let nearestIndex = -1;
-      let minDistance = Infinity;
-
-      // Threshold: ~0.5m (khoảng 0.0000005 độ lat/lng)
-      const SNAP_THRESHOLD = 0.0000005;
-
-      for (let i = startFrom; i < pathCoordinates.length; i++) {
-        const coord = pathCoordinates[i];
-        if (!coord) continue;
-
-        const latDiff = Math.abs((coord.latitude || 0) - (targetCoord.latitude || 0));
-        const lngDiff = Math.abs((coord.longitude || 0) - (targetCoord.longitude || 0));
-        const distance = latDiff * latDiff + lngDiff * lngDiff;
-
-        // Chỉ chấp nhận nếu trong threshold (tránh nhảy sang lane song song)
-        if (distance < minDistance && (latDiff < SNAP_THRESHOLD && lngDiff < SNAP_THRESHOLD)) {
-          minDistance = distance;
-          nearestIndex = i;
-        }
+  const animateBlueDotAlongPath = async (fromCoord: any, toCoord: any, pathCoordinates: any[]) => {
+    if (!blueDot || !fromCoord || !toCoord || !pathCoordinates?.length) return;
+    const token = airportPlayback.invalidate();
+    if (blueDotAnimationInterval) clearInterval(blueDotAnimationInterval);
+    blueDotAnimationInterval = null;
+    const floorId = (c: any) => c.floorId || c.floor?.id;
+    const nearest = (target: any, start = 0) => {
+      let index = -1, best = Infinity;
+      for (let i = start; i < pathCoordinates.length; i++) {
+        const c = pathCoordinates[i];
+        if (floorId(c) !== floorId(target)) continue;
+        const d = Math.hypot(c.latitude-target.latitude, c.longitude-target.longitude);
+        if (d < best) { index = i; best = d; }
       }
-
-      // Nếu không tìm thấy trong threshold, tìm gần nhất (fallback)
-      if (nearestIndex === -1) {
-        for (let i = startFrom; i < pathCoordinates.length; i++) {
-          const coord = pathCoordinates[i];
-          if (!coord) continue;
-
-          const latDiff = Math.abs((coord.latitude || 0) - (targetCoord.latitude || 0));
-          const lngDiff = Math.abs((coord.longitude || 0) - (targetCoord.longitude || 0));
-          const distance = latDiff * latDiff + lngDiff * lngDiff;
-
-          if (distance < minDistance) {
-            minDistance = distance;
-            nearestIndex = i;
-          }
-        }
-      }
-
-      return nearestIndex;
+      return index;
     };
-
-    // 1️⃣ Lấy segment path
-    const fromIndex = findNearestIndex(fromCoord, 0);
-    const toIndex = findNearestIndex(toCoord, fromIndex >= 0 ? fromIndex : 0);
-
-    if (fromIndex < 0 || toIndex <= fromIndex) {
-      // Nếu không tìm thấy, chỉ di chuyển đến toCoord
-      try {
-        const currentFloor = mapView.currentFloor;
-        blueDot.update({
-          latitude: toCoord.latitude,
-          longitude: toCoord.longitude,
-          accuracy: 5,
-          heading: undefined,
-          floorOrFloorId: currentFloor?.id || 'device',
-          timestamp: Date.now(),
-        }, { animate: false });
-        focusCameraOnCoordinate(toCoord, false); // Không zoom
-      } catch (e) {
-        console.warn("Error updating blue dot:", e);
-      }
-      return;
-    }
-
-    const segmentCoords = pathCoordinates.slice(fromIndex, toIndex + 1);
-    if (segmentCoords.length === 0) return;
-
-    // 2️⃣ Build distance table
-    const { distances, totalDistance } = buildDistanceTable(segmentCoords);
-
-    if (totalDistance === 0) return;
-
-    // 3️⃣ Tính duration theo vận tốc (Ưu tiên dùng tổng thời gian từ UI)
-    const currentMultiplier = ((window as any).speedMultiplier || 1.0) * PREVIEW_SPEED_BOOST;
-    const baseDurationMs = (routeTotalSecondsGlobal > 0 ? routeTotalSecondsGlobal : (totalDistance / BLUE_DOT_SPEED_MPS)) * 1000;
-    const totalDurationMs = baseDurationMs / currentMultiplier;
-
-    // Use instruction distance for UI scale if available
-    const uiScaleDistance = (window as any).instructionTotalDistance || totalDistance;
-    // Nếu đang seek, tính startTime dựa trên currentAnimationDistance
-    const initialElapsed = currentAnimationDistance > 0
-      ? (currentAnimationDistance / totalDistance) * totalDurationMs
-      : 0;
-    const startTime = performance.now() - initialElapsed;
-
-    // Lưu animation state
-    animationState = {
-      segmentCoords,
-      distances,
-      totalDistance,
-      totalDurationMs,
-      startTime,
-      pathCoordinates,
+    const fromIndex = nearest(fromCoord), toIndex = nearest(toCoord, Math.max(0, fromIndex));
+    if (fromIndex < 0 || toIndex < fromIndex) return;
+    const segmentCoords = pathCoordinates.slice(fromIndex, toIndex+1);
+    const {distances, totalDistance} = buildDistanceTable(segmentCoords);
+    if (!totalDistance) return;
+    const multiplier = ((window as any).speedMultiplier || 1) * PREVIEW_SPEED_BOOST;
+    const totalDurationMs = (routeTotalSecondsGlobal || totalDistance / BLUE_DOT_SPEED_MPS) * 1000 / multiplier;
+    const initialElapsed = currentAnimationDistance / totalDistance * totalDurationMs;
+    animationState = {segmentCoords, distances, totalDistance, totalDurationMs, startTime:performance.now()-initialElapsed, pathCoordinates, routeOffset:fromIndex};
+    animationSegmentCoords = segmentCoords; animationDistances = distances;
+    animationTotalDistance = totalDistance; totalAnimationDuration = totalDurationMs;
+    animationPauseTime = 0; isAnimating = true; isPaused = false;
+    const updatePosition = async (fraction: number) => {
+      const pos = sampleJourneyRoute(segmentCoords, fraction);
+      if (!pos || !airportPlayback.isCurrent(token)) return false;
+      if (!await ensureAirportAnimationFloor(pos.floorId, token) || isPaused) return false;
+      if (previewMarker) { mapView.Markers.remove(previewMarker); previewMarker = null; }
+      blueDot.update({latitude:pos.latitude,longitude:pos.longitude,accuracy:5,
+        heading:routeLookAheadBearing(segmentCoords,pos) ?? undefined,floorOrFloorId:pos.floorId,timestamp:Date.now()}, {animate:false});
+      pos.routeIndex += fromIndex;
+      focusCameraOnCoordinate(pos, true);
+      return true;
     };
-    animationSegmentCoords = segmentCoords;
-    animationDistances = distances;
-    animationTotalDistance = totalDistance;
-    totalAnimationDuration = totalDurationMs;
-    if (currentAnimationDistance === 0) {
-      currentAnimationDistance = 0; // Reset nếu chưa có
-    }
-
-    // RESET animationPauseTime vì startTime đã được re-base theo thời điểm hiện tại
-    // Nếu không reset, elapsed sẽ bị trừ đi thời gian pause cũ -> âm -> jump back
-    animationPauseTime = 0;
-
-    isAnimating = true;
-    isPaused = false;
-
-    // Di chuyển blue dot đến điểm đầu tiên HOẶC điểm hiện tại nếu đang resume/seek/change speed
-    let startPos = segmentCoords[0];
-    let startHeading: number | undefined = undefined;
-    let startFloorId = mapView.currentFloor?.id || 'device';
-
-    // Nếu có distance tích lũy (do change speed hoặc seek), bắt đầu từ điểm đó
-    if (currentAnimationDistance > 0 && distances.length > 0) {
-      const pos = interpolateByDistance(segmentCoords, distances, currentAnimationDistance);
-      if (pos) {
-        startPos = pos;
-
-        // Tính heading tại điểm bắt đầu
-        const currentIndex = distances.findIndex((d: number) => d >= currentAnimationDistance);
-        const segmentCoord = segmentCoords[Math.max(0, Math.min(currentIndex, segmentCoords.length - 1))];
-        if (currentIndex > 0 && currentIndex < segmentCoords.length) {
-          const prevCoord = segmentCoords[currentIndex - 1];
-          const currCoord = segmentCoords[currentIndex];
-          if (prevCoord && currCoord) {
-            const latDiff = currCoord.latitude - prevCoord.latitude;
-            const lngDiff = currCoord.longitude - prevCoord.longitude;
-            startHeading = Math.atan2(lngDiff, latDiff) * 180 / Math.PI;
-          }
-        }
-
-        // Lấy floor
-        if (segmentCoord) {
-          if (segmentCoord.floor) {
-            startFloorId = segmentCoord.floor.id || segmentCoord.floor;
-          } else if (segmentCoord.floorId) {
-            startFloorId = segmentCoord.floorId;
-          }
-        }
-      }
-    }
-
-    try {
-      // Remove any previously created fake previewMarker
-      if (previewMarker) {
-        mapView.Markers.remove(previewMarker);
-        previewMarker = null;
-      }
-
-      // Use native BlueDot! Make sure it stays enabled.
-      if (blueDot) {
-        blueDot.update({
-          latitude: startPos.latitude,
-          longitude: startPos.longitude,
-          accuracy: 5,
-          heading: undefined,
-          floorOrFloorId: startFloorId || mapView.currentFloor?.id || 'device',
-          timestamp: Date.now()
-        }, { animate: false });
-      }
-
-      // Zoom lên 20x và focus vào blue dot khi bắt đầu preview
-      focusCameraOnCoordinate(startPos, true);
-    } catch (e) {
-      console.warn("Error initiating preview blue dot:", e);
-    }
-
-    // Animate với vận tốc cố định
-    let pauseStartTime = 0;
-    blueDotAnimationInterval = setInterval(() => {
-      if (isPaused) {
-        if (pauseStartTime === 0) {
-          pauseStartTime = performance.now();
-        }
-        return; // Không update nếu đang pause
-      } else {
-        if (pauseStartTime > 0) {
-          animationPauseTime += performance.now() - pauseStartTime;
-          pauseStartTime = 0;
-        }
-      }
-
-      const currentStartTime = animationState?.startTime || startTime;
-      const currentDuration = animationState?.totalDurationMs || totalDurationMs;
-      const elapsed = performance.now() - currentStartTime - animationPauseTime;
-      const traveled = Math.min((elapsed / currentDuration) * totalDistance, totalDistance);
-      currentAnimationDistance = traveled;
-
-      // 4️⃣ Nội suy vị trí
-      const pos = interpolateByDistance(segmentCoords, distances, traveled);
-
-      // Xác định target floor từ segment hiện tại
-      const currentIndex = distances.findIndex((d: number) => d >= traveled);
-      const segmentCoord = segmentCoords[Math.max(0, Math.min(currentIndex, segmentCoords.length - 1))];
-      let targetFloorId = mapView.currentFloor?.id || 'device';
-
-      if (segmentCoord) {
-        if (segmentCoord.floor) {
-          targetFloorId = segmentCoord.floor.id || segmentCoord.floor;
-        } else if (segmentCoord.floorId) {
-          targetFloorId = segmentCoord.floorId;
-        }
-      }
-
-      // Đảm bảo pos luôn có floorId để Mappedin Marker hiển thị đúng
-      if (pos && !pos.floorId) {
-        pos.floorId = targetFloorId;
-      }
-
-      // Tính heading và lấy floor từ segmentCoords (không tìm nearest)
-      let heading: number | undefined = undefined;
-
-      if (currentIndex > 0 && currentIndex < segmentCoords.length) {
-        const prevCoord = segmentCoords[currentIndex - 1];
-        const currCoord = segmentCoords[currentIndex];
-        if (prevCoord && currCoord) {
-          const latDiff = currCoord.latitude - prevCoord.latitude;
-          const lngDiff = currCoord.longitude - prevCoord.longitude;
-          heading = Math.atan2(lngDiff, latDiff) * 180 / Math.PI;
-        }
-      }
-
+    try { await updatePosition(currentAnimationDistance / totalDistance); }
+    catch (error) { console.warn('Preview start unavailable', error); }
+    if (!airportPlayback.isCurrent(token)) return;
+    let busy = false, completed = false;
+    blueDotAnimationInterval = setInterval(async () => {
+      if (busy || completed || !airportPlayback.isCurrent(token)) return;
+      if (isPaused) return;
+      busy = true;
       try {
-        // Chuyển tầng nếu cần (targetFloorId đã được tính ở trên)
-        const currentFloor = mapView.currentFloor;
-
-        // Lấy floor trực tiếp từ segment coordinate hiện tại
-        if (segmentCoord) {
-          if (segmentCoord.floor) {
-            targetFloorId = segmentCoord.floor.id || segmentCoord.floor;
-          } else if (segmentCoord.floorId) {
-            targetFloorId = segmentCoord.floorId;
-          }
-        }
-
-        if (previewMarker) {
-          mapView.Markers.remove(previewMarker);
-          previewMarker = null;
-        }
-        try {
-          if (blueDot) {
-            blueDot.update({
-              latitude: pos.latitude,
-              longitude: pos.longitude,
-              accuracy: 5,
-              heading: heading,
-              floorOrFloorId: targetFloorId,
-              timestamp: Date.now()
-            }, { animate: false });
-          }
-        } catch (err) {
-          // Mappedin throws if coordinate is invalid or out of bounds. We safely ignore.
-        }
-
-        // Chuyển tầng nếu cần
-        if (targetFloorId !== 'device' && targetFloorId !== currentFloor?.id) {
-          try {
-            mapView.setFloor(targetFloorId);
-          } catch (e) {
-            console.warn("Error changing floor:", e);
-          }
-        }
-
-        // 5️⃣ Camera follow - Gọi mỗi frame, hàm focusCameraOnCoordinate sẽ tự throttle theo CAMERA_UPDATE_INTERVAL
-        if (!isPaused) {
-          focusCameraOnCoordinate(pos, true);
-        }
-
-        // Cập nhật progress bar và time liên tục
-        updateVideoProgress(elapsed, currentDuration);
-
-        // 6️⃣ Kết thúc
+        const duration = animationState?.totalDurationMs || totalDurationMs;
+        const elapsed = Math.max(0,performance.now()-(animationState?.startTime ?? performance.now())-animationPauseTime);
+        const traveled = Math.min(elapsed/duration*totalDistance,totalDistance);
+        if (!await updatePosition(traveled/totalDistance) || !airportPlayback.isCurrent(token)) return;
+        currentAnimationDistance = traveled;
+        updateVideoProgress(elapsed,duration);
         if (traveled >= totalDistance) {
-          updateVideoProgress(currentDuration, currentDuration);
-
-          // Tự động thoát demo khi kết thúc
-          setTimeout(() => {
-            exitWayfindingDemo();
-          }, 1000);
+          completed = true;
+          setTimeout(() => { if (airportPlayback.isCurrent(token)) exitWayfindingDemo(); },1000);
         }
-      } catch (e) {
-        console.warn("Error updating blue dot:", e);
-      }
-    }, FRAME_INTERVAL);
+      } catch (error) { console.warn('Preview frame unavailable',error); }
+      finally { busy=false; }
+    },FRAME_INTERVAL);
   };
 
   /**
@@ -10700,6 +10205,13 @@ async function init() {
     if (!isAnimating) return;
 
     isPaused = !isPaused;
+    if (animationState) {
+      if (isPaused) animationState.pauseStarted = performance.now();
+      else if (animationState.pauseStarted != null) {
+        animationPauseTime += performance.now() - animationState.pauseStarted;
+        animationState.pauseStarted = null;
+      }
+    }
     const playPauseBtn = document.getElementById("video-play") || document.getElementById("video-play-pause");
     if (playPauseBtn) {
       const iconEl = document.getElementById("play-pause-icon");
@@ -10735,101 +10247,25 @@ async function init() {
    * Hàm seek animation đến một vị trí cụ thể (0-100%)
    * Sử dụng segment coordinates (giống animate) để tránh lệch
    */
-  const seekAnimation = (percentage: number) => {
-    if (!animationState || !animationSegmentCoords || animationSegmentCoords.length === 0) return;
-
-    // Sử dụng segment coordinates (giống animate) thay vì full path
-    const { distances, totalDistance } = buildDistanceTable(animationSegmentCoords);
-
-    if (totalDistance === 0) return;
-
-    // Tính target distance dựa trên percentage của segment
-    const targetDistance = (percentage / 100) * totalDistance;
-    const { totalDurationMs } = animationState;
-    const targetElapsed = (percentage / 100) * totalDurationMs;
-
-    // Cập nhật currentAnimationDistance
-    currentAnimationDistance = targetDistance;
-
-    // Cập nhật blue dot position từ segment (giống animate)
-    const pos = interpolateByDistance(animationSegmentCoords, distances, targetDistance);
-
-    if (!pos) return;
-
-    // Tính heading và lấy floor từ segment (giống animate)
-    let heading: number | undefined = undefined;
-    const currentIndex = distances.findIndex((d: number) => d >= targetDistance);
-    const segmentCoord = animationSegmentCoords[Math.max(0, Math.min(currentIndex, animationSegmentCoords.length - 1))];
-
-    if (currentIndex > 0 && currentIndex < animationSegmentCoords.length) {
-      const prevCoord = animationSegmentCoords[currentIndex - 1];
-      const currCoord = animationSegmentCoords[currentIndex];
-      if (prevCoord && currCoord) {
-        const latDiff = currCoord.latitude - prevCoord.latitude;
-        const lngDiff = currCoord.longitude - prevCoord.longitude;
-        heading = Math.atan2(lngDiff, latDiff) * 180 / Math.PI;
-      }
+  const seekAnimation = async (percentage: number) => {
+    if (!animationState || !animationSegmentCoords?.length) return;
+    const token = airportPlayback.invalidate(), state = animationState;
+    const fraction = Math.max(0,Math.min(1,percentage/100));
+    const pos = sampleJourneyRoute(animationSegmentCoords,fraction);
+    if (blueDotAnimationInterval) clearInterval(blueDotAnimationInterval);
+    blueDotAnimationInterval = null;
+    currentAnimationDistance = fraction * state.totalDistance;
+    if (!pos || !await ensureAirportAnimationFloor(pos.floorId,token)) return;
+    if (!airportPlayback.isCurrent(token)) return;
+    blueDot.update({latitude:pos.latitude,longitude:pos.longitude,accuracy:5,
+      heading:routeLookAheadBearing(animationSegmentCoords,pos) ?? undefined,floorOrFloorId:pos.floorId,timestamp:Date.now()}, {animate:false});
+    pos.routeIndex += state.routeOffset || 0;
+    focusCameraOnCoordinate(pos,true);
+    updateVideoProgress(fraction*state.totalDurationMs,state.totalDurationMs);
+    if (isAnimating && state.pathCoordinates?.length) {
+      const coords = state.segmentCoords;
+      await animateBlueDotAlongPath(coords[0],coords[coords.length-1],state.pathCoordinates);
     }
-
-    try {
-      // Lấy floor từ segment coordinate (KHÔNG tìm nearest)
-      const currentFloor = mapView.currentFloor;
-      let targetFloorId = currentFloor?.id || 'device';
-
-      if (segmentCoord) {
-        if (segmentCoord.floor) {
-          targetFloorId = segmentCoord.floor.id || segmentCoord.floor;
-        } else if (segmentCoord.floorId) {
-          targetFloorId = segmentCoord.floorId;
-        }
-      }
-
-      blueDot.update({
-        latitude: pos.latitude,
-        longitude: pos.longitude,
-        accuracy: 5,
-        heading: heading,
-        floorOrFloorId: targetFloorId,
-        timestamp: Date.now(),
-      }, { animate: false });
-
-      // Chuyển tầng nếu cần
-      if (targetFloorId !== 'device' && targetFloorId !== currentFloor?.id) {
-        try {
-          mapView.setFloor(targetFloorId);
-        } catch (e) {
-          console.warn("Error changing floor:", e);
-        }
-      }
-
-      // Focus camera với setCenter (không animate) để tránh ảo giác lệch
-      focusCameraOnCoordinate(pos, true);
-    } catch (e) {
-      console.warn("Error seeking blue dot:", e);
-    }
-
-    // Cập nhật animation state để animation tiếp tục từ vị trí mới
-    if (isAnimating && animationState) {
-      // Cập nhật distances trong animation state (segment đã đúng)
-      animationState.distances = distances;
-      animationState.totalDistance = totalDistance;
-
-      // Restart animation với startTime mới
-      animationPauseTime = 0;
-      const newStartTime = performance.now() - targetElapsed;
-      animationState.startTime = newStartTime;
-
-      // Nếu đang pause, resume
-      if (isPaused) {
-        isPaused = false;
-        const playPauseBtn = document.getElementById("video-play-pause");
-        if (playPauseBtn) {
-          playPauseBtn.textContent = "⏸";
-        }
-      }
-    }
-
-    updateVideoProgress(targetElapsed, totalDurationMs);
   };
 
   /**
@@ -10878,6 +10314,8 @@ async function init() {
 
   const focusCameraOnCoordinate = (coord: any, allowZoom: boolean = true) => {
     if (!coord || !mapView || !mapView.Camera) return;
+    airportJourneyPanel?.setPosition(coord);
+    if (isAnimating && (airportJourneyPreferences.followCamera === false || window.matchMedia('(prefers-reduced-motion: reduce)').matches)) return;
 
     // Throttle camera updates để tránh giật
     const now = performance.now();
@@ -10888,6 +10326,10 @@ async function init() {
 
     try {
       const cameraAny = mapView.Camera as any;
+      const floor = mapData.getByType('floor').find((f: any) => f.id === (coord.floorId || coord.floor?.id));
+      const cameraCoordinate = mapView.createCoordinate(coord.latitude,coord.longitude,floor || mapView.currentFloor);
+      const heading = wayfindingDirections?.coordinates ? routeLookAheadBearing(wayfindingDirections.coordinates, coord) : null;
+      const followBearing = isAnimating && heading != null ? interpolateBearing(mapView.Camera.bearing, heading, 0.45) : mapView.Camera.bearing;
       let targetZoom: number;
 
       // Nếu allowZoom=true và đang animating (preview), zoom lên 20x
@@ -10902,9 +10344,9 @@ async function init() {
       if (isAnimating && !isPaused) {
         // SetCenter với smooth transition dài hơn để giảm giật
         cameraAny.animateTo({
-          center: coord,
+          center: cameraCoordinate,
           zoomLevel: targetZoom,
-          bearing: mapView.Camera.bearing,
+          bearing: followBearing,
           pitch: mapView.Camera.pitch,
         }, {
           duration: 800, // Duration dài hơn để mượt, giảm giật
@@ -10913,9 +10355,9 @@ async function init() {
       } else {
         // Khi không preview: animate bình thường
         cameraAny.animateTo({
-          center: coord,
+          center: cameraCoordinate,
           zoomLevel: targetZoom,
-          bearing: mapView.Camera.bearing,
+          bearing: followBearing,
           pitch: mapView.Camera.pitch,
         }, {
           duration: 300,
@@ -10958,7 +10400,9 @@ async function init() {
     animationState = null;
 
     // Highlight Bước 1 ngay khi bắt đầu
+    let highlightToken: any;
     setTimeout(() => {
+      if (!airportPlayback.isCurrent(highlightToken)) return;
       highlightStepInUI(0);
       currentSelectedStepIndex = 0;
     }, 50);
@@ -11001,7 +10445,8 @@ async function init() {
     // focusCameraOnCoordinate(fromCoord, false); // REMOVED to fix zoom bounce
 
     // Animate toàn bộ path với vận tốc cố định
-    animateBlueDotAlongPath(fromCoord, toCoord, wayfindingDirections.coordinates);
+    void animateBlueDotAlongPath(fromCoord, toCoord, wayfindingDirections.coordinates);
+    highlightToken = airportPlayback.capture();
   };
 
   // Nút swap positions
@@ -11055,8 +10500,9 @@ async function init() {
     // Trên mobile, không tự động chạy autoplay mà chờ người dùng nhấn Play
 
     if (window.innerWidth <= 768) {
+      const pauseToken = airportPlayback.capture();
       setTimeout(() => {
-        if (!isPaused) pauseResumeAnimation();
+        if (airportPlayback.isCurrent(pauseToken) && !isPaused) pauseResumeAnimation();
       }, 50);
     }
   };
@@ -11076,6 +10522,7 @@ async function init() {
    * Hàm thoát khỏi chế độ demo wayfinding
    */
   const exitWayfindingDemo = () => {
+    const exitToken = airportPlayback.invalidate();
     // Dừng animation
     if (blueDotAnimationInterval) {
       clearInterval(blueDotAnimationInterval);
@@ -11107,39 +10554,15 @@ async function init() {
       if (dirContent && window.innerWidth <= 768) dirContent.style.paddingBottom = "55px";
     }
 
-    // Reset camera về trạng thái trước preview (hoặc về start point với zoom 19x như yêu cầu)
-    if (wayfindingDirections && wayfindingDirections.coordinates && wayfindingDirections.coordinates.length > 0) {
-      const startCoord = wayfindingDirections.coordinates[0];
-      try {
-        const cameraAny = mapView.Camera as any;
-        cameraAny.animateTo({
-          center: startCoord,
-          zoomLevel: 19.0,
-          bearing: mapView.Camera.bearing,
-          pitch: mapView.Camera.pitch,
-        }, {
-          duration: 500,
-          easing: "ease-in-out",
-        });
-      } catch (e) {
-        console.warn("Error resetting camera:", e);
-      }
-    } else if (cameraStateBeforePreview) {
-      // Fallback về state cũ nếu không có coordinates
-      try {
-        const cameraAny = mapView.Camera as any;
-        cameraAny.animateTo({
-          center: cameraStateBeforePreview.center,
-          zoomLevel: 19.0, // Zoom 19x như yêu cầu (thay vì state cũ)
-          bearing: cameraStateBeforePreview.bearing,
-          pitch: cameraStateBeforePreview.pitch,
-        }, {
-          duration: 500,
-          easing: "ease-in-out",
-        });
-      } catch (e) {
-        console.warn("Error resetting camera:", e);
-      }
+    const resetCoord = wayfindingDirections?.coordinates?.[0] || cameraStateBeforePreview?.center;
+    if (resetCoord) {
+      const resetFloorId = resetCoord.floorId || resetCoord.floor?.id || mapView.currentFloor?.id;
+      void ensureAirportAnimationFloor(resetFloorId,exitToken).then(current => {
+        if (!current || !airportPlayback.isCurrent(exitToken)) return;
+        const floor = mapData.getByType('floor').find((f:any) => f.id===resetFloorId);
+        const center = mapView.createCoordinate(resetCoord.latitude,resetCoord.longitude,floor || mapView.currentFloor);
+        return mapView.Camera.animateTo({center,zoomLevel:19,bearing:mapView.Camera.bearing,pitch:mapView.Camera.pitch},{duration:500});
+      }).catch(error => console.warn('Preview reset unavailable',error));
     }
 
     // Reset progress
@@ -11182,9 +10605,9 @@ async function init() {
         const wasPaused = isPaused;
 
         // Restart animation với speed mới
-        const { pathCoordinates } = animationState;
-        const fromCoord = pathCoordinates[0];
-        const toCoord = pathCoordinates[pathCoordinates.length - 1];
+        const { pathCoordinates, segmentCoords } = animationState;
+        const fromCoord = segmentCoords[0];
+        const toCoord = segmentCoords[segmentCoords.length - 1];
 
         // Dừng animation cũ
         if (blueDotAnimationInterval) {
@@ -11197,7 +10620,7 @@ async function init() {
 
         // Khôi phục trạng thái pause nếu cần
         if (wasPaused) {
-          isPaused = true;
+          pauseResumeAnimation();
           const playPauseBtn = document.getElementById("video-play-pause");
           if (playPauseBtn) {
             playPauseBtn.textContent = "▶";
@@ -11434,7 +10857,7 @@ async function init() {
       const currentMapObjects = getAllMapObjects();
 
       const areas = currentMapObjects
-        .filter((o: any) => o.id)
+        .filter((o: any) => o.id && !accessRoadVisuals.paintSources[o.id] && !o.id.includes('-visual-'))
         .map((o: any) => {
           // Robust FloorID extraction
           let floorId = o.floor?.id || o.floorId;
@@ -11666,22 +11089,26 @@ async function init() {
 
     async upsertModel(model: any) {
       try {
-        await fetch(`${API_BASE_URL}/models`, {
+        const response = await fetch(`${API_BASE_URL}/models`, {
           method: "POST",
           credentials: "include",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(model)
         });
+        return response.ok;
       } catch (err) {
         console.error("API Save Error:", err);
+        return false;
       }
     },
 
     async deleteModel(uuid: string) {
       try {
-        await fetch(`${API_BASE_URL}/models/${uuid}`, { method: "DELETE", credentials: "include" });
+        const response = await fetch(`${API_BASE_URL}/models/${uuid}`, { method: "DELETE", credentials: "include" });
+        return response.ok;
       } catch (err) {
         console.error("API Delete Error:", err);
+        return false;
       }
     },
 
@@ -11763,6 +11190,19 @@ async function init() {
   const saveModelToAPI = (meta: ModelMetadata) => {
     const coord = meta.originalCoordinate;
     if (!coord) return;
+    const flbEntry = getFlbManifestEntry(meta, flbManifest);
+    if (flbEntry) {
+      let proof: any = null;
+      try { proof = JSON.parse(meta.desc.replace(/\s*\[PUBLIC\]\s*$/, '')); } catch {}
+      if (!proof?.role) {
+        const previous = _allModelMetadata.find((m: any) => m.uuid === meta.uuid);
+        try { proof = JSON.parse(previous?.desc || ''); } catch {}
+        if (proof?.role === 'flb-signage') proof.description = meta.desc;
+      }
+      if (proof?.role !== 'flb-signage' || proof.flbNo !== flbEntry.flbNo) return;
+      meta.desc = JSON.stringify(proof);
+      (meta as any).flbVerified = true;
+    }
 
     // Helper: round rotation to 1 decimal (degrees), scale to 6 decimals (preserve tiny values like 0.002)
     const roundRotation = (nums: number[]) => nums.map(n => parseFloat(n.toFixed(1)));
@@ -11785,14 +11225,15 @@ async function init() {
 
 
     // Call API (No await needed involved in UI loop)
-    ApiService.upsertModel(payload);
+    if (!flbEntry) ApiService.upsertModel(payload);
+    else flbPersistence.save(payload).catch((error: any) => console.error('[FLB] Save rejected',error.message));
     console.log("💾 Synced to DB:", meta.uuid);
   };
 
   // Helper: Delete from API
   const deleteModelFromAPI = (uuid: string) => {
-    ApiService.deleteModel(uuid);
-    console.log("🗑 Deleted from DB (Soft Delete):", uuid);
+    if (flbPersistence.isFlb(uuid)) flbPersistence.delete(uuid);
+    else ApiService.deleteModel(uuid);
   };
 
   // Replaces old saveModelsToStorage
@@ -12042,8 +11483,19 @@ async function init() {
   /**
    * Helper để load từng model vào Map (Dùng nội bộ cho Streaming)
    */
-  const _addSingleModelToMap = async (m: any) => {
+  const _pendingModelLoads = new Map<string, Promise<any>>();
+  const _addSingleModelToMapRaw = async (m: any) => {
     if (MODEL_INSTANCE_REGISTRY.has(m.uuid)) return;
+    const flbSourceUuid = m.flbProxySourceUuid || m.uuid;
+    const isFlbAsset = Boolean(getFlbManifestEntry(m, flbManifest));
+    const flbGeneration = flbPersistence.generation(flbSourceUuid);
+    if (isFlbAsset && !flbPersistence.canLoad(flbSourceUuid)) return;
+    if (isFlbAsset) {
+      const confirmed = flbPersistence.confirmedModel(flbSourceUuid);
+      const signage = verifiedFlbRuntimeModels([confirmed], flbManifest);
+      m = m.flbProxySourceUuid ? flbOverviewProxies(signage,overviewFloor.id,16)[0] : signage[0];
+      if (!m) return;
+    }
 
     // 1. CHUẨN HÓA SỐ ĐỂ TRÁNH LỖI UNDEFINED
     const lat = Number(m.latitude);
@@ -12069,7 +11521,7 @@ async function init() {
       if (!finalUrl) return;
 
       // 3. CHỐNG CACHE FILE LỖI
-      const cacheBustedUrl = finalUrl.startsWith("data:") ? finalUrl : `${finalUrl}?v=${Date.now()}`;
+      const cacheBustedUrl = getFlbAssetUrl(m, flbManifest) ? resolveUrl(getFlbAssetUrl(m, flbManifest)) : (finalUrl.startsWith("data:") ? finalUrl : `${finalUrl}?v=${Date.now()}`);
 
       // 4. CHỐNG TRÀN BUFFER GPU: Tắt tương tác cho cây cối
       const modelName = (m.name || "").toLowerCase();
@@ -12080,16 +11532,22 @@ async function init() {
       const model = await mapView.Models.add(coord, cacheBustedUrl, {
         rotation: r || [0, 0, 0],
         scale: s || [1, 1, 1],
-        interactive: !isDeco, // Cây cối không cần click
+        interactive: !isDeco && !m.flbProxySourceUuid,
         verticalOffset: Number(m.elevation) || 0
       });
+      if (isFlbAsset && (flbGeneration !== flbPersistence.generation(flbSourceUuid) || !flbPersistence.canLoad(flbSourceUuid))) {
+        mapView.Models.remove(model);
+        return;
+      }
 
       MODEL_ID_REGISTRY.set(model.id, {
         url: m.url, uuid: m.uuid, name: m.name, desc: m.desc || "",
         rotation: r, scale: s,
         originalCoordinate: coord,
         floorId: m.floorId,
-        elevation: m.elevation || 0
+        elevation: m.elevation || 0,
+        flbVerified: m.flbVerified,
+        flbProxySourceUuid: m.flbProxySourceUuid
       });
 
       MODEL_INSTANCE_REGISTRY.set(m.uuid, model);
@@ -12103,6 +11561,13 @@ async function init() {
    * Cập nhật hiển thị models dựa trên khoảng cách Camera (Streaming)
    * Thuật toán tải động giúp hiển thị được cả 166 models mà không sập WebGL
    */
+  const _addSingleModelToMap = (m: any) => {
+    if (MODEL_INSTANCE_REGISTRY.has(m.uuid)) return Promise.resolve(MODEL_INSTANCE_REGISTRY.get(m.uuid));
+    if (_pendingModelLoads.has(m.uuid)) return _pendingModelLoads.get(m.uuid);
+    const pending = Promise.resolve().then(() => _addSingleModelToMapRaw(m)).finally(() => _pendingModelLoads.delete(m.uuid));
+    _pendingModelLoads.set(m.uuid, pending);
+    return pending;
+  };
   const updateModelStreaming = debounce(async () => {
     // Bỏ qua khi đang reset camera (Home) hoặc chuyển tầng để tránh lag
     if ((window as any)._isStartupCameraAnimating) return;
@@ -12185,11 +11650,21 @@ async function init() {
     });
 
     const modelsToLoad: any[] = [];
+    const signageNeeded = candidateModels.filter((m: any) => m.flbVerified && !MODEL_INSTANCE_REGISTRY.has(m.uuid) && !_pendingModelLoads.has(m.uuid)).length;
+    if (signageNeeded) {
+      const evictable = [...MODEL_INSTANCE_REGISTRY.entries()].map(([uuid, instance]) => ({uuid,instance,meta:[...MODEL_ID_REGISTRY.values()].find((m: any) => m.uuid === uuid)}))
+        .filter(({meta}) => meta && !meta.flbVerified && !isThang(meta) && !isPersistentLowerFloorModel(meta))
+        .sort((a,b) => calculateDistance(focalPoint,b.meta.originalCoordinate) - calculateDistance(focalPoint,a.meta.originalCoordinate));
+      for (const {uuid,instance} of evictable) {
+        if (MODEL_INSTANCE_REGISTRY.size + _pendingModelLoads.size + signageNeeded <= MAX_CONCURRENT_MODELS) break;
+        mapView.Models.remove(instance);MODEL_INSTANCE_REGISTRY.delete(uuid);MODEL_ID_REGISTRY.delete(instance.id);
+      }
+    }
     candidateModels.forEach((m: any) => {
       const isVertical = isThang(m);
       const isPersistent = isPersistentLowerFloorModel(m);
       const dist = calculateDistance(focalPoint, { latitude: Number(m.latitude), longitude: Number(m.longitude) });
-      const isLoaded = MODEL_INSTANCE_REGISTRY.has(m.uuid);
+      const isLoaded = MODEL_INSTANCE_REGISTRY.has(m.uuid) || _pendingModelLoads.has(m.uuid);
 
       // Thang luôn load (bất chấp zoom/distance), model khác thì theo luật
       const shouldLoad = isVertical || isPersistent || (currentZoom >= ZOOM_LOAD_THRESHOLD && dist <= LOAD_RADIUS);
@@ -12208,6 +11683,7 @@ async function init() {
     // 4. Thực hiện Load mới theo thứ tự ưu tiên gần nhất
     if (modelsToLoad.length > 0) {
       modelsToLoad.sort((a, b) => {
+        if (Boolean(a.flbVerified) !== Boolean(b.flbVerified)) return a.flbVerified ? -1 : 1;
         const dA = calculateDistance(focalPoint, { latitude: Number(a.latitude), longitude: Number(a.longitude) });
         const dB = calculateDistance(focalPoint, { latitude: Number(b.latitude), longitude: Number(b.longitude) });
         return dA - dB;
@@ -12216,7 +11692,9 @@ async function init() {
       const BATCH_SIZE = 3;
       for (let i = 0; i < modelsToLoad.length; i += BATCH_SIZE) {
         if (MODEL_INSTANCE_REGISTRY.size >= MAX_CONCURRENT_MODELS) break;
-        const batch = modelsToLoad.slice(i, i + BATCH_SIZE);
+        const capacity = MAX_CONCURRENT_MODELS - MODEL_INSTANCE_REGISTRY.size - _pendingModelLoads.size;
+        if (capacity <= 0) break;
+        const batch = modelsToLoad.slice(i, i + Math.min(BATCH_SIZE, capacity));
         await Promise.all(batch.map(m => _addSingleModelToMap(m)));
         await new Promise(r => setTimeout(r, 20));
       }
@@ -12257,6 +11735,9 @@ async function init() {
       const newScale = meta.scale || [1, 1, 1];
       const oldId = oldInstance.id;
       const url = oldInstance.url || meta.url;
+      const isFlbNudge = Boolean(getFlbManifestEntry(meta,flbManifest));
+      const nudgeGeneration = flbPersistence.generation(uuid);
+      if (isFlbNudge && !flbPersistence.canLoad(uuid)) continue;
 
       try {
         const newInstance = await mapView.Models.add(newCoord, url, {
@@ -12265,6 +11746,11 @@ async function init() {
           rotation: newRot,
           verticalOffset: meta.elevation || 0
         });
+
+        if (isFlbNudge && (nudgeGeneration !== flbPersistence.generation(uuid) || !flbPersistence.canLoad(uuid))) {
+          mapView.Models.remove(newInstance);
+          continue;
+        }
 
         // Attach properties
         (newInstance as any).uuid = uuid;
@@ -12305,6 +11791,10 @@ async function init() {
   /** Start multi-model placement (copy or move) */
   const startMultiPlace = (mode: 'copy' | 'move') => {
     if (multiSelectedModels.size === 0) return;
+    if (mode === 'copy' && [...multiSelectedModels.values()].some((data: any) => getFlbManifestEntry(data.meta, flbManifest))) {
+      alert('Mỗi cầu chỉ có một số FLB. Hãy chọn số khác từ danh mục thay vì sao chép biển.');
+      return;
+    }
 
     multiPlaceMode = mode;
     isMultiPlacingMode = true;
@@ -12455,6 +11945,38 @@ async function init() {
   // ============================================
   // LOAD MODELS FROM API (LAZY LOADING BY FLOOR)
   // ============================================
+  flbPersistence = createFlbPersistenceController({
+    manifest: flbManifest,
+    save: (payload: any) => ApiService.upsertModel(payload),
+    deleteModel: (uuid: string) => ApiService.deleteModel(uuid),
+    onSnapshot: (record: any, reason: string, uuid: string) => {
+      const removeInstance = (id: string) => {
+        const instance = MODEL_INSTANCE_REGISTRY.get(id);
+        if (instance) {try {mapView.Models.remove(instance);} catch {} MODEL_ID_REGISTRY.delete(instance.id);MODEL_INSTANCE_REGISTRY.delete(id);}
+      };
+      removeInstance(`${uuid}--flb-overview`);
+      if (reason !== 'saved') removeInstance(uuid);
+      if (reason === 'deleting') return;
+      _allModelMetadata = _allModelMetadata.filter((m: any) => m.uuid !== uuid && m.flbProxySourceUuid !== uuid);
+      if (record) {
+        const signage = verifiedFlbRuntimeModels([record], flbManifest);
+        const native = signage[0] || record;
+        _allModelMetadata.push(native, ...flbOverviewProxies(signage, overviewFloor.id, 16));
+        const instance = MODEL_INSTANCE_REGISTRY.get(uuid);
+        if (instance) {
+          const originalCoordinate = mapView.createCoordinate(Number(native.latitude), Number(native.longitude), mapData.getByType('floor').find((f:any)=>f.id===native.floorId));
+          MODEL_ID_REGISTRY.set(instance.id, {...native,originalCoordinate});
+        }
+      }
+      if (reason !== 'saved' && (activeModelInstance as any)?.uuid === uuid) {activeModelInstance=null;controlsPanel?.classList.add('hidden');}
+      (window as any).updateModelStreaming?.();
+    },
+    onError: (code: string) => {
+      alert(code === 'DELETE_FAILED' ? 'Chưa xóa được biển FLB. Số này vẫn được giữ để tránh đặt trùng.' : 'Chưa lưu được biển FLB. Vị trí đã lưu trước được giữ; vui lòng kiểm tra đăng nhập và thử lại.');
+      const token = flbPersistence.reconciliationToken();
+      fetch(`${API_BASE_URL}/models`).then(async (response) => {if (response.ok) {const models=await response.json();if(Array.isArray(models))flbPersistence.hydrate(models,{token});}}).catch(()=>{});
+    }
+  });
   const loadModelsFromAPI = async () => {
     try {
       // Đảm bảo mapView đã sẵn sàng
@@ -12470,6 +11992,7 @@ async function init() {
       }
 
       console.log("📥 Loading model metadata from API...");
+      const reconciliationToken = flbPersistence.reconciliationToken();
       const models = await ApiService.getAllModels();
 
       if (!models || models.length === 0) {
@@ -12478,7 +12001,11 @@ async function init() {
         return;
       }
 
-      _allModelMetadata = models;
+      const signage = verifiedFlbRuntimeModels(models, flbManifest);
+      if (!flbPersistence.hydrate(models, {notify:false,token:reconciliationToken})) return;
+      const signageByUuid = new Map(signage.map((m: any) => [m.uuid, m]));
+      _allModelMetadata = models.map((m: any) => signageByUuid.get(m.uuid) || m);
+      _allModelMetadata.push(...flbOverviewProxies(signage, overviewFloor.id, 16));
       console.log(`📦 Cached ${models.length} model metadata from DB`);
 
       const currentFloorId = mapView.currentFloor?.id;
@@ -12532,6 +12059,7 @@ async function init() {
 
     const overviewModels: { meta: any; instance: any }[] = [];
     MODEL_ID_REGISTRY.forEach((meta) => {
+      if (getFlbManifestEntry(meta, flbManifest)) return;
       // Bỏ qua nếu model GỐC đang nằm sẵn ở tầng HIỆN TẠI (tránh duplicate/Z-fighting)
       if (meta.floorId === currentFloorId) return;
 
@@ -12678,7 +12206,7 @@ async function init() {
         } catch (e) {
           console.warn("updateState failed, falling back to remove+add", e);
           // Fallback to remove+add if updateState doesn't work for this model type
-          await replaceModelInstance(activeModelInstance, newCoord, url, newRot, newScale, currentUUID, oldId, newMeta);
+          if (await replaceModelInstance(activeModelInstance, newCoord, url, newRot, newScale, currentUUID, oldId, newMeta) === false) return;
         }
 
         // Update registry metadata
@@ -12686,7 +12214,7 @@ async function init() {
         MODEL_INSTANCE_REGISTRY.set(currentUUID, activeModelInstance);
       } else {
         // SLOW PATH: Position changed, must remove+add to reposition
-        await replaceModelInstance(activeModelInstance, newCoord, url, newRot, newScale, currentUUID, oldId, newMeta);
+        if (await replaceModelInstance(activeModelInstance, newCoord, url, newRot, newScale, currentUUID, oldId, newMeta) === false) return;
       }
 
       // Persistence
@@ -12716,12 +12244,19 @@ async function init() {
     newRot: [number, number, number], newScale: [number, number, number],
     currentUUID: string, oldId: string, newMeta: any
   ) => {
+    const isFlbReplacement = Boolean(getFlbManifestEntry(newMeta,flbManifest));
+    const replacementGeneration = flbPersistence.generation(currentUUID);
+    if (isFlbReplacement && !flbPersistence.canLoad(currentUUID)) return false;
     const newInstance = await mapView.Models.add(newCoord, url, {
       interactive: true,
       scale: newScale,
       rotation: newRot,
       verticalOffset: newMeta.elevation || 0
     });
+    if (isFlbReplacement && (replacementGeneration !== flbPersistence.generation(currentUUID) || !flbPersistence.canLoad(currentUUID))) {
+      mapView.Models.remove(newInstance);
+      return false;
+    }
 
     // Attach same properties
     (newInstance as any).uuid = currentUUID;
@@ -12740,6 +12275,7 @@ async function init() {
 
     // Remove old instance AFTER new one is visible
     mapView.Models.remove(oldInstance);
+    return true;
   };
 
 
@@ -12967,7 +12503,9 @@ async function init() {
     modelGrid.innerHTML = "";
 
     const query = searchQuery.trim().toLowerCase();
-    const visibleModels = AVAILABLE_MODELS.filter(m => (m.name || m.file || '').toLowerCase().includes(query));
+    const flbCatalogue = flbPickerCatalogue(flbManifest, [..._allModelMetadata, ...MODEL_ID_REGISTRY.values(), ...flbPersistence.reservedModels()]);
+    const generalCatalogue = AVAILABLE_MODELS.filter((m: any) => !getFlbManifestEntry({url:m.url || `/Model3D/${m.file}`}, flbManifest));
+    const visibleModels = [...generalCatalogue, ...flbCatalogue].filter(m => (m.name || m.file || '').toLowerCase().includes(query));
 
     if (visibleModels.length === 0) {
       modelGrid.innerHTML = `<div style='grid-column: span 10; text-align: center; padding: 20px; color: #666;'>Không tìm thấy mô hình nào.</div>`;
@@ -12985,7 +12523,7 @@ async function init() {
         thumbName = model.file.replace(/\.(glb|gltf|json)$/i, '.jpg');
       }
 
-      const thumbSrc = thumbName ? resolveUrl(`Model3D/thumbnail/${thumbName}`) : "";
+      const thumbSrc = model.thumbnailUrl ? resolveUrl(model.thumbnailUrl) : (thumbName ? resolveUrl(`Model3D/thumbnail/${thumbName}`) : "");
 
       item.innerHTML = `
         <div class="model-item-preview" style="width:100%; height:90px; display:flex; align-items:center; justify-content:center; background:#ffffff; border:1px solid #f0f0f0; border-radius:8px; overflow:hidden; padding:5px;">
@@ -13026,6 +12564,14 @@ async function init() {
 
   // Start Placement Mode
   const startPlacingModel = (modelConfig: any) => {
+    if (placingMode === 'copy' && getFlbManifestEntry(sourceModelData, flbManifest)) {
+      alert('Không thể sao chép số FLB. Hãy chọn số chưa đặt trong danh mục.');
+      return;
+    }
+    if (modelConfig.flbNo && !flbPickerCatalogue(flbManifest, [..._allModelMetadata, ...MODEL_ID_REGISTRY.values(), ...flbPersistence.reservedModels()]).some((m: any) => m.flbNo === modelConfig.flbNo)) {
+      alert(`FLB ${modelConfig.flbNo} đã được đặt. Hãy chỉnh model hiện có thay vì tạo số trùng.`);
+      return;
+    }
     placingModelConfig = modelConfig;
     document.body.classList.add("placing-mode");
     btnAddModel?.classList.add("active");
@@ -13046,7 +12592,7 @@ async function init() {
       if (fileName) thumbName = fileName.replace(/\.(glb|gltf|json)$/i, '.jpg');
     }
 
-    const thumbSrc = thumbName ? `${SERVER_URL}/Model3D/thumbnail/${thumbName}` : "";
+    const thumbSrc = modelConfig.thumbnailUrl ? resolveUrl(modelConfig.thumbnailUrl) : (thumbName ? `${SERVER_URL}/Model3D/thumbnail/${thumbName}` : "");
 
     cursorPreview.innerHTML = `
       <div class="preview-box" style="width:50px; height:50px; background:rgba(255,255,255,1.0); border:2px solid #085ebb; border-radius:8px; display:flex; align-items:center; justify-content:center; overflow:hidden; box-shadow:0 4px 12px rgba(0,0,0,0.25); padding:4px;">
@@ -13427,7 +12973,7 @@ async function init() {
       try {
         mapView.updateState(matchObj, { interactive: true, color: "#4CAF50", hoverColor: "#45a049" });
         const anchor = getObjectAnchor(matchObj);
-        if (anchor) {
+        if (anchor && canShowAreaMarker(matchObj)) {
           const isFilePath = iconPath && iconPath.indexOf('.') !== -1;
           const markerHtml = isFilePath ? `
             <div class="search-marker">
@@ -14392,7 +13938,7 @@ async function init() {
       if (typeof updateInfo === 'function') updateInfo(obj);
     };
 
-    const routeBetweenObjects = async (originObj: any, destinationObj: any) => {
+    const routeBetweenObjects = async (originObj: any, destinationObj: any, flightContext: any = null) => {
       if (!destinationObj) return false;
       const plan = buildFlightWayfindingPlan({
         action: 'route',
@@ -14400,12 +13946,14 @@ async function init() {
         kioskOrigin: getEffectiveWayfindingOrigin(kioskRuntime, null),
         currentOrigin: wayfindingOrigin,
         checkin: originObj,
-        gate: destinationObj
+        gate: destinationObj,
+        flightContext, journeyContext: airportJourneyPreferences
       });
       wayfindingOrigin = plan.origin;
       if (!wayfindingOrigin) return false;
       wayfindingDestination = plan.destination;
       wayfindingStopovers = [...plan.stopovers];
+      airportJourneyPreferences = plan.journeyContext || airportJourneyPreferences;
       updateWayfindingUI();
       updateHighlights();
       switchToDirectionsTab();
@@ -14418,7 +13966,8 @@ async function init() {
 
     const navigateToDestinationFromCurrentContext = async (
       destinationObj: any,
-      action: 'checkin' | 'gate' | 'belt'
+      action: 'checkin' | 'gate' | 'belt',
+      flightContext: any = null
     ) => {
       if (!destinationObj) return false;
       const plan = buildFlightWayfindingPlan({
@@ -14428,11 +13977,13 @@ async function init() {
         currentOrigin: wayfindingOrigin,
         checkin: action === 'checkin' ? destinationObj : null,
         gate: action === 'gate' ? destinationObj : null,
-        belt: action === 'belt' ? destinationObj : null
+        belt: action === 'belt' ? destinationObj : null,
+        flightContext, journeyContext: airportJourneyPreferences
       });
       wayfindingOrigin = plan.origin;
       wayfindingDestination = plan.destination;
       wayfindingStopovers = [...plan.stopovers];
+      airportJourneyPreferences = plan.journeyContext || airportJourneyPreferences;
       updateWayfindingUI();
       updateHighlights();
       switchToDirectionsTab();
@@ -14555,7 +14106,7 @@ async function init() {
                 if (!payload.flight.Gate_MappedinID && !payload.flight.HasGateNavigation) throw new Error(TranslationManager.t('issue_no_gate_mapping', 'Chưa cấu hình mapping gate cho chuyến bay này.'));
                 const gateObject = resolveGateObjectStrict(payload.flight);
                 if (!gateObject) throw new Error(TranslationManager.t('error_gate_not_found', 'Không tìm thấy gate trên bản đồ'));
-                await navigateToDestinationFromCurrentContext(gateObject, 'gate');
+                await navigateToDestinationFromCurrentContext(gateObject, 'gate', payload.flight);
                 await openInfoForObject(gateObject);
                 closeModal();
                 return;
@@ -14565,7 +14116,7 @@ async function init() {
                 if (!payload.flight.HasCheckInMapping) throw new Error(TranslationManager.t('issue_no_checkin_mapping', 'Chưa cấu hình mapping check-in cho chuyến bay này.'));
                 const checkinObject = resolveCheckInObjectsStrict(payload.counters || [])[0];
                 if (!checkinObject) throw new Error(TranslationManager.t('error_checkin_not_found', 'Không tìm thấy check-in trên bản đồ'));
-                await navigateToDestinationFromCurrentContext(checkinObject, 'checkin');
+                await navigateToDestinationFromCurrentContext(checkinObject, 'checkin', payload.flight);
                 await openInfoForObject(checkinObject);
                 closeModal();
                 return;
@@ -14578,7 +14129,7 @@ async function init() {
                 const gateObject = resolveGateObjectStrict(payload.flight);
                 const checkinObject = resolveCheckInObjectsStrict(payload.counters || [])[0];
                 if (!gateObject || !checkinObject) throw new Error(TranslationManager.t('error_missing_route_points', 'Thiếu gate hoặc check-in để tạo đường đi'));
-                await routeBetweenObjects(checkinObject, gateObject);
+                await routeBetweenObjects(checkinObject, gateObject, payload.flight);
                 closeModal();
                 return;
               }
@@ -14587,7 +14138,7 @@ async function init() {
                 if (!payload.flight.Belt_MappedinID && !payload.flight.HasBeltNavigation) throw new Error(TranslationManager.t('issue_no_belt_mapping', 'Chưa cấu hình mapping băng chuyền cho chuyến bay này.'));
                 const beltObject = resolveBeltObjectStrict(payload.flight);
                 if (!beltObject) throw new Error(TranslationManager.t('error_belt_not_found', 'Không tìm thấy băng chuyền trên bản đồ'));
-                await navigateToDestinationFromCurrentContext(beltObject, 'belt');
+                await navigateToDestinationFromCurrentContext(beltObject, 'belt', payload.flight);
                 await openInfoForObject(beltObject);
                 closeModal();
               }
@@ -15725,5 +15276,7 @@ if (speedDisplay && speedMenu) {
 }
 
 init().catch(err => {
+  document.documentElement.dataset.airportStartupStage = 'failed';
+  document.documentElement.dataset.airportStartupError = err?.message || 'Initialization failed';
   console.error("❌ Critical initialization error:", err);
 });

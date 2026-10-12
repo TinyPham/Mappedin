@@ -1,4 +1,5 @@
 import type sql from 'mssql';
+import { fetchAreaVisualStyles } from './areaVisualRepository';
 
 type MappedinLocationSyncRow = {
     id?: string;
@@ -14,6 +15,7 @@ export async function syncMappedinLocations(
 ) {
     let updated = 0;
     let inserted = 0;
+    const curatedAreas = await fetchAreaVisualStyles(db);
 
     for (const loc of locations) {
         const mappedinId = loc.id;
@@ -22,6 +24,8 @@ export async function syncMappedinLocations(
         const description = loc.description || '';
 
         if (!mappedinId) continue;
+        // Preserve multilingual editorial names/descriptions for curated access roads.
+        if (curatedAreas[mappedinId]) continue;
 
         try {
             await db.request()

@@ -1207,7 +1207,8 @@ test('index uses aggregated instructions for route state and draws SDK Direction
   assert.match(source, /directions\.instructions\s*=\s*simplifiedInstructions/);
   assert.match(source, /wayfindingDirections\s*=\s*uiDirections/);
   assert.match(source, /await\s+drawThenCommitNavigation\(\{/);
-  assert.match(source, /draw:\s*\(\)\s*=>\s*mapView\.Navigation\.draw\(legDirections,\s*navigationOptions\)/);
+  assert.match(source, /draw:\s*\(\)\s*=>\s*\{\s*airportNavigationDrawQueue/);
+  assert.match(source, /requestVersion === airportRouteVersion\) return mapView\.Navigation\.draw\(legDirections,\s*navigationOptions\)/);
   assert.match(source, /const\s+navigationPathOptions\s*=\s*\{/);
   assert.match(source, /color:\s*['"]#4b90e2['"]/);
   assert.match(source, /accentColor:\s*['"]#ffffff['"]/);

@@ -19,7 +19,7 @@ test('route calculation policy selects the approved smoothing configuration by l
     primarySmoothing: {
       enabled: true,
       __EXPERIMENTAL_METHOD: 'dp-optimal',
-      radius: 0.75,
+      radius: 0.5,
       __EXPERIMENTAL_INCLUDE_DOOR_BUFFER_NODES: true
     },
     fallbackSmoothing: null
@@ -30,13 +30,13 @@ test('route calculation policy selects the approved smoothing configuration by l
     primarySmoothing: {
       enabled: true,
       __EXPERIMENTAL_METHOD: 'rdp',
-      radius: 0.75,
+      radius: 0.5,
       __EXPERIMENTAL_MUST_INCLUDE_DOOR_BUFFER_NODES: true
     },
     fallbackSmoothing: {
       enabled: true,
       __EXPERIMENTAL_METHOD: 'greedy-los',
-      radius: 0.75
+      radius: 0.5
     }
   });
 });
@@ -364,7 +364,7 @@ test('index routes with resolved door targets while preserving original waypoint
 
   assert.match(source, /getObjectRouteReferenceCoordinate,\s*getWayfindingRouteCalculationPolicy,\s*resolveWayfindingRouteTarget,\s*resolveWayfindingRouteTargets/);
   assert.match(source, /const\s+routeTargetOptions\s*=\s*\{/);
-  assert.match(source, /const\s+routeLegs\s*=\s*resolveWayfindingRouteTargets\(waypoints,\s*routeTargetOptions\)/);
+  assert.match(source, /resolveWayfindingRouteTargets\(waypoints,\s*routeTargetOptions\)/);
   assert.match(source, /getWayfindingRouteCalculationPolicy\(routeLegs\.length\)/);
   assert.match(source, /routeCalculationPolicy\.refineObjectTargets/);
   assert.match(source, /routeCalculationPolicy\.compareAccessibleRoutes/);
@@ -377,7 +377,8 @@ test('index routes with resolved door targets while preserving original waypoint
   assert.match(source, /getDistance:\s*\(from:\s*any,\s*to:\s*any\)/);
   assert.match(source, /getObjectRouteReferenceCoordinate\(/);
   assert.match(source, /let\s+\{\s*origin,\s*destination:\s*dest,\s*routeOrigin,\s*routeDestination\s*\}\s*=\s*routeLegs\[i\]/);
-  assert.match(source, /mapData\.getDirections\(from,\s*to,\s*options\)/);
+  assert.match(source, /airportDirections\(from,\s*to,\s*options\)/);
+  assert.doesNotMatch(source, /mapData\.getDirections\(from,\s*to,\s*options\)/);
 });
 
 test('index keeps SDK Directions per leg and aggregates only UI navigation data', () => {
@@ -414,7 +415,7 @@ test('index keeps SDK Directions per leg and aggregates only UI navigation data'
   assert.match(drawSource, /await\s+drawThenCommitNavigation\(\{/);
   assert.match(
     drawSource,
-    /draw:\s*\(\)\s*=>\s*mapView\.Navigation\.draw\(legDirections,\s*navigationOptions\)/
+    /draw:\s*\(\)\s*=>\s*\{[\s\S]*airportNavigationDrawQueue[\s\S]*mapView\.Navigation\.draw\(legDirections,\s*navigationOptions\)/
   );
   assert.match(drawSource, /currentNavigation\s*=\s*mapView\.Navigation/);
   assert.doesNotMatch(drawSource, /currentNavigation\s*=\s*mapView\.Navigation\.draw/);
@@ -431,7 +432,7 @@ test('index keeps SDK Directions per leg and aggregates only UI navigation data'
   assert.doesNotMatch(drawSource.slice(0, drawAwaitIndex), /wayfindingDirections\s*=\s*uiDirections/);
   assert.match(
     drawSource,
-    /catch\s*\(e\)\s*\{[\s\S]*renderRouteNotFoundState\(['"]error_nav['"][\s\S]*return;[\s\S]*\}/
+    /catch\s*\(e\)\s*\{[\s\S]*renderRouteNotFoundState\(\);[\s\S]*return;[\s\S]*\}/
   );
   assert.match(
     drawSource,

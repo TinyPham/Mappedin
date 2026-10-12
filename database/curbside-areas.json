@@ -1,0 +1,142 @@
+[
+  {
+    "id": "s_b3c516ed46579e74",
+    "floorId": "m_1523f7dcde647c40",
+    "names": {
+      "vn": "Thềm nhà ga – Tầng 3 (Curbside)",
+      "en": "Terminal Curbside – Level 3",
+      "zh": "航站楼路侧区 – 3层",
+      "ja": "ターミナル車寄せ – 3階",
+      "ko": "터미널 승하차 구역 – 3층"
+    },
+    "descriptions": {
+      "vn": "Khu vực thềm phía trước sảnh làm thủ tục tầng 3, tiếp giáp đường tiếp cận trên cao và các cửa ra vào nhà ga. Hành khách xuống xe tại vị trí được phép, đưa hành lý lên lối đi bộ và đi qua cửa vào sảnh để đến quầy làm thủ tục phù hợp. Vui lòng giữ thông thoáng lối đi và tuân theo biển báo, hướng dẫn tại khu vực.",
+      "en": "The terminal frontage outside the Level 3 check-in hall, beside the elevated access road and terminal entrances. Passengers should leave their vehicle at a permitted stopping point, move their baggage onto the pedestrian walkway and enter the hall to reach the appropriate check-in counter. Keep the walkway clear and follow local signs and staff instructions.",
+      "zh": "位于3层值机大厅外的航站楼路侧区域，毗邻高架通行道路和航站楼出入口。旅客请在允许停车的位置下车，将行李移至人行通道，再进入大厅前往相应的值机柜台。请保持通道畅通，并遵守现场标识和工作人员指引。",
+      "ja": "3階チェックインホール前の車寄せに隣接するエリアです。高架アクセス道路とターミナル出入口に面しています。許可された停車場所で降車し、荷物を歩行者用通路に移してから、ホール内の該当するチェックインカウンターへお進みください。通路をふさがず、現地の案内表示と係員の指示に従ってください。",
+      "ko": "3층 체크인 홀 앞에 위치하며 고가 진입도로와 터미널 출입구에 인접한 구역입니다. 허용된 정차 지점에서 하차한 뒤 수하물을 보행자 통로로 옮기고, 출입구를 통해 홀 안의 해당 체크인 카운터로 이동하세요. 통로를 막지 않도록 주의하고 현장 표지와 직원의 안내를 따라 주세요."
+    },
+    "color": "#C7E3E1",
+    "visual": {
+      "role": "curbside",
+      "surfaceHeight": 0.08,
+      "edgeHeight": 0.18,
+      "edgeWidth": 0.1,
+      "edgeColor": "#E4EAED",
+      "deckThickness": 0.06,
+      "lowerBridgeFloorId": "m_41a38d6d0411d397",
+      "lowerBridgeSpaceIds": [
+        "s_b60eb9430ffb7c7b",
+        "s_bdff878a75814e90"
+      ],
+      "overviewHeightReference": "rendered-floor-base",
+      "lowerBridgeDeckThickness": 0.35,
+      "lowerBridgeColor": "#CCD4DE",
+      "liftCenterRoadDeck": true,
+      "liftEndRoadDecks": true,
+      "medianDeckColor": "#E2E8F0"
+    }
+  },
+  {
+    "id": "s_0bbbee1af4e9e795",
+    "floorId": "m_1523f7dcde647c40",
+    "names": {
+      "vn": "Đường cầu cạn tiếp cận nhà ga - Tầng 3",
+      "en": "Elevated Terminal Access Road – Level 3",
+      "zh": "航站楼高架通行道路 – 3层",
+      "ja": "ターミナル高架アクセス道路 – 3階",
+      "ko": "터미널 고가 진입도로 – 3층"
+    },
+    "descriptions": {
+      "vn": "Đường tiếp cận trên cao chạy dọc mặt trước nhà ga ở cao độ tầng 3, phục vụ phương tiện đến khu vực curbside của sảnh làm thủ tục. Hành khách tiếp tục đi bộ từ thềm nhà ga qua các cửa vào sảnh để đến quầy check-in. Phương tiện cần đi theo chiều lưu thông, làn đường và vị trí dừng được chỉ dẫn tại hiện trường; người đi bộ sử dụng lối dành riêng.",
+      "en": "The elevated road along the terminal frontage at Level 3, providing vehicle access to the check-in hall curbside. Passengers continue on foot from the terminal frontage through the hall entrances to their check-in counter. Drivers should follow the posted traffic direction, lanes and stopping locations; pedestrians should use the designated walkway.",
+      "zh": "沿航站楼正面3层标高设置的高架道路，供车辆前往值机大厅外的路侧区域。旅客下车后可从航站楼前的人行区域经入口进入大厅，前往值机柜台。车辆请遵守现场交通方向、车道及停车位置指示；行人请使用专用步行通道。",
+      "ja": "ターミナル前面の3階の高さを通り、チェックインホール前の車寄せへ車両を案内する高架道路です。降車後はターミナル前の歩行者用通路からホールに入り、チェックインカウンターへお進みください。車両は現地で指定された進行方向、車線、停車場所に従い、歩行者は専用通路をご利用ください。",
+      "ko": "터미널 전면의 3층 높이를 따라 이어지는 고가도로로, 차량이 체크인 홀 앞 승하차 구역으로 접근할 수 있습니다. 하차한 승객은 터미널 앞 보행자 통로와 출입구를 통해 체크인 카운터로 이동합니다. 운전자는 현장의 통행 방향, 차로 및 정차 위치 안내를 따르고, 보행자는 지정된 보행로를 이용해 주세요."
+    },
+    "color": "#56616C",
+    "visual": {
+      "role": "road",
+      "surfaceHeight": 0.08,
+      "edgeHeight": 0.18,
+      "edgeWidth": 0.1,
+      "edgeColor": "#DCE2E6",
+      "deckThickness": 0.65,
+      "deckColor": "#8996A1",
+      "lineColor": "#F7F5ED",
+      "lineWidth": 0.24,
+      "dashLength": 6,
+      "dashGap": 6,
+      "axisAngle": -37.15,
+      "plateauHalfWidth": 300,
+      "rampLength": 425,
+      "groundHeight": 0.8,
+      "railHeight": 0.55,
+      "railWidth": 0.24,
+      "railColor": "#CDD5DB",
+      "edgeLineColor": "#FAFAF5",
+      "edgeLineWidth": 0.18,
+      "edgeLineInset": 0.65,
+      "meshStep": 4,
+      "groundStripColor": "#BBC3C9",
+      "groundStripHeight": 0.18,
+      "groundStripAltitude": 0.3,
+      "overviewHeightReference": "rendered-floor-base",
+      "junctionLevelHalfWidth": 330,
+      "junctionBlendEnd": 380,
+      "fitRoadsideDetails": true,
+      "roadsideDetailColor": "#E2E8F0"
+    }
+  },
+  {
+    "id": "s_561efa29d1fefb0c",
+    "previousId": "s_7a6d853131438af3",
+    "floorId": "m_1523f7dcde647c40",
+    "names": {
+      "vn": "Đường cầu cạn tiếp cận nhà để xe - Tầng 3",
+      "en": "Elevated Parking Garage Access Road – Level 3",
+      "zh": "停车楼高架通行道路 – 3层",
+      "ja": "駐車場高架アクセス道路 – 3階",
+      "ko": "주차장 고가 진입도로 – 3층"
+    },
+    "descriptions": {
+      "vn": "Đường trên cao phía trước nhà để xe tại cao độ tầng 3, gồm đoạn cong và các nhánh tiếp cận thể hiện trên bản đồ. Khu vực này phục vụ phương tiện tiếp cận nhà để xe, được phân biệt với đường tiếp cận nhà ga ở phía trong. Sau khi đỗ xe, hành khách sử dụng lối đi bộ và các kết nối được chỉ dẫn để đến nhà ga; vui lòng tuân theo biển báo giao thông tại hiện trường.",
+      "en": "The elevated access road in front of the parking garage at Level 3, including the curved section and access branches shown on the map. It serves vehicle access to the garage and is distinct from the terminal access road on the inner side. After parking, passengers should use the indicated pedestrian routes and connections to reach the terminal and follow local traffic signs.",
+      "zh": "位于停车楼前方3层标高的高架通行道路，包括地图上显示的弯曲路段和接入支路。该区域供车辆前往停车楼，与内侧的航站楼通行道路相区分。停车后，旅客请沿指示的人行路线及连接通道前往航站楼，并遵守现场交通标识。",
+      "ja": "駐車場前面の3階の高さにある高架アクセス道路で、地図に表示された曲線区間と接続する分岐を含みます。駐車場への車両アクセスに使用され、内側のターミナルアクセス道路とは別の道路です。駐車後は案内された歩行者用通路と接続経路を利用してターミナルへ移動し、現地の交通標識に従ってください。",
+      "ko": "주차장 앞의 3층 높이에 위치한 고가 진입도로로, 지도에 표시된 곡선 구간과 진입 분기 구간을 포함합니다. 차량의 주차장 접근을 위한 도로이며 안쪽의 터미널 진입도로와 구분됩니다. 주차 후에는 안내된 보행로와 연결 통로를 이용해 터미널로 이동하고 현장 교통 표지를 따라 주세요."
+    },
+    "color": "#68747E",
+    "visual": {
+      "role": "road",
+      "surfaceHeight": 0.08,
+      "edgeHeight": 0.18,
+      "edgeWidth": 0.1,
+      "edgeColor": "#DCE2E6",
+      "deckThickness": 0.65,
+      "deckColor": "#8996A1",
+      "lineColor": "#F7F5ED",
+      "lineWidth": 0.24,
+      "dashLength": 6,
+      "dashGap": 6,
+      "axisAngle": -37.15,
+      "plateauHalfWidth": 330,
+      "rampLength": 225,
+      "groundHeight": 0.8,
+      "railHeight": 0.55,
+      "railWidth": 0.24,
+      "railColor": "#CDD5DB",
+      "edgeLineColor": "#FAFAF5",
+      "edgeLineWidth": 0.18,
+      "edgeLineInset": 0.65,
+      "meshStep": 4,
+      "overviewHeightReference": "rendered-floor-base",
+      "garageSpaceId": "s_a72eb30f600a9bba",
+      "connectionOverlap": 0.35,
+      "junctionBlendWidth": 30,
+      "garageSurfaceHeight": 0.08,
+      "junctionLevelHalfWidth": 330,
+      "junctionBlendEnd": 380
+    }
+  }
+]

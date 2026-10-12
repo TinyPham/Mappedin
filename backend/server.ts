@@ -48,6 +48,7 @@ import {
 import { registerAuthRoutes, requireAdmin } from './auth';
 import { buildUniqueUploadName, parseImageDataUrl } from './uploads';
 import { registerKioskRoutes } from './kiosks/kioskRoutes';
+import { registerAirportOperationsRoutes } from './airportOperations/operationsRoutes';
 
 const app = express();
 
@@ -103,6 +104,7 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 registerAuthRoutes(app);
 registerKioskRoutes(app, { requireAdmin });
+registerAirportOperationsRoutes(app);
 
 
 

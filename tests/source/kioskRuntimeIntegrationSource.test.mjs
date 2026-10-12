@@ -85,7 +85,7 @@ test('reorder, swap, info and map click paths cannot replace kiosk origin', () =
   assert.notEqual(infoStart, -1);
   assert.match(source.slice(infoStart, infoStart + 300), /kioskRuntime\.isKioskMode/);
 
-  const mapClickBlock = blockBetween('mapView.on("click", async (event: any) =>', '}); //');
+  const mapClickBlock = blockBetween('const handleMapClick = async (event: any) =>', 'dispatchAirportMarkerSelection = handleMapClick');
   assert.match(mapClickBlock, /isSelectingOrigin && kioskRuntime\.isKioskMode/);
 
   const swapButtonBlock = blockBetween('const swapBtn = document.getElementById("wayfinding-swap-btn")', '// Nút preview');

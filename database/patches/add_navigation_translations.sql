@@ -25,12 +25,12 @@ GO
 
 -- Add or Update 'not_found'
 IF NOT EXISTS (SELECT 1 FROM Translation_UI WHERE KeyCode = 'not_found')
-    INSERT INTO Translation_UI (KeyCode, KeyType, VN, EN, ZH, JA, KO) VALUES ('not_found', 'label', N'Không tìm thấy đường đi', N'Route not found', N'未找到路线', N'ルートが見つかりません', N'경로를 찾을 수 없습니다');
+    INSERT INTO Translation_UI (KeyCode, KeyType, VN, EN, ZH, JA, KO) VALUES ('not_found', 'label', N'Không tìm thấy đường đi phù hợp. Vui lòng liên hệ quầy thông tin để biết thêm thông tin chi tiết.', N'No suitable route was found. Please contact the information desk for further details.', N'未找到合适的路线。请联系问讯处了解更多详细信息。', N'適切な経路が見つかりませんでした。詳しくは案内カウンターにお問い合わせください。', N'적절한 경로를 찾을 수 없습니다. 자세한 내용은 안내 데스크에 문의해 주세요.');
 GO
 
 -- Add or Update 'error_nav'
 IF NOT EXISTS (SELECT 1 FROM Translation_UI WHERE KeyCode = 'error_nav')
-    INSERT INTO Translation_UI (KeyCode, KeyType, VN, EN, ZH, JA, KO) VALUES ('error_nav', 'label', N'Lỗi khi tìm đường đi', N'Error finding route', N'寻道错误', N'ルート検索エラー', N'경로 검색 오류');
+    INSERT INTO Translation_UI (KeyCode, KeyType, VN, EN, ZH, JA, KO) VALUES ('error_nav', 'label', N'Không tìm thấy đường đi phù hợp. Vui lòng liên hệ quầy thông tin để biết thêm thông tin chi tiết.', N'No suitable route was found. Please contact the information desk for further details.', N'未找到合适的路线。请联系问讯处了解更多详细信息。', N'適切な経路が見つかりませんでした。詳しくは案内カウンターにお問い合わせください。', N'적절한 경로를 찾을 수 없습니다. 자세한 내용은 안내 데스크에 문의해 주세요.');
 GO
 
 -- Add or Update 'route_found'

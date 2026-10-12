@@ -91,3 +91,11 @@ test('keeps the existing website departure route behavior', () => {
     stopovers: []
   });
 });
+
+test('preserves flight direction and business context on kiosk and website plans',()=>{
+ const context={FlightId:12,ArrDep:'D',FlightType:'I'};
+ const plan=flightNavigationActions.buildFlightWayfindingPlan({action:'gate',gate:{id:'gate9'},flightContext:context,journeyContext:{profileId:'full-t1',mobility:'accessible'}});
+ assert.equal(plan.journeyContext.flightContext,context);assert.equal(plan.journeyContext.journeyKind,'departure');assert.equal(plan.journeyContext.mobility,'accessible');
+ const arrival=flightNavigationActions.buildFlightWayfindingPlan({action:'belt',flightContext:{ArrDep:'A'}});
+ assert.equal(arrival.journeyContext.journeyKind,'arrival');
+});

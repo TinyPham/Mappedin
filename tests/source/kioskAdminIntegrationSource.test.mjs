@@ -62,7 +62,8 @@ test('view-only style hides the kiosk button and modal', () => {
 });
 
 test('map click intercepts kiosk pick mode before normal click behavior', () => {
-  const handlerStart = source.indexOf('mapView.on("click", async (event: any) =>');
+  const handlerStart = source.indexOf('const handleMapClick = async (event: any) =>');
+  assert.match(source, /mapView\.on\(["']click["'],\s*handleMapClick\)/);
   const placementStart = source.indexOf('HANDLE MULTI-MODEL PLACEMENT', handlerStart);
   const interception = source.indexOf('if (kioskPickMode)', handlerStart);
   assert.ok(handlerStart >= 0 && interception > handlerStart && interception < placementStart);

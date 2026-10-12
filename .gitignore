@@ -25,3 +25,24 @@ Thumbs.db
 .idea/
 .vs/
 *.vsidx
+
+# Local AI work products, diagnostics, and generated reports
+diagnostics/
+.superpowers/
+docs/superpowers/
+docs/implementation-logs/
+docs/reports/
+docs/user-guide/images/smoke-home.png
+Model3D/flb/validation-report.json
+*.log
+*.tmp
+*.bak
+*.before
+
+# One-off audit and superseded migration helpers
+scripts/collect*Audit.mjs
+scripts/inspectCurbside*
+scripts/verify*.mjs
+scripts/updateMedianGapColor.cjs
+scripts/updateContinuousMedianStyle.cjs
+scripts/renameAccessRoadAreas.cjs

@@ -478,20 +478,20 @@ export function getWayfindingRouteCalculationPolicy(routeLegCount) {
       ? {
           enabled: true,
           __EXPERIMENTAL_METHOD: 'rdp',
-          radius: 0.75,
+          radius: 0.5,
           __EXPERIMENTAL_MUST_INCLUDE_DOOR_BUFFER_NODES: true
         }
       : {
           enabled: true,
           __EXPERIMENTAL_METHOD: 'dp-optimal',
-          radius: 0.75,
+          radius: 0.5,
           __EXPERIMENTAL_INCLUDE_DOOR_BUFFER_NODES: true
         },
     fallbackSmoothing: isMultiLegRoute
       ? {
           enabled: true,
           __EXPERIMENTAL_METHOD: 'greedy-los',
-          radius: 0.75
+          radius: 0.5
         }
       : null
   };

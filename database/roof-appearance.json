@@ -1,0 +1,47 @@
+{
+  "mapId": "693687f4f176dd000ba13a3b",
+  "version": 1,
+  "enabled": true,
+  "axisAngle": -37.15,
+  "palette": {
+    "terminalMetal": "#E8EDF2",
+    "terminalSide": "#B8C2CD",
+    "metalRib": "#CED7E0",
+    "glass": "#68869F",
+    "glassGrid": "#ACC0CF",
+    "garageGrass": "#5B702B",
+    "garageSide": "#C2CAD1",
+    "garageStripe": "#EEF1E7",
+    "garageSlot": "#344D60",
+    "garageSlotGrid": "#8496A2"
+  },
+  "terminal": {
+    "floorIds": ["m_419c5f0d5c054d24", "m_e5464db692b1ae03", "m_9e080905bf7c91bf", "m_49de4fb7a62e9b1f", "m_cf000b490ca8a946"],
+    "leftWingSpaceId": "s_5497b3afa21ecec5",
+    "rightWingSpaceId": "s_bf80f57473de61c3",
+    "centralGlassSpaceId": "s_146768a1e9380230",
+    "ribSpacing": 3.2,
+    "ribWidth": 0.16,
+    "glassGridSpacing": 8,
+    "glassGridWidth": 0.12,
+    "glassInsetLength": 0.82,
+    "glassInsetWidth": 0.32
+  },
+  "garage": {
+    "sourceFloorId": "m_1523f7dcde647c40",
+    "sourceSpaceId": "s_a72eb30f600a9bba",
+    "waveSpacing": 18,
+    "waveWidth": 0.65,
+    "waveCurvature": 0.00017,
+    "rimWidth": 0.65,
+    "slotRecess": 0.35,
+    "slotGridSpacing": 8,
+    "canopyBounds": [-28, -176, 26, -78],
+    "canopyRadius": 10.5,
+    "canopyGlassScale": [0.60, 0.83]
+  },
+  "render": {
+    "surfaceOffset": 0.035,
+    "maxTriangles": 28000
+  }
+}

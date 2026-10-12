@@ -1,0 +1,678 @@
+{
+  "schemaVersion": 1,
+  "configVersion": "flb-assets-v1",
+  "numbering": {
+    "direction": "clockwise",
+    "source": "user-numbering-image-2026-10-08",
+    "imageAnchorNumbers": [
+      1,
+      2,
+      5,
+      10,
+      15,
+      23,
+      32
+    ],
+    "placementSurveyRequired": true
+  },
+  "geometry": {
+    "style": "thin plate with raised mesh lettering",
+    "upAxis": "Y",
+    "textFace": "+Y",
+    "units": "meters",
+    "nodesPerAsset": 1,
+    "primitivesPerAsset": 2,
+    "textures": 0
+  },
+  "generator": {
+    "file": "tools/generate_flb_models.mjs",
+    "version": 1,
+    "threeRevision": "182",
+    "font": "Helvetiker Bold",
+    "fontSha256": "bd68159ee0b8d10fe24b9daa2e32f19686f9d8269a79dc8d44203a66298bfa2f",
+    "fontLicense": "MAGENTA font license",
+    "fontLicenseUrl": "/Model3D/flb/font/LICENSE.txt"
+  },
+  "entries": [
+    {
+      "flbNo": 1,
+      "label": "FLB 01",
+      "uuid": null,
+      "assetUrl": "/Model3D/flb/FLB-01.glb",
+      "assetVersion": "39229ca32e39",
+      "sha256": "39229ca32e3984851c4f78dbb9d3794cc0c14f67649bdecda7a30b7b2f15dfc5",
+      "thumbnailUrl": "/Model3D/flb/FLB-01.svg",
+      "dimensionsMeters": [
+        5.109999942779541,
+        0.12,
+        1.5390000119805336
+      ],
+      "triangles": 672,
+      "placement": {
+        "status": "unplaced"
+      },
+      "gateRefs": [],
+      "source": "user-numbering-image-2026-10-08"
+    },
+    {
+      "flbNo": 2,
+      "label": "FLB 02",
+      "uuid": null,
+      "assetUrl": "/Model3D/flb/FLB-02.glb",
+      "assetVersion": "67d566eb463b",
+      "sha256": "67d566eb463b7a9971cbff896c69104701f4aa1d847b9599e98f86c4d74422fb",
+      "thumbnailUrl": "/Model3D/flb/FLB-02.svg",
+      "dimensionsMeters": [
+        5.246000099182129,
+        0.12,
+        1.5390000119805336
+      ],
+      "triangles": 856,
+      "placement": {
+        "status": "unplaced"
+      },
+      "gateRefs": [],
+      "source": "user-numbering-image-2026-10-08"
+    },
+    {
+      "flbNo": 3,
+      "label": "FLB 03",
+      "uuid": null,
+      "assetUrl": "/Model3D/flb/FLB-03.glb",
+      "assetVersion": "4df1ad70aef8",
+      "sha256": "4df1ad70aef8d4de61e811e8a501b034c499b0028e32059fcaafa4bbe4f51431",
+      "thumbnailUrl": "/Model3D/flb/FLB-03.svg",
+      "dimensionsMeters": [
+        5.248999881744385,
+        0.12,
+        1.5450000129640102
+      ],
+      "triangles": 1012,
+      "placement": {
+        "status": "unplaced"
+      },
+      "gateRefs": [],
+      "source": "user-numbering-image-2026-10-08"
+    },
+    {
+      "flbNo": 4,
+      "label": "FLB 04",
+      "uuid": null,
+      "assetUrl": "/Model3D/flb/FLB-04.glb",
+      "assetVersion": "f95d78891ae5",
+      "sha256": "f95d78891ae5477468392aff5473b3dcc34121884059fa83692328ff7bc007c9",
+      "thumbnailUrl": "/Model3D/flb/FLB-04.svg",
+      "dimensionsMeters": [
+        5.256999778747558,
+        0.12,
+        1.5390000119805336
+      ],
+      "triangles": 676,
+      "placement": {
+        "status": "unplaced"
+      },
+      "gateRefs": [],
+      "source": "user-numbering-image-2026-10-08"
+    },
+    {
+      "flbNo": 5,
+      "label": "FLB 05",
+      "uuid": null,
+      "assetUrl": "/Model3D/flb/FLB-05.glb",
+      "assetVersion": "ddfba63f6a4c",
+      "sha256": "ddfba63f6a4c0f0e1cd8dc6d0d7b8d2d9e45570482bf1be6c50508c168e2f997",
+      "thumbnailUrl": "/Model3D/flb/FLB-05.svg",
+      "dimensionsMeters": [
+        5.248999881744385,
+        0.12,
+        1.5420000106096268
+      ],
+      "triangles": 900,
+      "placement": {
+        "status": "unplaced"
+      },
+      "gateRefs": [],
+      "source": "user-numbering-image-2026-10-08"
+    },
+    {
+      "flbNo": 6,
+      "label": "FLB 06",
+      "uuid": null,
+      "assetUrl": "/Model3D/flb/FLB-06.glb",
+      "assetVersion": "22594fbe47ab",
+      "sha256": "22594fbe47abfe70c1a4023d91aeca18b3fff54968aa9df1f8ec6d469dfa8003",
+      "thumbnailUrl": "/Model3D/flb/FLB-06.svg",
+      "dimensionsMeters": [
+        5.253000068664551,
+        0.12,
+        1.5420000106096268
+      ],
+      "triangles": 992,
+      "placement": {
+        "status": "unplaced"
+      },
+      "gateRefs": [],
+      "source": "user-numbering-image-2026-10-08"
+    },
+    {
+      "flbNo": 7,
+      "label": "FLB 07",
+      "uuid": null,
+      "assetUrl": "/Model3D/flb/FLB-07.glb",
+      "assetVersion": "1604dfc04262",
+      "sha256": "1604dfc042629f79b51c7e6c504989aa4cd2343d2283f6d8de8faa832d1589ca",
+      "thumbnailUrl": "/Model3D/flb/FLB-07.svg",
+      "dimensionsMeters": [
+        5.243999767303467,
+        0.12,
+        1.5390000119805336
+      ],
+      "triangles": 700,
+      "placement": {
+        "status": "unplaced"
+      },
+      "gateRefs": [],
+      "source": "user-numbering-image-2026-10-08"
+    },
+    {
+      "flbNo": 8,
+      "label": "FLB 08",
+      "uuid": null,
+      "assetUrl": "/Model3D/flb/FLB-08.glb",
+      "assetVersion": "8393fd195076",
+      "sha256": "8393fd1950762106be8f78fa2621db8c21290c3aa3ffad9732eec77d4ee5f37e",
+      "thumbnailUrl": "/Model3D/flb/FLB-08.svg",
+      "dimensionsMeters": [
+        5.252000141143799,
+        0.12,
+        1.5420000106096268
+      ],
+      "triangles": 1136,
+      "placement": {
+        "status": "unplaced"
+      },
+      "gateRefs": [],
+      "source": "user-numbering-image-2026-10-08"
+    },
+    {
+      "flbNo": 9,
+      "label": "FLB 09",
+      "uuid": null,
+      "assetUrl": "/Model3D/flb/FLB-09.glb",
+      "assetVersion": "3e12e02cd3fb",
+      "sha256": "3e12e02cd3fb86fd32740686cda73bb2e7be05cf6c5e1fcef1b3286138bcca11",
+      "thumbnailUrl": "/Model3D/flb/FLB-09.svg",
+      "dimensionsMeters": [
+        5.251000213623047,
+        0.12,
+        1.5460000112652779
+      ],
+      "triangles": 1008,
+      "placement": {
+        "status": "unplaced"
+      },
+      "gateRefs": [],
+      "source": "user-numbering-image-2026-10-08"
+    },
+    {
+      "flbNo": 10,
+      "label": "FLB 10",
+      "uuid": null,
+      "assetUrl": "/Model3D/flb/FLB-10.glb",
+      "assetVersion": "9f64b8195821",
+      "sha256": "9f64b8195821b92b9e5034f79655465edb5997fb5e0e3726c0a5f0b892b0452a",
+      "thumbnailUrl": "/Model3D/flb/FLB-10.svg",
+      "dimensionsMeters": [
+        5.260999965667724,
+        0.12,
+        1.5390000119805336
+      ],
+      "triangles": 672,
+      "placement": {
+        "status": "unplaced"
+      },
+      "gateRefs": [],
+      "source": "user-numbering-image-2026-10-08"
+    },
+    {
+      "flbNo": 11,
+      "label": "FLB 11",
+      "uuid": null,
+      "assetUrl": "/Model3D/flb/FLB-11.glb",
+      "assetVersion": "f42c54a974fb",
+      "sha256": "f42c54a974fb2562f56e57c6cd9087606b7e520946fb1f8a66037a4fd564a07f",
+      "thumbnailUrl": "/Model3D/flb/FLB-11.svg",
+      "dimensionsMeters": [
+        5.109999942779541,
+        0.12,
+        1.5130000114440918
+      ],
+      "triangles": 468,
+      "placement": {
+        "status": "unplaced"
+      },
+      "gateRefs": [],
+      "source": "user-numbering-image-2026-10-08"
+    },
+    {
+      "flbNo": 12,
+      "label": "FLB 12",
+      "uuid": null,
+      "assetUrl": "/Model3D/flb/FLB-12.glb",
+      "assetVersion": "63f264914b56",
+      "sha256": "63f264914b56a099bd0639d73d3cdb40301e7ca4c79371773a65670b187c8f16",
+      "thumbnailUrl": "/Model3D/flb/FLB-12.svg",
+      "dimensionsMeters": [
+        5.246000099182129,
+        0.12,
+        1.5130000114440918
+      ],
+      "triangles": 652,
+      "placement": {
+        "status": "unplaced"
+      },
+      "gateRefs": [],
+      "source": "user-numbering-image-2026-10-08"
+    },
+    {
+      "flbNo": 13,
+      "label": "FLB 13",
+      "uuid": null,
+      "assetUrl": "/Model3D/flb/FLB-13.glb",
+      "assetVersion": "9612481ed41c",
+      "sha256": "9612481ed41cf7b6dab329cd80470ab90ba6a5519b2cdae8b409d02cc389f0d7",
+      "thumbnailUrl": "/Model3D/flb/FLB-13.svg",
+      "dimensionsMeters": [
+        5.248999881744385,
+        0.12,
+        1.5450000129640102
+      ],
+      "triangles": 808,
+      "placement": {
+        "status": "unplaced"
+      },
+      "gateRefs": [],
+      "source": "user-numbering-image-2026-10-08"
+    },
+    {
+      "flbNo": 14,
+      "label": "FLB 14",
+      "uuid": null,
+      "assetUrl": "/Model3D/flb/FLB-14.glb",
+      "assetVersion": "77092d9e26ec",
+      "sha256": "77092d9e26ec0da10b7def599a2480ad92bdc6add1fbd7a1a6b6e732133bc106",
+      "thumbnailUrl": "/Model3D/flb/FLB-14.svg",
+      "dimensionsMeters": [
+        5.256999778747558,
+        0.12,
+        1.5130000114440918
+      ],
+      "triangles": 472,
+      "placement": {
+        "status": "unplaced"
+      },
+      "gateRefs": [],
+      "source": "user-numbering-image-2026-10-08"
+    },
+    {
+      "flbNo": 15,
+      "label": "FLB 15",
+      "uuid": null,
+      "assetUrl": "/Model3D/flb/FLB-15.glb",
+      "assetVersion": "66d815348e40",
+      "sha256": "66d815348e40727f3239ecc7c0052633be3ff5843d2cd201ebbee861e16d77f5",
+      "thumbnailUrl": "/Model3D/flb/FLB-15.svg",
+      "dimensionsMeters": [
+        5.248999881744385,
+        0.12,
+        1.5420000106096268
+      ],
+      "triangles": 696,
+      "placement": {
+        "status": "unplaced"
+      },
+      "gateRefs": [],
+      "source": "user-numbering-image-2026-10-08"
+    },
+    {
+      "flbNo": 16,
+      "label": "FLB 16",
+      "uuid": null,
+      "assetUrl": "/Model3D/flb/FLB-16.glb",
+      "assetVersion": "41566414de5e",
+      "sha256": "41566414de5efe6860b0de4866833d794315d9f6ec9c5be8bb92f2495ee1c1e2",
+      "thumbnailUrl": "/Model3D/flb/FLB-16.svg",
+      "dimensionsMeters": [
+        5.253000068664551,
+        0.12,
+        1.5420000106096268
+      ],
+      "triangles": 788,
+      "placement": {
+        "status": "unplaced"
+      },
+      "gateRefs": [],
+      "source": "user-numbering-image-2026-10-08"
+    },
+    {
+      "flbNo": 17,
+      "label": "FLB 17",
+      "uuid": null,
+      "assetUrl": "/Model3D/flb/FLB-17.glb",
+      "assetVersion": "943b53eb2480",
+      "sha256": "943b53eb2480c50ed69b9689de1bb589f60f106b1d088dbb936d5d4fbdc61fda",
+      "thumbnailUrl": "/Model3D/flb/FLB-17.svg",
+      "dimensionsMeters": [
+        5.243999767303467,
+        0.12,
+        1.5130000114440918
+      ],
+      "triangles": 496,
+      "placement": {
+        "status": "unplaced"
+      },
+      "gateRefs": [],
+      "source": "user-numbering-image-2026-10-08"
+    },
+    {
+      "flbNo": 18,
+      "label": "FLB 18",
+      "uuid": null,
+      "assetUrl": "/Model3D/flb/FLB-18.glb",
+      "assetVersion": "f4f1752c057b",
+      "sha256": "f4f1752c057bf1c3ebe9d8f4d8edd7a12b43bfd414433673a1f569a1027e3b97",
+      "thumbnailUrl": "/Model3D/flb/FLB-18.svg",
+      "dimensionsMeters": [
+        5.252000141143799,
+        0.12,
+        1.5420000106096268
+      ],
+      "triangles": 932,
+      "placement": {
+        "status": "unplaced"
+      },
+      "gateRefs": [],
+      "source": "user-numbering-image-2026-10-08"
+    },
+    {
+      "flbNo": 19,
+      "label": "FLB 19",
+      "uuid": null,
+      "assetUrl": "/Model3D/flb/FLB-19.glb",
+      "assetVersion": "e0d9712e1ead",
+      "sha256": "e0d9712e1ead84884ed272c1e328302564977c4eab06d23d142542bf9c0b6d9f",
+      "thumbnailUrl": "/Model3D/flb/FLB-19.svg",
+      "dimensionsMeters": [
+        5.251000213623047,
+        0.12,
+        1.5460000112652779
+      ],
+      "triangles": 804,
+      "placement": {
+        "status": "unplaced"
+      },
+      "gateRefs": [],
+      "source": "user-numbering-image-2026-10-08"
+    },
+    {
+      "flbNo": 20,
+      "label": "FLB 20",
+      "uuid": null,
+      "assetUrl": "/Model3D/flb/FLB-20.glb",
+      "assetVersion": "7e566b60b997",
+      "sha256": "7e566b60b997e1991257c0e5a6a83e90beb05c61aa67e1f13172953073a3cf6e",
+      "thumbnailUrl": "/Model3D/flb/FLB-20.svg",
+      "dimensionsMeters": [
+        5.260999965667724,
+        0.12,
+        1.5390000119805336
+      ],
+      "triangles": 856,
+      "placement": {
+        "status": "unplaced"
+      },
+      "gateRefs": [],
+      "source": "user-numbering-image-2026-10-08"
+    },
+    {
+      "flbNo": 21,
+      "label": "FLB 21",
+      "uuid": null,
+      "assetUrl": "/Model3D/flb/FLB-21.glb",
+      "assetVersion": "8e8b90d9bb94",
+      "sha256": "8e8b90d9bb94f17c86b95c0dfa37e91236dd7b85f044a095f6110c8ed2b3494a",
+      "thumbnailUrl": "/Model3D/flb/FLB-21.svg",
+      "dimensionsMeters": [
+        5.109999942779541,
+        0.12,
+        1.5130000114440918
+      ],
+      "triangles": 652,
+      "placement": {
+        "status": "unplaced"
+      },
+      "gateRefs": [],
+      "source": "user-numbering-image-2026-10-08"
+    },
+    {
+      "flbNo": 22,
+      "label": "FLB 22",
+      "uuid": null,
+      "assetUrl": "/Model3D/flb/FLB-22.glb",
+      "assetVersion": "0f6c4319343b",
+      "sha256": "0f6c4319343b8bcd7a256c2756fc8bcf0f9508f996746fd140eeb5ab1be0b742",
+      "thumbnailUrl": "/Model3D/flb/FLB-22.svg",
+      "dimensionsMeters": [
+        5.246000099182129,
+        0.12,
+        1.5130000114440918
+      ],
+      "triangles": 836,
+      "placement": {
+        "status": "unplaced"
+      },
+      "gateRefs": [],
+      "source": "user-numbering-image-2026-10-08"
+    },
+    {
+      "flbNo": 23,
+      "label": "FLB 23",
+      "uuid": null,
+      "assetUrl": "/Model3D/flb/FLB-23.glb",
+      "assetVersion": "c8767fe1b376",
+      "sha256": "c8767fe1b376fbb23b1bcc8554296a4471df2d5c1a6b549c15a66f49870edb92",
+      "thumbnailUrl": "/Model3D/flb/FLB-23.svg",
+      "dimensionsMeters": [
+        5.248999881744385,
+        0.12,
+        1.5450000129640102
+      ],
+      "triangles": 992,
+      "placement": {
+        "status": "unplaced"
+      },
+      "gateRefs": [],
+      "source": "user-numbering-image-2026-10-08"
+    },
+    {
+      "flbNo": 24,
+      "label": "FLB 24",
+      "uuid": null,
+      "assetUrl": "/Model3D/flb/FLB-24.glb",
+      "assetVersion": "c04dd34ad43f",
+      "sha256": "c04dd34ad43fdadd26f1800c9e9b5e7c19d4eaac778b998ac6455168a6aacc1a",
+      "thumbnailUrl": "/Model3D/flb/FLB-24.svg",
+      "dimensionsMeters": [
+        5.256999778747558,
+        0.12,
+        1.5130000114440918
+      ],
+      "triangles": 656,
+      "placement": {
+        "status": "unplaced"
+      },
+      "gateRefs": [],
+      "source": "user-numbering-image-2026-10-08"
+    },
+    {
+      "flbNo": 25,
+      "label": "FLB 25",
+      "uuid": null,
+      "assetUrl": "/Model3D/flb/FLB-25.glb",
+      "assetVersion": "a86a49e7c4df",
+      "sha256": "a86a49e7c4df11f8b79fd3052223628bb44ee12fe29bcf878c9679a4a790b32d",
+      "thumbnailUrl": "/Model3D/flb/FLB-25.svg",
+      "dimensionsMeters": [
+        5.248999881744385,
+        0.12,
+        1.5420000106096268
+      ],
+      "triangles": 880,
+      "placement": {
+        "status": "unplaced"
+      },
+      "gateRefs": [],
+      "source": "user-numbering-image-2026-10-08"
+    },
+    {
+      "flbNo": 26,
+      "label": "FLB 26",
+      "uuid": null,
+      "assetUrl": "/Model3D/flb/FLB-26.glb",
+      "assetVersion": "a97b6b583c9b",
+      "sha256": "a97b6b583c9b92a1edb745360ed90475179f95e00fd746aca60f3ae144cf8847",
+      "thumbnailUrl": "/Model3D/flb/FLB-26.svg",
+      "dimensionsMeters": [
+        5.253000068664551,
+        0.12,
+        1.5420000106096268
+      ],
+      "triangles": 972,
+      "placement": {
+        "status": "unplaced"
+      },
+      "gateRefs": [],
+      "source": "user-numbering-image-2026-10-08"
+    },
+    {
+      "flbNo": 27,
+      "label": "FLB 27",
+      "uuid": null,
+      "assetUrl": "/Model3D/flb/FLB-27.glb",
+      "assetVersion": "6ed276d5f89f",
+      "sha256": "6ed276d5f89f612bd7468a729727e6310920612c697f1cbc0d7d733e15c4f0c5",
+      "thumbnailUrl": "/Model3D/flb/FLB-27.svg",
+      "dimensionsMeters": [
+        5.243999767303467,
+        0.12,
+        1.5130000114440918
+      ],
+      "triangles": 680,
+      "placement": {
+        "status": "unplaced"
+      },
+      "gateRefs": [],
+      "source": "user-numbering-image-2026-10-08"
+    },
+    {
+      "flbNo": 28,
+      "label": "FLB 28",
+      "uuid": null,
+      "assetUrl": "/Model3D/flb/FLB-28.glb",
+      "assetVersion": "d3f10f71ae05",
+      "sha256": "d3f10f71ae05f7b4e901fd79903bcea937934e158c25c718139d8a91e5057a04",
+      "thumbnailUrl": "/Model3D/flb/FLB-28.svg",
+      "dimensionsMeters": [
+        5.252000141143799,
+        0.12,
+        1.5420000106096268
+      ],
+      "triangles": 1116,
+      "placement": {
+        "status": "unplaced"
+      },
+      "gateRefs": [],
+      "source": "user-numbering-image-2026-10-08"
+    },
+    {
+      "flbNo": 29,
+      "label": "FLB 29",
+      "uuid": null,
+      "assetUrl": "/Model3D/flb/FLB-29.glb",
+      "assetVersion": "ad3e773b4a46",
+      "sha256": "ad3e773b4a46e9e0e3276f74d60e37b7523598a7bf38bfd7b467640efd107633",
+      "thumbnailUrl": "/Model3D/flb/FLB-29.svg",
+      "dimensionsMeters": [
+        5.251000213623047,
+        0.12,
+        1.5460000112652779
+      ],
+      "triangles": 988,
+      "placement": {
+        "status": "unplaced"
+      },
+      "gateRefs": [],
+      "source": "user-numbering-image-2026-10-08"
+    },
+    {
+      "flbNo": 30,
+      "label": "FLB 30",
+      "uuid": null,
+      "assetUrl": "/Model3D/flb/FLB-30.glb",
+      "assetVersion": "dcf068409241",
+      "sha256": "dcf068409241a28f983de629c5dfb7c514da42b3ad13f32a0d2a628e4f736e14",
+      "thumbnailUrl": "/Model3D/flb/FLB-30.svg",
+      "dimensionsMeters": [
+        5.260999965667724,
+        0.12,
+        1.5450000129640102
+      ],
+      "triangles": 1012,
+      "placement": {
+        "status": "unplaced"
+      },
+      "gateRefs": [],
+      "source": "user-numbering-image-2026-10-08"
+    },
+    {
+      "flbNo": 31,
+      "label": "FLB 31",
+      "uuid": null,
+      "assetUrl": "/Model3D/flb/FLB-31.glb",
+      "assetVersion": "16411b57f14f",
+      "sha256": "16411b57f14f7d1d87ca66062496aff4593531d8fc7b3e59c247dcf75e26e6c1",
+      "thumbnailUrl": "/Model3D/flb/FLB-31.svg",
+      "dimensionsMeters": [
+        5.109999942779541,
+        0.12,
+        1.5450000129640102
+      ],
+      "triangles": 808,
+      "placement": {
+        "status": "unplaced"
+      },
+      "gateRefs": [],
+      "source": "user-numbering-image-2026-10-08"
+    },
+    {
+      "flbNo": 32,
+      "label": "FLB 32",
+      "uuid": null,
+      "assetUrl": "/Model3D/flb/FLB-32.glb",
+      "assetVersion": "421c95b3164f",
+      "sha256": "421c95b3164f660f6b8c1882c8fe586293cf5618d26d14e44a546cd97ed35db4",
+      "thumbnailUrl": "/Model3D/flb/FLB-32.svg",
+      "dimensionsMeters": [
+        5.246000099182129,
+        0.12,
+        1.5450000129640102
+      ],
+      "triangles": 992,
+      "placement": {
+        "status": "unplaced"
+      },
+      "gateRefs": [],
+      "source": "user-numbering-image-2026-10-08"
+    }
+  ]
+}

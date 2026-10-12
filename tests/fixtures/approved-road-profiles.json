@@ -1,0 +1,16 @@
+{
+  "s_0bbbee1af4e9e795": {
+    "role": "road",
+    "axisAngle": -37.15,
+    "plateauHalfWidth": 300,
+    "rampLength": 425,
+    "groundHeight": 0.8
+  },
+  "s_561efa29d1fefb0c": {
+    "role": "road",
+    "axisAngle": -37.15,
+    "plateauHalfWidth": 330,
+    "rampLength": 225,
+    "groundHeight": 0.8
+  }
+}
