@@ -16,12 +16,15 @@ test('camera bearing/pitch logs remain enabled as requested, independently of de
   assert.match(logging.getText(sourceFile), /\[Camera\].*Bearing.*Pitch/);
 });
 
-test('full map dump runs once automatically after two seconds and remains callable manually', () => {
+test('map dumps remain callable manually without automatic printing', () => {
   assert.match(source, /\(window as any\)\.logMapData = logComprehensiveMapContent/);
   const scheduled = findNodes(node => ts.isCallExpression(node) && node.expression.getText(sourceFile) === 'setTimeout' &&
     node.arguments[0]?.getText(sourceFile) === 'logComprehensiveMapContent');
-  assert.equal(scheduled.length, 1);
-  assert.equal(scheduled[0].arguments[1].getText(sourceFile), '2000');
+  assert.equal(scheduled.length, 0);
+  const automaticCalls = findNodes(node => ts.isCallExpression(node) &&
+    ['logComprehensiveMapContent', 'logMapImageLinks'].includes(node.expression.getText(sourceFile)));
+  assert.equal(automaticCalls.length, 0);
+  assert.match(source, /\(window as any\)\.logMapImageLinks = logMapImageLinks/);
 });
 
 test('admin polling starts only after authenticated admin state and can be stopped', () => {

@@ -3473,37 +3473,40 @@ async function init() {
     return Array.from(mergedObjects.values());
   };
 
-  // Log Mappedin CDN Image Links (approved console inspection feature).
-  console.group("📍 Mappedin CDN Image Links");
-  const objectImages = allMapObjects.map(o => {
-    // 1. Try images array (Suggested)
-    let url = "";
-    if (o.images && Array.isArray(o.images) && o.images.length > 0) {
-      url = o.images[0].url || o.images[0];
-    }
-    // 2. Try media array
-    else if (o.media && Array.isArray(o.media) && o.media.length > 0) {
-      url = o.media[0].url || o.media[0];
-    }
-    // 3. Fallbacks
-    else {
-      url = o.logo?.original || o.logo?.large || o.logo?.medium || o.logo?.small || o.logo || o.image || o.x_ray_image_url || "";
-    }
+  // Inspect CDN image links manually, without building or printing tables on load.
+  const logMapImageLinks = () => {
+    console.group("📍 Mappedin CDN Image Links");
+    const objectImages = allMapObjects.map(o => {
+      // 1. Try images array (Suggested)
+      let url = "";
+      if (o.images && Array.isArray(o.images) && o.images.length > 0) {
+        url = o.images[0].url || o.images[0];
+      }
+      // 2. Try media array
+      else if (o.media && Array.isArray(o.media) && o.media.length > 0) {
+        url = o.media[0].url || o.media[0];
+      }
+      // 3. Fallbacks
+      else {
+        url = o.logo?.original || o.logo?.large || o.logo?.medium || o.logo?.small || o.logo || o.image || o.x_ray_image_url || "";
+      }
 
-    return {
-      ID: o.id,
-      Name: o.name || 'Unnamed',
-      CDN_Url: url
-    };
-  }).filter(o => o.CDN_Url);
+      return {
+        ID: o.id,
+        Name: o.name || 'Unnamed',
+        CDN_Url: url
+      };
+    }).filter(o => o.CDN_Url);
 
-  if (objectImages.length > 0) {
-    console.table(objectImages);
-  } else {
-    console.log("No images found in any map objects. Checking raw objects for inspection...");
-    console.log("Sample object structure:", allMapObjects[0]);
-  }
-  console.groupEnd();
+    if (objectImages.length > 0) {
+      console.table(objectImages);
+    } else {
+      console.log("No images found in any map objects. Checking raw objects for inspection...");
+      console.log("Sample object structure:", allMapObjects[0]);
+    }
+    console.groupEnd();
+  };
+  (window as any).logMapImageLinks = logMapImageLinks;
   let currentSearchResults: any[] = []; // Track active search results
   let selectedSpace: any = null;
   let currentSearchMarkers: any[] = []; // Track active search markers
@@ -5263,8 +5266,7 @@ async function init() {
     console.groupEnd();
   };
 
-  // Run once on load and keep the manual console entry point.
-  setTimeout(logComprehensiveMapContent, 2000);
+  // Print full map data only when explicitly requested from the console.
   (window as any).logMapData = logComprehensiveMapContent;
 
 
