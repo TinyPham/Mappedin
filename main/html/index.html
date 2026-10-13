@@ -1936,6 +1936,19 @@
           </button>
         </div>
 
+        <!-- Passenger flow slideshow in the map's right toolbar -->
+        <div id="journey-simulation-container" class="camera-control-group">
+          <button id="btn-journey-simulation" class="camera-btn" type="button" title="Luồng hành khách"
+            aria-label="Luồng hành khách" aria-controls="airport-flow-video-player" aria-expanded="false">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="6" cy="6" r="2"/><circle cx="18" cy="18" r="2"/>
+              <path d="M8 6h5a4 4 0 0 1 0 8h-2a4 4 0 0 0 0 8h5"/>
+              <path d="m14 3 3 3-3 3"/><path d="m15 15 3 3-3 3"/>
+            </svg>
+          </button>
+        </div>
+
         <!-- 2. Fullscreen Toggle -->
         <div id="fullscreen-container" class="camera-control-group">
           <button class="camera-btn" id="btn-fullscreen" title="Toàn màn hình">
@@ -2898,7 +2911,8 @@
         document.getElementById('zoom-out-container'),
         document.getElementById('home-container'),
         document.getElementById('flight-info-container'),
-        document.getElementById('user-guide-container')
+        document.getElementById('user-guide-container'),
+        document.getElementById('journey-simulation-container')
       ];
       const btnZoomIn = document.getElementById('btn-zoom-in');
       const btnZoomOut = document.getElementById('btn-zoom-out');
@@ -2906,6 +2920,7 @@
       const btnFullscreen = document.getElementById('btn-fullscreen');
       const btnFlight = document.getElementById('btn-open-flight-info');
       const btnUserGuide = document.getElementById('btn-user-guide');
+      const btnSimulation = document.getElementById('btn-journey-simulation');
       const btnUp = document.getElementById('btn-up');
       const btnDown = document.getElementById('btn-down');
       const btnLeft = document.getElementById('btn-left');
@@ -2929,8 +2944,8 @@
         if (cameraActions) cameraActions.style.display = 'none';
         otherGroups.forEach(g => { if (g) g.style.display = 'none'; });
 
-        // Ensure strict order on mobile: Flight > Guide > Fullscreen > ZoomIn > Home > ZoomOut
-        const mobileButtons = [btnFlight, btnUserGuide, btnFullscreen, btnZoomIn, btnReset, btnZoomOut];
+        // Keep simulation next to information and the camera controls on mobile too.
+        const mobileButtons = [btnFlight, btnUserGuide, btnSimulation, btnFullscreen, btnZoomIn, btnReset, btnZoomOut];
         mobileButtons.forEach(btn => {
           if (btn) mobileStack.appendChild(btn);
         });
@@ -2947,6 +2962,7 @@
 
         const flightInfoContainer = document.getElementById('flight-info-container');
         const userGuideContainer = document.getElementById('user-guide-container');
+        const simulationContainer = document.getElementById('journey-simulation-container');
         const fullscreenContainer = document.getElementById('fullscreen-container');
         const zoomInContainer = document.getElementById('zoom-in-container');
         const zoomOutContainer = document.getElementById('zoom-out-container');
@@ -2955,6 +2971,7 @@
         // Return buttons to their containers
         if (flightInfoContainer && btnFlight) flightInfoContainer.appendChild(btnFlight);
         if (userGuideContainer && btnUserGuide) userGuideContainer.appendChild(btnUserGuide);
+        if (simulationContainer && btnSimulation) simulationContainer.appendChild(btnSimulation);
         if (fullscreenContainer && btnFullscreen) fullscreenContainer.appendChild(btnFullscreen);
         if (zoomInContainer && btnZoomIn) zoomInContainer.appendChild(btnZoomIn);
         if (zoomOutContainer && btnZoomOut) zoomOutContainer.appendChild(btnZoomOut);

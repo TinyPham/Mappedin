@@ -39,6 +39,19 @@ Model3D/flb/validation-report.json
 *.bak
 *.before
 
+# Passenger-flow production images only; keep source renders and drafts local.
+public/media/*
+!public/media/passenger-flows/
+public/media/passenger-flows/*
+!public/media/passenger-flows/slides/
+scripts/__pycache__/
+scripts/buildLTIAFlowGuides.py
+scripts/buildPassengerFlowSlideAssets.mjs
+scripts/editOriginalLTIAFlows.py
+scripts/inspectOriginalFlowVideos.py
+scripts/renderFourPassengerFlowStills.py
+scripts/renderPassengerFlowVideos.py
+
 # One-off audit and superseded migration helpers
 scripts/collect*Audit.mjs
 scripts/inspectCurbside*

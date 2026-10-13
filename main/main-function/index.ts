@@ -9,7 +9,7 @@ let airportOperationsAvailable = false;
 import { createAirportDirections } from '../../src/navigation/airportDirections.js';
 import { createJourneyContext } from '../../src/navigation/airportJourneyContext.js';
 import { getAirportRouteNoticeKeys } from '../../src/navigation/airportRouteNotice.js';
-import { mountAirportJourneyPanel } from '../../src/journeys/airportJourneyPanel.js';
+import { mountAirportFlowVideoPlayer } from '../../src/journeys/airportFlowVideoPlayer.js';
 import { routeLookAheadBearing, interpolateBearing, sampleJourneyRoute } from '../../src/journeys/journeyTimeline.js';
 import flbManifest from '../../Model3D/flb/manifest.json';
 import { getFlbAssetUrl, getFlbManifestEntry } from '../../src/map/flbModelPolicy.js';
@@ -2116,6 +2116,7 @@ async function init() {
   let initialBearing: number = 322.85; // Lưu góc quay bearing ban đầu
   let initialPitch: number = 33.08; // Lưu góc nhìn pitch ban đầu
   let isManualFloorSwitch: boolean = false; // Cờ đánh dấu đang chuyển tầng thủ công (vô hiệu hóa AUTO-SWITCH)
+  let isAirportOverviewActive = false;
   let _isWarmupSwitch: boolean = false; // Cờ đánh dấu đang warm-up floor (bỏ qua side effects)
   let isProgrammaticZoom: boolean = false; // Cờ đánh dấu đang zoom từ category (vô hiệu hóa AUTO-SWITCH)
   let isInOverview: boolean = true; // Cờ đánh dấu đang ở Overview mode (CRITICAL for floor sync)
@@ -2888,6 +2889,7 @@ async function init() {
     }
   };
 
+  let passengerFlowOpened = false;
   const closeUserGuide = (markCompleted = false) => {
     if (markCompleted) {
       try { localStorage.setItem(USER_GUIDE_COMPLETED_KEY, "true"); } catch (e) { }
@@ -3177,6 +3179,7 @@ async function init() {
       loadingOverlayDismissedPromise
     ]).then(() => {
       setTimeout(() => {
+        if (passengerFlowOpened) return;
         console.log("🚀 Mappedin: Startup camera sequence completed. Popping up User Guide.");
         openUserGuide();
       }, STARTUP_GUIDE_OPEN_DELAY_MS);
@@ -6636,7 +6639,7 @@ async function init() {
     lastZoomLevel = zoom;
 
     // Bỏ qua nếu đang chuyển tầng (chặn spam), zoom do code (category), hoặc đang reset camera
-    if (isGlobalSwitchingFloor || isManualFloorSwitch || isProgrammaticZoom || isFloorSwitching || (window as any)._isResettingCamera) return;
+    if (isAirportOverviewActive || isGlobalSwitchingFloor || isManualFloorSwitch || isProgrammaticZoom || isFloorSwitching || (window as any)._isResettingCamera) return;
 
     const currentFloor = mapView.currentFloor;
     const type = getFloorType(currentFloor);
@@ -7614,7 +7617,12 @@ async function init() {
           commit: () => {
             if (requestVersion !== airportRouteVersion) return;
             wayfindingDirections = uiDirections;
-            latestAirportRoute = { context: createJourneyContext({ ...airportJourneyPreferences, mode: airportJourneyPreferences.requireProcedure ? 'procedure' : 'physical', origin: wayfindingOrigin, destination: wayfindingDestination, stopovers: wayfindingStopovers }, airportOperations), coordinates: uiDirections.coordinates, legs: legDirections };
+            latestAirportRoute = {
+              context: createJourneyContext({ ...airportJourneyPreferences, mode: airportJourneyPreferences.requireProcedure ? 'procedure' : 'physical', origin: wayfindingOrigin, destination: wayfindingDestination, stopovers: wayfindingStopovers }, airportOperations),
+              coordinates: uiDirections.coordinates, legs: legDirections,
+              // Only a successfully completed procedure plan can enable simulated checkpoint traversal.
+              procedureVerified: Boolean(procedurePlan)
+            };
             airportJourneyPanel?.setRoute(latestAirportRoute);
             currentNavigation = mapView.Navigation;
             (window as any).isNavigationActive = true;
@@ -7936,15 +7944,21 @@ async function init() {
     mountFlbSamplePreview({mapView,mapData,manifest:flbManifest,resolveUrl});
   }
   (window as any).drawNavigation = drawNavigation;
-  airportJourneyPanel = mountAirportJourneyPanel({
-    mapData, config: airportOperations,
-    onPreferencesChange: (preferences: any) => {
-      airportJourneyPreferences = preferences;
-      if (wayfindingOrigin && wayfindingDestination) drawNavigation();
-      else clearNavigation();
-    },
-    onPlay: () => animateBlueDotFullPath()
+  isAirportOverviewActive = false;
+  airportJourneyPanel = mountAirportFlowVideoPlayer({
+    language: TranslationManager.currentLang,
+    onModeChange: (mode: string) => {
+      isAirportOverviewActive = false;
+      if (mode === 'expanded') {
+        passengerFlowOpened = true;
+        closeUserGuide(false);
+      }
+    }
   });
+  window.addEventListener('language-change', () => {
+    airportJourneyPanel?.setLanguage(TranslationManager.currentLang);
+  });
+  if (isMapRuntimeDebugEnabled()) (window as any).airportFlowVideoPlayer = airportJourneyPanel;
 
 
 

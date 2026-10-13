@@ -46,8 +46,9 @@ test('user guide uses compact transparent copy surface and chevron controls', ()
   assert.match(html, /markerHeight="8"/);
 });
 
-test('mobile camera stack keeps user guide directly after flight info', () => {
-  assert.match(html, /const mobileButtons = \[btnFlight, btnUserGuide, btnFullscreen, btnZoomIn, btnReset, btnZoomOut\]/);
+test('mobile camera stack keeps user guide directly after flight info and shows the simulation control', () => {
+  assert.match(html, /const mobileButtons = \[btnFlight, btnUserGuide, btnSimulation, btnFullscreen, btnZoomIn, btnReset, btnZoomOut\]/);
   assert.match(html, /document\.getElementById\('user-guide-container'\)/);
   assert.match(html, /const btnUserGuide = document\.getElementById\('btn-user-guide'\)/);
+  assert.match(html, /const btnSimulation = document\.getElementById\('btn-journey-simulation'\)/);
 });
